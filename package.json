@@ -1,0 +1,29 @@
+{
+  "name": "yanqi-source-rebuild",
+  "version": "1.0.0",
+  "description": "Source rebuild of YANQI Obsidian plugin for secondary development.",
+  "main": "main.js",
+  "scripts": {
+    "build": "node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "markdown",
+    "image",
+    "yanqi"
+  ],
+  "author": "阿东玩AI / reconstructed for local development",
+  "license": "SEE LICENSE IN LICENSE",
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.2",
+    "obsidian": "^1.5.12",
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.11",
+    "jszip": "^3.10.1"
+  }
+}
