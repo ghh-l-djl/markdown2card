@@ -8,10 +8,13 @@
 ## 功能边界
 
 - 注册 Obsidian 自定义视图 `note-to-red`，显示名为 `markdown2card`。
-- 读取当前 Markdown 文件，用标题级别切分内容。默认使用 `h2`，设置中可切到 `h1`。
-- 标题下的 `---` 会继续拆分页，每页都带同一个标题。
+- 读取当前 Markdown 文件，将渲染后的 Markdown DOM 重组为固定比例图文卡片。
+- 内容按最终渲染高度自动分页，避免长内容被同一张卡片截断。
+- 设置中的 `h1` / `h2` 是优先分组边界，不再是生成前提；无标题笔记也能生成卡片。
+- `---` 仍可作为手动强制分页符。
 - 将每个分页渲染为 `.red-content-section`，置入统一的 `.red-image-preview` 画布。
 - 支持模板骨架、主题配色、封面风格三层独立切换。
+- 小红书模板保留三等分底部互动条；微博模板使用头像、红 V、当前时间、可编辑地址和关注按钮，并禁用底部提示。
 - 支持当前页 PNG 导出、全部页 ZIP 导出、复制当前图到剪贴板。
 - 支持图片拖拽、缩放、四角改大小，并按图片地址哈希持久化。
 - 支持表格字号缩放和拖拽缩放，并按表格文本哈希持久化。
@@ -28,7 +31,10 @@ Obsidian 当前文件
   -> MarkdownRenderer.render
   -> RedConverter.formatContent
   -> ImgTemplateManager.applyTemplate
+  -> RedView.syncFooterLayout
+  -> RedConverter.autoPaginate
   -> ThemeManager.applyTheme
+  -> RedView.syncFooterLayout
   -> setupImageZoom / setupTableResize
   -> html-to-image toBlob/toCanvas
   -> PNG 下载 / JSZip 批量下载 / ClipboardItem 写剪贴板
@@ -36,10 +42,11 @@ Obsidian 当前文件
 
 ## 反向拆出的模块
 
-- `src/main.ts`：插件入口，注册视图、命令、Ribbon 图标和设置页。
+- `src/main.ts`：插件入口，注册视图、命令、自定义 Ribbon 图标和设置页。
+- `src/icons.ts`：插件自定义图标名称和 SVG 路径定义。
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出、图片和表格交互。
-- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM。
-- `src/imgTemplates/index.ts`：12 套卡片骨架模板。
+- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，并在模板/主题生效后按 DOM 高度自动分页。
+- `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
 - `src/themeManager.ts`：把主题对象中的 CSS 字符串应用到 DOM。
 - `src/settings/settings.ts`：默认配置、主题/字体持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。

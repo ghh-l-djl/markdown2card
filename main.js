@@ -3078,6 +3078,18 @@ var RedConverter = class {
 };
 RedConverter.overflowTolerance = 2;
 
+// src/icons.ts
+var MARKDOWN2CARD_ICON = "markdown2card";
+var MARKDOWN2CARD_ICON_SVG = `
+<path d="M5 3.5h8.25L19 9.25V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1.5-1.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M13 3.75V8.5a1 1 0 0 0 1 1h4.75" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M7 15.75v-4.5h1.25L10 13.5l1.75-2.25H13v4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M14.5 15.75h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+<path d="m17 13.75 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="13.5" y="12" width="7" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+<path d="M14.9 17.25 16.3 16l1 1 1.1-1.35 1.2 1.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+`;
+
 // src/settings/SettingTab.ts
 var import_obsidian = require("obsidian");
 var ConfirmModal = class extends import_obsidian.Modal {
@@ -4132,6 +4144,7 @@ var DEFAULT_SETTINGS = {
   userName: "markdown2card",
   notesTitle: "\u5907\u5FD8\u5F55",
   userId: "@markdown2card",
+  weiboLocation: "\u6E56\u5317",
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
@@ -5819,12 +5832,52 @@ var WeiboTemplate = class extends RedTemplateBase {
   constructor(sm, cb) {
     super(sm, cb, "weibo", "\u5FAE\u535A\u5361", "red-tpl-weibo");
   }
-  buildFooter(footer) {
-    [["\u21BB", "\u8F6C\u53D1"], ["\u25CB", "\u8BC4\u8BBA"], ["\u2661", "\u8D5E"]].forEach(([icon, text]) => {
-      const item = footer.createEl("div", { cls: "red-xhs-act" });
-      item.createEl("span", { cls: "red-xhs-ico", text: icon });
-      item.createSpan({ text });
-    });
+  render(element) {
+    const header = element.querySelector(".red-preview-header");
+    const footer = element.querySelector(".red-preview-footer");
+    const settings = this.settingsManager.getSettings();
+    if (header) {
+      header.empty();
+      header.removeAttribute("class");
+      header.addClass("red-preview-header");
+      this.buildHeader(header, settings);
+    }
+    footer == null ? void 0 : footer.remove();
+    applyRoot(element, "red-tpl-weibo");
+  }
+  buildHeader(header, settings) {
+    const shell = header.createEl("div", { cls: "red-weibo-head" });
+    const left = shell.createEl("div", { cls: "red-weibo-left" });
+    this.createWeiboAvatar(left, settings);
+    const meta = left.createEl("div", { cls: "red-weibo-meta" });
+    this.editableName(meta, settings, "red-weibo-name");
+    const sub = meta.createEl("div", { cls: "red-weibo-sub" });
+    sub.createSpan({ text: this.formatWeiboTime(/* @__PURE__ */ new Date()) });
+    sub.createSpan({ text: "\u53D1\u5E03\u4E8E" });
+    const location = sub.createEl("span", { cls: "red-weibo-location", text: settings.weiboLocation || "\u6E56\u5317", attr: { title: "\u70B9\u51FB\u7F16\u8F91\u5730\u5740" } });
+    location.addEventListener("click", () => this.editText(location, "\u8BF7\u8F93\u5165\u53D1\u5E03\u5730\u5740", async (value) => {
+      await this.settingsManager.updateSettings({ weiboLocation: value || "\u6E56\u5317" });
+    }, "red-weibo-location-input"));
+    shell.createEl("button", { cls: "red-weibo-follow", text: "+\u5173\u6CE8" });
+  }
+  createWeiboAvatar(parent, settings) {
+    const avatar = parent.createEl("div", { cls: "red-user-avatar red-weibo-avatar", attr: { title: "\u70B9\u51FB\u4E0A\u4F20\u5934\u50CF" } });
+    if (settings.userAvatar) {
+      avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "\u7528\u6237\u5934\u50CF" } });
+    } else {
+      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.weiboInitial(settings) });
+    }
+    avatar.createEl("span", { cls: "red-weibo-v", text: "V" });
+    avatar.addEventListener("click", () => this.handleAvatarClick());
+  }
+  weiboInitial(settings) {
+    var _a;
+    const source = (settings.userName || settings.userId || "W").trim();
+    return ((_a = Array.from(source.replace(/^@/, ""))[0]) == null ? void 0 : _a.toUpperCase()) || "W";
+  }
+  formatWeiboTime(date) {
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${String(date.getFullYear()).slice(-2)}-${date.getMonth() + 1}-${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 };
 var WechatTemplate = class extends RedTemplateBase {
@@ -5976,7 +6029,7 @@ var RedView = class extends import_obsidian4.ItemView {
     return "markdown2card";
   }
   getIcon() {
-    return "presentation";
+    return MARKDOWN2CARD_ICON;
   }
   async onOpen() {
     const container = this.containerEl.children[1];
@@ -6772,6 +6825,7 @@ var YanqiPlugin = class extends import_obsidian5.Plugin {
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
+    (0, import_obsidian5.addIcon)(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
     RedConverter.initialize(this.app, this);
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({
@@ -6779,7 +6833,7 @@ var YanqiPlugin = class extends import_obsidian5.Plugin {
       name: "\u6253\u5F00 markdown2card \u9884\u89C8",
       callback: () => this.activateView()
     });
-    this.addRibbonIcon("presentation", "\u6253\u5F00 markdown2card \u9884\u89C8", () => this.activateView());
+    this.addRibbonIcon(MARKDOWN2CARD_ICON, "\u6253\u5F00 markdown2card \u9884\u89C8", () => this.activateView());
     this.addSettingTab(new RedSettingTab(this.app, this));
   }
   async activateView() {

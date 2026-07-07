@@ -1850,11 +1850,107 @@
    其余 chrome 用 currentColor / 半透明灰,浅深主题都可见。
    ============================================================ */
 
-/* —— 小红书笔记 / 微博:底部互动条 —— */
-.red-tpl-xhs .red-preview-footer,
-.red-tpl-weibo .red-preview-footer { justify-content: space-around !important; gap: 0 !important; }
-.red-xhs-act { display: flex; align-items: center; gap: 4px; font-size: 12px; opacity: 0.72; }
+/* —— 小红书笔记:底部互动条 —— */
+.red-tpl-xhs .red-preview-footer { justify-content: stretch !important; gap: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
+.red-xhs-act { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; opacity: 0.72; }
 .red-xhs-ico { font-size: 14px; line-height: 1; }
+
+/* —— 微博卡:头像 + 红 V + 时间地点 + 关注按钮 —— */
+.red-tpl-weibo .red-preview-header { padding: 8px 4px 14px !important; }
+.red-weibo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+}
+.red-weibo-left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.red-weibo-avatar {
+  position: relative;
+  flex: 0 0 50px;
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  overflow: visible !important;
+}
+.red-weibo-avatar img,
+.red-weibo-avatar .red-avatar-placeholder {
+  border-radius: 50% !important;
+  overflow: hidden;
+}
+.red-weibo-v {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffde4a 0%, #ff9f00 34%, #ef2e12 100%);
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(170, 58, 0, 0.26);
+  box-sizing: border-box;
+}
+.red-weibo-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.red-weibo-name {
+  color: #d86c22 !important;
+  font-size: 19px !important;
+  font-weight: 500 !important;
+  line-height: 1.1;
+}
+.red-weibo-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #9b9b9b;
+  font-size: 15px;
+  line-height: 1.2;
+}
+.red-weibo-location {
+  cursor: pointer;
+}
+.red-weibo-location:hover {
+  color: #d86c22;
+}
+.red-weibo-follow {
+  flex: 0 0 auto;
+  min-width: 84px;
+  height: 42px;
+  padding: 0 19px;
+  border: 1px solid #d59b68 !important;
+  border-radius: 22px !important;
+  background: #fff !important;
+  color: #d77a2b !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+.red-weibo-location-input {
+  width: 72px;
+  border: 0;
+  border-bottom: 1px solid #d59b68;
+  background: transparent;
+  color: #d86c22;
+  outline: none;
+  font: inherit;
+}
 
 /* —— 公众号卡:右侧关注按钮 + 阅读原文 —— */
 .red-tpl-wechat .red-user-right { display: none !important; }

@@ -4,6 +4,7 @@ import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
 import { DownloadManager } from "./downloadManager";
 import { ImgTemplateManager } from "./imgTemplates";
+import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 
@@ -37,7 +38,7 @@ export class RedView extends ItemView {
 
   getViewType(): string { return VIEW_TYPE_RED; }
   getDisplayText(): string { return "markdown2card"; }
-  getIcon(): string { return "presentation"; }
+  getIcon(): string { return MARKDOWN2CARD_ICON; }
 
   async onOpen(): Promise<void> {
     const container = this.containerEl.children[1] as HTMLElement;

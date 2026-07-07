@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">markdown2card icon</title>
+  <desc id="desc">A Markdown document converting into an image card.</desc>
+  <defs>
+    <linearGradient id="markGradient" x1="118" y1="100" x2="392" y2="412" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="0.52" stop-color="#C026D3"/>
+      <stop offset="1" stop-color="#F43F5E"/>
+    </linearGradient>
+    <linearGradient id="cardGradient" x1="288" y1="180" x2="408" y2="336" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#FFF1F2"/>
+    </linearGradient>
+    <filter id="softShadow" x="52" y="56" width="408" height="408" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#6D28D9" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="#FAFAFF"/>
+  <g filter="url(#softShadow)">
+    <rect x="88" y="92" width="250" height="328" rx="46" fill="white"/>
+    <path d="M271 92H134C108.595 92 88 112.595 88 138V374C88 399.405 108.595 420 134 420H292C317.405 420 338 399.405 338 374V159L271 92Z" stroke="url(#markGradient)" stroke-width="24" stroke-linejoin="round"/>
+    <path d="M271 92V154C271 164.493 279.507 173 290 173H338" stroke="url(#markGradient)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M134 295V218H164L196 258L228 218H258V295H228V260L205 289H187L164 260V295H134Z" fill="#17172F"/>
+    <path d="M306 251H358" stroke="#17172F" stroke-width="20" stroke-linecap="round"/>
+    <path d="M340 225L366 251L340 277" stroke="#17172F" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="292" y="218" width="132" height="146" rx="30" fill="url(#cardGradient)" stroke="url(#markGradient)" stroke-width="20"/>
+    <path d="M324 316L350 287L373 311L386 297L407 322V334H324V316Z" fill="url(#markGradient)"/>
+    <circle cx="386" cy="259" r="14" fill="#F43F5E"/>
+  </g>
+</svg>

@@ -1,5 +1,6 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, addIcon } from "obsidian";
 import { RedConverter } from "./converter";
+import { MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG } from "./icons";
 import { RedSettingTab } from "./settings/SettingTab";
 import { SettingsManager } from "./settings/settings";
 import { ThemeManager } from "./themeManager";
@@ -16,6 +17,7 @@ export default class YanqiPlugin extends Plugin {
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
+    addIcon(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
 
     RedConverter.initialize(this.app, this);
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
@@ -24,7 +26,7 @@ export default class YanqiPlugin extends Plugin {
       name: "打开 markdown2card 预览",
       callback: () => this.activateView()
     });
-    this.addRibbonIcon("presentation", "打开 markdown2card 预览", () => this.activateView());
+    this.addRibbonIcon(MARKDOWN2CARD_ICON, "打开 markdown2card 预览", () => this.activateView());
     this.addSettingTab(new RedSettingTab(this.app, this));
   }
 

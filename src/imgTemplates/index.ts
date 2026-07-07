@@ -222,12 +222,56 @@ class XhsTemplate extends RedTemplateBase {
 
 class WeiboTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "weibo", "微博卡", "red-tpl-weibo"); }
-  buildFooter(footer: HTMLElement): void {
-    [["↻", "转发"], ["○", "评论"], ["♡", "赞"]].forEach(([icon, text]) => {
-      const item = footer.createEl("div", { cls: "red-xhs-act" });
-      item.createEl("span", { cls: "red-xhs-ico", text: icon });
-      item.createSpan({ text });
-    });
+
+  render(element: HTMLElement): void {
+    const header = element.querySelector<HTMLElement>(".red-preview-header");
+    const footer = element.querySelector<HTMLElement>(".red-preview-footer");
+    const settings = this.settingsManager.getSettings();
+    if (header) {
+      header.empty();
+      header.removeAttribute("class");
+      header.addClass("red-preview-header");
+      this.buildHeader(header, settings);
+    }
+    footer?.remove();
+    applyRoot(element, "red-tpl-weibo");
+  }
+
+  buildHeader(header: HTMLElement, settings: YanqiSettings): void {
+    const shell = header.createEl("div", { cls: "red-weibo-head" });
+    const left = shell.createEl("div", { cls: "red-weibo-left" });
+    this.createWeiboAvatar(left, settings);
+    const meta = left.createEl("div", { cls: "red-weibo-meta" });
+    this.editableName(meta, settings, "red-weibo-name");
+    const sub = meta.createEl("div", { cls: "red-weibo-sub" });
+    sub.createSpan({ text: this.formatWeiboTime(new Date()) });
+    sub.createSpan({ text: "发布于" });
+    const location = sub.createEl("span", { cls: "red-weibo-location", text: settings.weiboLocation || "湖北", attr: { title: "点击编辑地址" } });
+    location.addEventListener("click", () => this.editText(location, "请输入发布地址", async (value) => {
+      await this.settingsManager.updateSettings({ weiboLocation: value || "湖北" });
+    }, "red-weibo-location-input"));
+    shell.createEl("button", { cls: "red-weibo-follow", text: "+关注" });
+  }
+
+  private createWeiboAvatar(parent: HTMLElement, settings: YanqiSettings): void {
+    const avatar = parent.createEl("div", { cls: "red-user-avatar red-weibo-avatar", attr: { title: "点击上传头像" } });
+    if (settings.userAvatar) {
+      avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
+    } else {
+      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.weiboInitial(settings) });
+    }
+    avatar.createEl("span", { cls: "red-weibo-v", text: "V" });
+    avatar.addEventListener("click", () => this.handleAvatarClick());
+  }
+
+  private weiboInitial(settings: YanqiSettings): string {
+    const source = (settings.userName || settings.userId || "W").trim();
+    return Array.from(source.replace(/^@/, ""))[0]?.toUpperCase() || "W";
+  }
+
+  private formatWeiboTime(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${String(date.getFullYear()).slice(-2)}-${date.getMonth() + 1}-${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 }
 

@@ -58,6 +58,7 @@ export interface YanqiSettings {
   userName: string;
   notesTitle: string;
   userId: string;
+  weiboLocation: string;
   showTime: boolean;
   showFooter?: boolean;
   timeFormat: string;

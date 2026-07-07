@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   userName: "markdown2card",
   notesTitle: "备忘录",
   userId: "@markdown2card",
+  weiboLocation: "湖北",
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
