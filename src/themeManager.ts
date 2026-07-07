@@ -53,7 +53,7 @@ export class ThemeManager {
       footer.querySelectorAll<HTMLElement>(".red-footer-separator").forEach((el) => this.applyInlineStyle(el, styles.footer.separator));
     }
 
-    ["h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
+    ["h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
       element.querySelectorAll<HTMLElement>(tag).forEach((el) => {
         if (!el.querySelector(".content")) {
           const content = document.createElement("span");
@@ -64,8 +64,8 @@ export class ThemeManager {
           after.className = "after";
           el.appendChild(after);
         }
-        const styleKey = tag === "h4" || tag === "h5" || tag === "h6" ? "base" : tag;
-        const titleStyle = styles.title?.[styleKey] || styles.title?.base;
+        const styleKey = tag === "h1" ? "h1" : tag === "h4" || tag === "h5" || tag === "h6" ? "base" : tag;
+        const titleStyle = styles.title?.[styleKey] || (tag === "h1" ? styles.title?.h2 : undefined) || styles.title?.base;
         this.applyInlineStyle(el, `${titleStyle?.base || ""}; font-family: ${this.currentFont};`);
         this.applyInlineStyle(el.querySelector<HTMLElement>(".content"), titleStyle?.content);
         this.applyInlineStyle(el.querySelector<HTMLElement>(".after"), titleStyle?.after);

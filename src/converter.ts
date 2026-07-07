@@ -88,7 +88,7 @@ export class RedConverter {
     const pages: HTMLElement[][] = [[]];
     let currentPage = 0;
     content.forEach((el) => {
-      if (el.tagName === "HR") {
+      if (this.isManualPageBreak(el)) {
         currentPage++;
         pages[currentPage] = [];
       } else {
@@ -96,7 +96,7 @@ export class RedConverter {
       }
     });
 
-    if (pages.length === 1 && !content.some((el) => el.tagName === "HR")) {
+    if (pages.length === 1 && !content.some((el) => this.isManualPageBreak(el))) {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
@@ -154,6 +154,25 @@ export class RedConverter {
       }
 
       if (hasBody(current)) {
+        if (this.endsWithHeading(current)) {
+          const splitBlocks = this.splitOversizedTextBlock(block, current, probe);
+          if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
+            current.appendChild(splitBlocks.shift()!);
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...splitBlocks);
+            continue;
+          }
+
+          const trailingHeadings = this.takeTrailingHeadings(current);
+          if (trailingHeadings.length && hasBody(current)) {
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...trailingHeadings, block);
+            continue;
+          }
+        }
+
         pages.push(current);
         current = makePage(false);
         pending.unshift(block);
@@ -240,6 +259,31 @@ export class RedConverter {
     return Boolean(block.textContent?.trim());
   }
 
+  private static endsWithHeading(page: HTMLElement): boolean {
+    const last = page.lastElementChild;
+    return last instanceof HTMLElement && this.isHeadingBlock(last);
+  }
+
+  private static takeTrailingHeadings(page: HTMLElement): HTMLElement[] {
+    const headings: HTMLElement[] = [];
+    while (this.endsWithHeading(page)) {
+      headings.unshift(page.removeChild(page.lastElementChild!) as HTMLElement);
+    }
+    return headings;
+  }
+
+  private static isHeadingBlock(block: HTMLElement): boolean {
+    return /^H[1-6]$/.test(block.tagName);
+  }
+
+  private static isManualPageBreak(el: HTMLElement): boolean {
+    return el.tagName === "HR" && !this.isFootnoteSeparator(el);
+  }
+
+  private static isFootnoteSeparator(el: HTMLElement): boolean {
+    return el.classList.contains("footnotes-sep") || el.classList.contains("footnote-separator");
+  }
+
   private static hasRenderableContent(element: HTMLElement): boolean {
     return Array.from(element.children).some((child) => {
       if (child.matches("style, script")) return false;
@@ -266,7 +310,11 @@ export class RedConverter {
     container.querySelectorAll("hr").forEach((el) => el.classList.add("red-hr"));
     container.querySelectorAll("del").forEach((el) => el.classList.add("red-del"));
     container.querySelectorAll(".task-list-item").forEach((el) => el.classList.add("red-task-list-item"));
+    container.querySelectorAll(".footnotes").forEach((el) => el.classList.add("red-footnotes"));
+    container.querySelectorAll(".footnotes-list").forEach((el) => el.classList.add("red-footnotes-list"));
+    container.querySelectorAll(".footnotes-sep, .footnote-separator").forEach((el) => el.classList.add("red-footnotes-sep"));
     container.querySelectorAll(".footnote-ref, .footnote-backref").forEach((el) => el.classList.add("red-footnote"));
+    container.querySelectorAll(".mermaid").forEach((el) => el.classList.add("red-mermaid"));
     container.querySelectorAll("pre code").forEach((el) => {
       const pre = el.parentElement;
       if (!pre) return;

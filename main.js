@@ -2816,14 +2816,14 @@ var RedConverter = class {
     const pages = [[]];
     let currentPage = 0;
     content.forEach((el) => {
-      if (el.tagName === "HR") {
+      if (this.isManualPageBreak(el)) {
         currentPage++;
         pages[currentPage] = [];
       } else {
         pages[currentPage].push(el);
       }
     });
-    if (pages.length === 1 && !content.some((el) => el.tagName === "HR")) {
+    if (pages.length === 1 && !content.some((el) => this.isManualPageBreak(el))) {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
@@ -2881,6 +2881,23 @@ var RedConverter = class {
         continue;
       }
       if (hasBody(current)) {
+        if (this.endsWithHeading(current)) {
+          const splitBlocks2 = this.splitOversizedTextBlock(block, current, probe);
+          if (splitBlocks2.length > 1 && fits(current, splitBlocks2[0])) {
+            current.appendChild(splitBlocks2.shift());
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...splitBlocks2);
+            continue;
+          }
+          const trailingHeadings = this.takeTrailingHeadings(current);
+          if (trailingHeadings.length && hasBody(current)) {
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...trailingHeadings, block);
+            continue;
+          }
+        }
         pages.push(current);
         current = makePage(false);
         pending.unshift(block);
@@ -2964,6 +2981,26 @@ var RedConverter = class {
       return false;
     return Boolean((_a = block.textContent) == null ? void 0 : _a.trim());
   }
+  static endsWithHeading(page) {
+    const last = page.lastElementChild;
+    return last instanceof HTMLElement && this.isHeadingBlock(last);
+  }
+  static takeTrailingHeadings(page) {
+    const headings = [];
+    while (this.endsWithHeading(page)) {
+      headings.unshift(page.removeChild(page.lastElementChild));
+    }
+    return headings;
+  }
+  static isHeadingBlock(block) {
+    return /^H[1-6]$/.test(block.tagName);
+  }
+  static isManualPageBreak(el) {
+    return el.tagName === "HR" && !this.isFootnoteSeparator(el);
+  }
+  static isFootnoteSeparator(el) {
+    return el.classList.contains("footnotes-sep") || el.classList.contains("footnote-separator");
+  }
   static hasRenderableContent(element) {
     return Array.from(element.children).some((child) => {
       var _a;
@@ -2992,7 +3029,11 @@ var RedConverter = class {
     container.querySelectorAll("hr").forEach((el) => el.classList.add("red-hr"));
     container.querySelectorAll("del").forEach((el) => el.classList.add("red-del"));
     container.querySelectorAll(".task-list-item").forEach((el) => el.classList.add("red-task-list-item"));
+    container.querySelectorAll(".footnotes").forEach((el) => el.classList.add("red-footnotes"));
+    container.querySelectorAll(".footnotes-list").forEach((el) => el.classList.add("red-footnotes-list"));
+    container.querySelectorAll(".footnotes-sep, .footnote-separator").forEach((el) => el.classList.add("red-footnotes-sep"));
     container.querySelectorAll(".footnote-ref, .footnote-backref").forEach((el) => el.classList.add("red-footnote"));
+    container.querySelectorAll(".mermaid").forEach((el) => el.classList.add("red-mermaid"));
     container.querySelectorAll("pre code").forEach((el) => {
       var _a;
       const pre = el.parentElement;
@@ -3043,16 +3084,7 @@ var RedConverter = class {
 RedConverter.overflowTolerance = 2;
 
 // src/icons.ts
-var MARKDOWN2CARD_ICON = "markdown2card";
-var MARKDOWN2CARD_ICON_SVG = `
-<path d="M5 3.5h8.25L19 9.25V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1.5-1.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-<path d="M13 3.75V8.5a1 1 0 0 0 1 1h4.75" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M7 15.75v-4.5h1.25L10 13.5l1.75-2.25H13v4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M14.5 15.75h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-<path d="m17 13.75 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="13.5" y="12" width="7" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
-<path d="M14.9 17.25 16.3 16l1 1 1.1-1.35 1.2 1.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-`;
+var MARKDOWN2CARD_ICON = "file-image";
 
 // src/settings/SettingTab.ts
 var import_obsidian = require("obsidian");
@@ -4299,9 +4331,9 @@ var ThemeManager = class {
       footer.querySelectorAll(".red-footer-text").forEach((el) => this.applyInlineStyle(el, styles.footer.text));
       footer.querySelectorAll(".red-footer-separator").forEach((el) => this.applyInlineStyle(el, styles.footer.separator));
     }
-    ["h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
+    ["h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
       element.querySelectorAll(tag).forEach((el) => {
-        var _a, _b;
+        var _a, _b, _c;
         if (!el.querySelector(".content")) {
           const content = document.createElement("span");
           content.className = "content";
@@ -4312,8 +4344,8 @@ var ThemeManager = class {
           after.className = "after";
           el.appendChild(after);
         }
-        const styleKey = tag === "h4" || tag === "h5" || tag === "h6" ? "base" : tag;
-        const titleStyle = ((_a = styles.title) == null ? void 0 : _a[styleKey]) || ((_b = styles.title) == null ? void 0 : _b.base);
+        const styleKey = tag === "h1" ? "h1" : tag === "h4" || tag === "h5" || tag === "h6" ? "base" : tag;
+        const titleStyle = ((_a = styles.title) == null ? void 0 : _a[styleKey]) || (tag === "h1" ? (_b = styles.title) == null ? void 0 : _b.h2 : void 0) || ((_c = styles.title) == null ? void 0 : _c.base);
         this.applyInlineStyle(el, `${(titleStyle == null ? void 0 : titleStyle.base) || ""}; font-family: ${this.currentFont};`);
         this.applyInlineStyle(el.querySelector(".content"), titleStyle == null ? void 0 : titleStyle.content);
         this.applyInlineStyle(el.querySelector(".after"), titleStyle == null ? void 0 : titleStyle.after);
@@ -6763,7 +6795,6 @@ var YanqiPlugin = class extends import_obsidian5.Plugin {
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
-    (0, import_obsidian5.addIcon)(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
     RedConverter.initialize(this.app, this);
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({

@@ -1,6 +1,6 @@
-import { Notice, Plugin, addIcon } from "obsidian";
+import { Notice, Plugin } from "obsidian";
 import { RedConverter } from "./converter";
-import { MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG } from "./icons";
+import { MARKDOWN2CARD_ICON } from "./icons";
 import { RedSettingTab } from "./settings/SettingTab";
 import { SettingsManager } from "./settings/settings";
 import { ThemeManager } from "./themeManager";
@@ -17,8 +17,6 @@ export default class YanqiPlugin extends Plugin {
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
-    addIcon(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
-
     RedConverter.initialize(this.app, this);
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({

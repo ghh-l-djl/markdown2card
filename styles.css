@@ -1036,12 +1036,27 @@
   height: 100%;
   margin: 0 2px;
   overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.red-content-section :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th, a, strong, em, span) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.red-content-section :is(pre, code) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .red-pagination-measure {
   margin: 0 2px !important;
 }
 
+.red-content-section[data-index="0"] h1,
 .red-content-section[data-index="0"] h2 {
   margin-top: 4px !important;
   font-size: 1.8em !important;
@@ -1062,6 +1077,86 @@
 
 .red-content-section[data-index="0"] img {
   max-height: 310px !important;
+}
+
+.red-content-section .red-footnotes,
+.red-content-section .footnotes {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: 18px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  color: inherit;
+  font-size: 0.86em;
+  line-height: 1.55;
+}
+
+.red-content-section .red-footnotes-sep,
+.red-content-section .footnotes-sep,
+.red-content-section .footnote-separator {
+  display: none !important;
+}
+
+.red-content-section .red-footnotes-list,
+.red-content-section .footnotes-list {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.red-content-section .red-footnotes li,
+.red-content-section .footnotes li {
+  margin: 0.35em 0;
+  color: inherit;
+}
+
+.red-content-section .red-mermaid,
+.red-content-section .mermaid {
+  display: block;
+  margin: 1.2em auto;
+  padding: 14px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #f8fafc !important;
+  color: #1f2937 !important;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.red-content-section .red-mermaid svg,
+.red-content-section .mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.red-content-section .red-mermaid text,
+.red-content-section .red-mermaid .label,
+.red-content-section .red-mermaid .label span,
+.red-content-section .mermaid text,
+.red-content-section .mermaid .label,
+.red-content-section .mermaid .label span {
+  color: #1f2937 !important;
+  fill: #1f2937 !important;
+}
+
+.red-content-section .red-mermaid .node rect,
+.red-content-section .red-mermaid .node circle,
+.red-content-section .red-mermaid .node ellipse,
+.red-content-section .red-mermaid .node polygon,
+.red-content-section .mermaid .node rect,
+.red-content-section .mermaid .node circle,
+.red-content-section .mermaid .node ellipse,
+.red-content-section .mermaid .node polygon {
+  fill: #eef2ff !important;
+  stroke: #8b5cf6 !important;
+}
+
+.red-content-section .red-mermaid .edgePath path,
+.red-content-section .red-mermaid .flowchart-link,
+.red-content-section .mermaid .edgePath path,
+.red-content-section .mermaid .flowchart-link {
+  stroke: #475569 !important;
 }
 
 .red-preview-footer {
