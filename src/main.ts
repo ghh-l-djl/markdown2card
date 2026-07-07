@@ -1,6 +1,5 @@
 import { Notice, Plugin } from "obsidian";
 import { RedConverter } from "./converter";
-import { DonateManager } from "./donateManager";
 import { RedSettingTab } from "./settings/SettingTab";
 import { SettingsManager } from "./settings/settings";
 import { ThemeManager } from "./themeManager";
@@ -19,15 +18,13 @@ export default class YanqiPlugin extends Plugin {
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
 
     RedConverter.initialize(this.app, this);
-    DonateManager.initialize(this.app, this);
-
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({
       id: "open-mp-preview",
-      name: "打开言起 YANQI 预览",
+      name: "打开 markdown2card 预览",
       callback: () => this.activateView()
     });
-    this.addRibbonIcon("image", "打开言起 YANQI 预览", () => this.activateView());
+    this.addRibbonIcon("image", "打开 markdown2card 预览", () => this.activateView());
     this.addSettingTab(new RedSettingTab(this.app, this));
   }
 

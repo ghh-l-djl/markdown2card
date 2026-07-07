@@ -1,7 +1,7 @@
 {
-  "name": "yanqi-source-rebuild",
+  "name": "markdown2card",
   "version": "1.0.0",
-  "description": "Source rebuild of YANQI Obsidian plugin for secondary development.",
+  "description": "Obsidian plugin for rendering Markdown notes as card images.",
   "main": "main.js",
   "scripts": {
     "build": "node esbuild.config.mjs production",
@@ -11,9 +11,9 @@
     "obsidian",
     "markdown",
     "image",
-    "yanqi"
+    "markdown2card"
   ],
-  "author": "阿东玩AI / reconstructed for local development",
+  "author": "markdown2card",
   "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
     "@types/node": "^20.11.30",

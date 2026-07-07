@@ -1,6 +1,6 @@
-# YANQI Source Rebuild
+# markdown2card
 
-This directory is a source-level rebuild of the bundled `yanqi-obsidian` plugin.
+This directory contains the source for the `markdown2card` Obsidian plugin.
 It keeps the published plugin behavior split into maintainable TypeScript
 modules for local secondary development.
 

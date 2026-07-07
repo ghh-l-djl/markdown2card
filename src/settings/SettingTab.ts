@@ -72,7 +72,7 @@ class ThemePreviewModal extends Modal {
     meta.createEl("div", { cls: "red-user-id", text: settings.userId });
     userInfo.createEl("div", { cls: "red-user-right" }).createEl("div", { cls: "red-post-time", text: "2025/4/20" });
     const content = preview.createDiv("red-preview-content");
-    content.createEl("h2", { text: "探索言起 YANQI 的无限可能" });
+    content.createEl("h2", { text: "探索 markdown2card 的无限可能" });
     const p = content.createEl("p");
     p.appendText("插件提供多种");
     p.createEl("strong", { text: "优雅的操作，" });
@@ -156,7 +156,7 @@ export class RedSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("red-settings");
-    containerEl.createEl("h2", { text: "言起 YANQI 设置" });
+    containerEl.createEl("h2", { text: "markdown2card 设置" });
     this.createSection(containerEl, "基本设置", (el) => this.renderBasicSettings(el));
     this.createSection(containerEl, "主题设置", (el) => this.renderThemeSettings(el));
   }

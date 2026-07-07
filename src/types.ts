@@ -66,8 +66,6 @@ export interface YanqiSettings {
   footerRightText: string;
   customFonts: FontOption[];
   backgroundSettings: BackgroundSettings;
-  donateCount?: number;
-  lastDonatePrompt?: number;
 }
 
 export interface FontOption {

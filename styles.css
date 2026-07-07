@@ -968,7 +968,7 @@
   margin: 1em auto;
 }
 
-/* 阿东小红书导出适配：把卡片从“文章截图”压成更像信息流图文。 */
+/* 平台图文导出适配：把卡片从“文章截图”压成更像信息流图文。 */
 .red-preview-container {
   min-width: min(490px, calc(100vw - 48px));
   padding: 12px;
@@ -1001,6 +1001,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: 56px;
 }
 
 .red-content-container {
@@ -1881,7 +1883,14 @@
 
 /* ① 整体改 flex 三段式:顶栏/底栏固定高,中间自适应并内部滚动
    → 底栏(全览/下载/导出)永远可见,不再被挤下去 */
-.red-view-content { display: flex !important; flex-direction: column; height: 100%; overflow: hidden !important; }
+.red-view-content {
+  display: flex !important;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden !important;
+  box-sizing: border-box;
+  padding-bottom: 30px !important;
+}
 .red-toolbar { flex: 0 0 auto; }
 .red-bottom-bar { flex: 0 0 auto; }
 .red-preview-wrapper {

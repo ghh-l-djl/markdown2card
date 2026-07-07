@@ -1,4 +1,4 @@
-# YANQI 功能与实现分析
+# markdown2card 功能与实现分析
 
 ## 仓库形态
 
@@ -7,7 +7,7 @@
 
 ## 功能边界
 
-- 注册 Obsidian 自定义视图 `note-to-red`，显示名为 `言起 YANQI`。
+- 注册 Obsidian 自定义视图 `note-to-red`，显示名为 `markdown2card`。
 - 读取当前 Markdown 文件，用标题级别切分内容。默认使用 `h2`，设置中可切到 `h1`。
 - 标题下的 `---` 会继续拆分页，每页都带同一个标题。
 - 将每个分页渲染为 `.red-content-section`，置入统一的 `.red-image-preview` 画布。

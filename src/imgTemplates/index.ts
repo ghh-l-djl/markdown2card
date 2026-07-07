@@ -85,13 +85,13 @@ export class DefaultTemplate implements ImgTemplate {
 
   async handleUserNameEdit(element: HTMLElement): Promise<void> {
     await this.editText(element, "请输入用户名", async (value) => {
-      await this.settingsManager.updateSettings({ userName: value || "阿东玩AI" });
+      await this.settingsManager.updateSettings({ userName: value || "markdown2card" });
     });
   }
 
   async handleUserIdEdit(element: HTMLElement): Promise<void> {
     await this.editText(element, "请输入用户ID", async (value) => {
-      await this.settingsManager.updateSettings({ userId: value || "@阿东的大模型实验室" });
+      await this.settingsManager.updateSettings({ userId: value || "@markdown2card" });
     });
   }
 

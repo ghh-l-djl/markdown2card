@@ -2,7 +2,6 @@ import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TFile, Workspa
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
-import { DonateManager } from "./donateManager";
 import { DownloadManager } from "./downloadManager";
 import { ImgTemplateManager } from "./imgTemplates";
 import type { SettingsManager } from "./settings/settings";
@@ -28,21 +27,15 @@ export class RedView extends ItemView {
   customFontSelect: HTMLElement;
   imgTemplateManager: ImgTemplateManager;
   backgroundManager = new BackgroundManager();
-  donateCount = 0;
-  lastDonatePrompt = 0;
-  readonly MAX_COUNT_BEFORE_PROMPT = 6;
   private syncInitialized = false;
 
   constructor(leaf: WorkspaceLeaf, private themeManager: ThemeManager, private settingsManager: SettingsManager) {
     super(leaf);
     this.imgTemplateManager = new ImgTemplateManager(settingsManager, this.updatePreview.bind(this), themeManager);
-    const settings = settingsManager.getSettings();
-    this.donateCount = settings.donateCount || 0;
-    this.lastDonatePrompt = settings.lastDonatePrompt || 0;
   }
 
   getViewType(): string { return VIEW_TYPE_RED; }
-  getDisplayText(): string { return "言起 YANQI"; }
+  getDisplayText(): string { return "markdown2card"; }
   getIcon(): string { return "image"; }
 
   async onOpen(): Promise<void> {
@@ -171,7 +164,6 @@ export class RedView extends ItemView {
     this.initializeBackgroundButton(controls);
     controls.createEl("button", { cls: "red-overview-button", text: "全览" }).addEventListener("click", () => this.openOverviewModal());
     this.initializeExportButtons(controls);
-    controls.createEl("button", { cls: "red-like-button", text: "关于阿东" }).addEventListener("click", () => DonateManager.showDonateModal(this.containerEl));
   }
 
   initializeHelpButton(parent: HTMLElement): void {
@@ -200,13 +192,11 @@ export class RedView extends ItemView {
     const single = parent.createEl("button", { cls: "red-export-button", text: "下载当前页" });
     single.addEventListener("click", async () => {
       if (!this.previewEl) return;
-      if (this.shouldShowDonatePrompt()) DonateManager.showDonateModal(this.containerEl);
       await this.withButtonState(single, "导出中...", "下载当前页", () => DownloadManager.downloadSingleImage(this.previewEl));
     });
     this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: "导出全部页" });
     this.copyButton.addEventListener("click", async () => {
       if (!this.previewEl) return;
-      if (this.shouldShowDonatePrompt()) DonateManager.showDonateModal(this.containerEl);
       await this.withButtonState(this.copyButton, "导出中...", "导出全部页", () => DownloadManager.downloadAllImages(this.previewEl));
     });
   }
@@ -225,7 +215,6 @@ export class RedView extends ItemView {
       copyButton.addEventListener("click", async () => {
         copyButton.disabled = true;
         try {
-          if (this.shouldShowDonatePrompt()) DonateManager.showDonateModal(this.containerEl);
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
           new Notice(ok ? "图片已复制到剪贴板" : "复制失败");
         } finally {
@@ -602,18 +591,6 @@ export class RedView extends ItemView {
       this.updateNavigationState();
       this.previewEl.querySelector(".red-content-section.red-section-active")?.scrollIntoView({ block: "nearest" });
     }
-  }
-
-  private shouldShowDonatePrompt(): boolean {
-    this.donateCount++;
-    this.settingsManager.updateSettings({ donateCount: this.donateCount });
-    const now = Date.now();
-    if (this.donateCount % this.MAX_COUNT_BEFORE_PROMPT === 0 && now - this.lastDonatePrompt > 3 * 24 * 60 * 60 * 1000) {
-      this.lastDonatePrompt = now;
-      this.settingsManager.updateSettings({ lastDonatePrompt: this.lastDonatePrompt });
-      return true;
-    }
-    return false;
   }
 
   private async withButtonState(button: HTMLButtonElement, loading: string, normal: string, action: () => Promise<void>): Promise<void> {
