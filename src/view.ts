@@ -172,10 +172,9 @@ export class RedView extends ItemView {
   initializeHelpButton(parent: HTMLElement): void {
     const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": "使用指南" } });
     setIcon(help, "help");
-    const headingLevel = this.settingsManager.getSettings().headingLevel || "h1";
     parent.createEl("div", {
       cls: "red-help-tooltip",
-      text: `使用指南：\n1. 内容会按卡片高度自动分页，避免长内容被截断\n2. ${headingLevel === "h1" ? "一级标题(#)" : "二级标题(##)"}会作为分组边界；没有标题也能生成卡片\n3. 使用 --- 可手动强制换页\n4. 模板=骨架，主题=配色，封面=首页第1页排版\n5. 点头像/昵称/页脚文字可直接修改`
+      text: "使用指南：\n1. 内容会按卡片高度自动分页，避免长内容被截断\n2. 使用 --- 可手动强制换页\n3. 模板=骨架，主题=配色，封面=首页第1页排版\n4. 点头像/昵称/页脚文字可直接修改"
     });
   }
 
@@ -571,33 +570,22 @@ export class RedView extends ItemView {
     const map: number[] = [];
     if (!this.currentFile || !this.previewEl) return map;
     const cache = this.app.metadataCache.getFileCache(this.currentFile);
-    const headings = cache?.headings || [];
     const sections = cache?.sections || [];
-    const headingLevel = this.settingsManager.getSettings().headingLevel || "h1";
-    const levelNum = Number(headingLevel.replace("h", "")) || 1;
     const domCount = this.previewEl.querySelectorAll(".red-content-section").length;
-    const cards = headings.filter((heading) => heading.level === levelNum);
-    if (!cards.length) return Array.from({ length: domCount }, () => 0);
-    for (let c = 0; c < cards.length; c++) {
-      const cardLine = cards[c].position.start.line;
-      const endLine = c + 1 < cards.length ? cards[c + 1].position.start.line : Infinity;
-      const blocks = sections.filter((section) => section.position.start.line > cardLine && section.position.start.line < endLine);
-      const pages: any[][] = [[]];
-      let cur = 0, hasHr = false;
-      blocks.forEach((block) => {
-        if (block.type === "thematicBreak") { hasHr = true; cur++; pages[cur] = []; }
-        else pages[cur].push(block);
-      });
-      if (pages.length === 1 && !hasHr) map.push(cardLine);
-      else {
-        let firstRendered = true;
-        pages.forEach((page) => {
-          if (!page.length) return;
-          map.push(firstRendered ? cardLine : page[0].position.start.line);
-          firstRendered = false;
-        });
+    if (!domCount) return map;
+    const firstLine = sections.find((section) => section.type !== "thematicBreak")?.position.start.line ?? 0;
+    map.push(firstLine);
+    let nextPageStartsAt = 0;
+    sections.forEach((section) => {
+      if (section.type === "thematicBreak") {
+        nextPageStartsAt = section.position.end.line + 1;
+        return;
       }
-    }
+      if (nextPageStartsAt > 0) {
+        map.push(section.position.start.line);
+        nextPageStartsAt = 0;
+      }
+    });
     while (map.length < domCount) map.push(map.length ? map[map.length - 1] : 0);
     return map.slice(0, domCount);
   }

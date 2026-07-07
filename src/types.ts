@@ -62,7 +62,6 @@ export interface YanqiSettings {
   showTime: boolean;
   showFooter?: boolean;
   timeFormat: string;
-  headingLevel: string;
   footerLeftText: string;
   footerRightText: string;
   customFonts: FontOption[];

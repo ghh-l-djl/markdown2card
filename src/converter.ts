@@ -13,13 +13,10 @@ export class RedConverter {
 
   static hasValidContent(element: HTMLElement): boolean {
     if (element.querySelectorAll(".red-content-section").length > 0) return true;
-    const headingLevel = this.plugin.settingsManager?.getSettings().headingLevel || "h1";
-    return element.querySelectorAll(headingLevel).length > 0 || this.hasRenderableContent(element);
+    return this.hasRenderableContent(element);
   }
 
   static formatContent(element: HTMLElement): void {
-    const settings = this.plugin.settingsManager?.getSettings();
-    const headingLevel = settings?.headingLevel || "h1";
     const sourceChildren = Array.from(element.children) as HTMLElement[];
     if (!this.hasRenderableContent(element)) {
       element.empty();
@@ -31,7 +28,6 @@ export class RedConverter {
       return;
     }
 
-    const headers = Array.from(element.querySelectorAll<HTMLElement>(headingLevel));
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
 
     const previewContainer = document.createElement("div");
@@ -54,15 +50,8 @@ export class RedConverter {
     const contentContainer = document.createElement("div");
     contentContainer.className = "red-content-container";
 
-    if (headers.length > 0) {
-      headers.forEach((header, index) => {
-        const section = this.createContentSection(header, index);
-        if (section) contentContainer.appendChild(section);
-      });
-    } else {
-      const section = this.createSectionsFromParts(null, sourceChildren.map((el) => el.cloneNode(true) as HTMLElement), 0, true);
-      if (section) contentContainer.appendChild(section);
-    }
+    const section = this.createSectionsFromParts(sourceChildren.map((el) => el.cloneNode(true) as HTMLElement), 0, true);
+    if (section) contentContainer.appendChild(section);
 
     contentArea.appendChild(contentContainer);
     imagePreview.appendChild(headerArea);
@@ -94,20 +83,7 @@ export class RedConverter {
     });
   }
 
-  private static createContentSection(header: HTMLElement, index: number): Node {
-    const settings = this.plugin.settingsManager?.getSettings();
-    const headingLevel = settings?.headingLevel || "h1";
-    const content: HTMLElement[] = [];
-    let current = header.nextElementSibling as HTMLElement | null;
-    while (current && current.tagName !== headingLevel.toUpperCase()) {
-      content.push(current.cloneNode(true) as HTMLElement);
-      current = current.nextElementSibling as HTMLElement | null;
-    }
-
-    return this.createSectionsFromParts(header.cloneNode(true) as HTMLElement, content, index, index === 0);
-  }
-
-  private static createSectionsFromParts(header: HTMLElement | null, content: HTMLElement[], index: number, isFirstCard: boolean): Node {
+  private static createSectionsFromParts(content: HTMLElement[], index: number, isFirstCard: boolean): Node {
     const settings = this.plugin.settingsManager?.getSettings();
     const pages: HTMLElement[][] = [[]];
     let currentPage = 0;
@@ -125,7 +101,6 @@ export class RedConverter {
       section.className = "red-content-section";
       section.dataset.index = String(index);
       if (isFirstCard) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
-      if (header) section.appendChild(header.cloneNode(true));
       content.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
@@ -138,7 +113,6 @@ export class RedConverter {
       section.className = "red-content-section";
       section.dataset.index = `${index}-${pageIndex}`;
       if (isFirstCard && pageIndex === 0) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
-      if (header) section.appendChild(header.cloneNode(true));
       pageContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       fragment.appendChild(section);
@@ -150,8 +124,7 @@ export class RedConverter {
     const children = Array.from(section.children) as HTMLElement[];
     if (!children.length) return [section.cloneNode(true) as HTMLElement];
 
-    const title = this.isHeading(children[0]) ? children[0] : null;
-    const body = title ? children.slice(1) : children;
+    const body = children;
     const pages: HTMLElement[] = [];
     const probe = this.createMeasureSection(section, contentContainer);
     const makePage = (isFirstPage: boolean): HTMLElement => {
@@ -162,12 +135,11 @@ export class RedConverter {
         const coverStyle = this.plugin.settingsManager?.getSettings().coverStyle;
         if (coverStyle) page.classList.remove(coverStyle);
       }
-      if (title) page.appendChild(title.cloneNode(true));
       return page;
     };
     let current = makePage(true);
 
-    const hasBody = (page: HTMLElement) => page.childElementCount > (title ? 1 : 0);
+    const hasBody = (page: HTMLElement) => page.childElementCount > 0;
     const fits = (page: HTMLElement, candidate: HTMLElement): boolean => {
       probe.replaceChildren(...Array.from(page.children).map((child) => child.cloneNode(true)), candidate.cloneNode(true));
       return !this.isOverflowing(probe);
@@ -266,10 +238,6 @@ export class RedConverter {
     if (!["p", "li", "blockquote"].includes(tag)) return false;
     if (block.querySelector("img, table, pre, code, iframe, video, audio")) return false;
     return Boolean(block.textContent?.trim());
-  }
-
-  private static isHeading(el: HTMLElement): boolean {
-    return /^H[1-6]$/.test(el.tagName);
   }
 
   private static hasRenderableContent(element: HTMLElement): boolean {

@@ -8,7 +8,6 @@ It renders the active Markdown note as exportable social-card images.
 - Opens a dedicated `markdown2card` preview view inside Obsidian.
 - Converts Markdown into fixed-ratio image cards with live preview.
 - Automatically paginates long content by the actual rendered card height, so content is not silently clipped.
-- Treats configured `h1` or `h2` headings as preferred group boundaries; notes without headings can still generate cards.
 - Supports manual page breaks with `---`.
 - Provides multiple image templates, including default, notes, Xiaohongshu, Weibo, WeChat, magazine, quote, terminal, GitHub, and signature styles.
 - Supports theme switching, cover styles, custom fonts, background images, footer visibility, image crop/zoom, table scaling, current-page export, all-pages ZIP export, and clipboard copy.

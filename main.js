@@ -2744,16 +2744,11 @@ var RedConverter = class {
     this.plugin = plugin;
   }
   static hasValidContent(element) {
-    var _a;
     if (element.querySelectorAll(".red-content-section").length > 0)
       return true;
-    const headingLevel = ((_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings().headingLevel) || "h1";
-    return element.querySelectorAll(headingLevel).length > 0 || this.hasRenderableContent(element);
+    return this.hasRenderableContent(element);
   }
   static formatContent(element) {
-    var _a;
-    const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
-    const headingLevel = (settings == null ? void 0 : settings.headingLevel) || "h1";
     const sourceChildren = Array.from(element.children);
     if (!this.hasRenderableContent(element)) {
       element.empty();
@@ -2764,7 +2759,6 @@ var RedConverter = class {
       element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: false }, bubbles: true }));
       return;
     }
-    const headers = Array.from(element.querySelectorAll(headingLevel));
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
     const previewContainer = document.createElement("div");
     previewContainer.className = "red-preview-container";
@@ -2784,17 +2778,9 @@ var RedConverter = class {
     footerArea.className = "red-preview-footer";
     const contentContainer = document.createElement("div");
     contentContainer.className = "red-content-container";
-    if (headers.length > 0) {
-      headers.forEach((header, index) => {
-        const section = this.createContentSection(header, index);
-        if (section)
-          contentContainer.appendChild(section);
-      });
-    } else {
-      const section = this.createSectionsFromParts(null, sourceChildren.map((el) => el.cloneNode(true)), 0, true);
-      if (section)
-        contentContainer.appendChild(section);
-    }
+    const section = this.createSectionsFromParts(sourceChildren.map((el) => el.cloneNode(true)), 0, true);
+    if (section)
+      contentContainer.appendChild(section);
     contentArea.appendChild(contentContainer);
     imagePreview.appendChild(headerArea);
     imagePreview.appendChild(contentArea);
@@ -2824,19 +2810,7 @@ var RedConverter = class {
       contentContainer.appendChild(section);
     });
   }
-  static createContentSection(header, index) {
-    var _a;
-    const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
-    const headingLevel = (settings == null ? void 0 : settings.headingLevel) || "h1";
-    const content = [];
-    let current = header.nextElementSibling;
-    while (current && current.tagName !== headingLevel.toUpperCase()) {
-      content.push(current.cloneNode(true));
-      current = current.nextElementSibling;
-    }
-    return this.createSectionsFromParts(header.cloneNode(true), content, index, index === 0);
-  }
-  static createSectionsFromParts(header, content, index, isFirstCard) {
+  static createSectionsFromParts(content, index, isFirstCard) {
     var _a;
     const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
     const pages = [[]];
@@ -2855,8 +2829,6 @@ var RedConverter = class {
       section.dataset.index = String(index);
       if (isFirstCard)
         section.classList.add("red-cover", (settings == null ? void 0 : settings.coverStyle) || "cover-classic");
-      if (header)
-        section.appendChild(header.cloneNode(true));
       content.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
@@ -2870,8 +2842,6 @@ var RedConverter = class {
       section.dataset.index = `${index}-${pageIndex}`;
       if (isFirstCard && pageIndex === 0)
         section.classList.add("red-cover", (settings == null ? void 0 : settings.coverStyle) || "cover-classic");
-      if (header)
-        section.appendChild(header.cloneNode(true));
       pageContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       fragment.appendChild(section);
@@ -2882,8 +2852,7 @@ var RedConverter = class {
     const children = Array.from(section.children);
     if (!children.length)
       return [section.cloneNode(true)];
-    const title = this.isHeading(children[0]) ? children[0] : null;
-    const body = title ? children.slice(1) : children;
+    const body = children;
     const pages = [];
     const probe = this.createMeasureSection(section, contentContainer);
     const makePage = (isFirstPage) => {
@@ -2896,12 +2865,10 @@ var RedConverter = class {
         if (coverStyle)
           page.classList.remove(coverStyle);
       }
-      if (title)
-        page.appendChild(title.cloneNode(true));
       return page;
     };
     let current = makePage(true);
-    const hasBody = (page) => page.childElementCount > (title ? 1 : 0);
+    const hasBody = (page) => page.childElementCount > 0;
     const fits = (page, candidate) => {
       probe.replaceChildren(...Array.from(page.children).map((child) => child.cloneNode(true)), candidate.cloneNode(true));
       return !this.isOverflowing(probe);
@@ -2996,9 +2963,6 @@ var RedConverter = class {
     if (block.querySelector("img, table, pre, code, iframe, video, audio"))
       return false;
     return Boolean((_a = block.textContent) == null ? void 0 : _a.trim());
-  }
-  static isHeading(el) {
-    return /^H[1-6]$/.test(el.tagName);
   }
   static hasRenderableContent(element) {
     return Array.from(element.children).some((child) => {
@@ -3265,9 +3229,6 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
     }
   }
   renderBasicSettings(containerEl) {
-    new import_obsidian.Setting(containerEl).setName("\u6807\u9898\u5206\u7EC4\u7EA7\u522B").setDesc("\u9009\u62E9\u7528\u4E8E\u4F18\u5148\u5212\u5206\u5185\u5BB9\u7EC4\u7684\u6807\u9898\u7EA7\u522B\uFF1B\u957F\u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u6CA1\u6709\u6807\u9898\u4E5F\u80FD\u751F\u6210\u5361\u7247\u3002").addDropdown((dropdown) => dropdown.addOption("h1", "\u4E00\u7EA7\u6807\u9898(#) - \u4F18\u5148\u6309\u5927\u7AE0\u8282\u5206\u7EC4").addOption("h2", "\u4E8C\u7EA7\u6807\u9898(##) - \u4F18\u5148\u6309\u5C0F\u7AE0\u8282\u5206\u7EC4").setValue(this.plugin.settingsManager.getSettings().headingLevel).onChange(async (value) => {
-      await this.plugin.settingsManager.updateSettings({ headingLevel: value });
-    }));
     containerEl.createEl("h4", { text: "\u5B57\u4F53\u7BA1\u7406" });
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
       const setting = new import_obsidian.Setting(containerEl).setName(font.label).setDesc(font.value);
@@ -4148,7 +4109,6 @@ var DEFAULT_SETTINGS = {
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  headingLevel: "h2",
   footerLeftText: "\u591A\u641C\u7D22\u3001\u591A\u52A8\u624B\u3001\u591A\u601D\u8003",
   footerRightText: "Vibe Anything",
   customFonts: [
@@ -6160,15 +6120,9 @@ var RedView = class extends import_obsidian4.ItemView {
   initializeHelpButton(parent) {
     const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": "\u4F7F\u7528\u6307\u5357" } });
     (0, import_obsidian4.setIcon)(help, "help");
-    const headingLevel = this.settingsManager.getSettings().headingLevel || "h1";
     parent.createEl("div", {
       cls: "red-help-tooltip",
-      text: `\u4F7F\u7528\u6307\u5357\uFF1A
-1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD
-2. ${headingLevel === "h1" ? "\u4E00\u7EA7\u6807\u9898(#)" : "\u4E8C\u7EA7\u6807\u9898(##)"}\u4F1A\u4F5C\u4E3A\u5206\u7EC4\u8FB9\u754C\uFF1B\u6CA1\u6709\u6807\u9898\u4E5F\u80FD\u751F\u6210\u5361\u7247
-3. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875
-4. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248
-5. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539`
+      text: "\u4F7F\u7528\u6307\u5357\uFF1A\n1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD\n2. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875\n3. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248\n4. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539"
     });
   }
   initializeBackgroundButton(parent) {
@@ -6693,44 +6647,28 @@ var RedView = class extends import_obsidian4.ItemView {
     ];
   }
   buildLineMap() {
+    var _a, _b;
     const map = [];
     if (!this.currentFile || !this.previewEl)
       return map;
     const cache2 = this.app.metadataCache.getFileCache(this.currentFile);
-    const headings = (cache2 == null ? void 0 : cache2.headings) || [];
     const sections = (cache2 == null ? void 0 : cache2.sections) || [];
-    const headingLevel = this.settingsManager.getSettings().headingLevel || "h1";
-    const levelNum = Number(headingLevel.replace("h", "")) || 1;
     const domCount = this.previewEl.querySelectorAll(".red-content-section").length;
-    const cards = headings.filter((heading) => heading.level === levelNum);
-    if (!cards.length)
-      return Array.from({ length: domCount }, () => 0);
-    for (let c = 0; c < cards.length; c++) {
-      const cardLine = cards[c].position.start.line;
-      const endLine = c + 1 < cards.length ? cards[c + 1].position.start.line : Infinity;
-      const blocks = sections.filter((section) => section.position.start.line > cardLine && section.position.start.line < endLine);
-      const pages = [[]];
-      let cur = 0, hasHr = false;
-      blocks.forEach((block) => {
-        if (block.type === "thematicBreak") {
-          hasHr = true;
-          cur++;
-          pages[cur] = [];
-        } else
-          pages[cur].push(block);
-      });
-      if (pages.length === 1 && !hasHr)
-        map.push(cardLine);
-      else {
-        let firstRendered = true;
-        pages.forEach((page) => {
-          if (!page.length)
-            return;
-          map.push(firstRendered ? cardLine : page[0].position.start.line);
-          firstRendered = false;
-        });
+    if (!domCount)
+      return map;
+    const firstLine = (_b = (_a = sections.find((section) => section.type !== "thematicBreak")) == null ? void 0 : _a.position.start.line) != null ? _b : 0;
+    map.push(firstLine);
+    let nextPageStartsAt = 0;
+    sections.forEach((section) => {
+      if (section.type === "thematicBreak") {
+        nextPageStartsAt = section.position.end.line + 1;
+        return;
       }
-    }
+      if (nextPageStartsAt > 0) {
+        map.push(section.position.start.line);
+        nextPageStartsAt = 0;
+      }
+    });
     while (map.length < domCount)
       map.push(map.length ? map[map.length - 1] : 0);
     return map.slice(0, domCount);

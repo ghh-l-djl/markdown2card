@@ -22,7 +22,6 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  headingLevel: "h2",
   footerLeftText: "多搜索、多动手、多思考",
   footerRightText: "Vibe Anything",
   customFonts: [
