@@ -24,7 +24,7 @@ export default class YanqiPlugin extends Plugin {
       name: "打开 markdown2card 预览",
       callback: () => this.activateView()
     });
-    this.addRibbonIcon("image", "打开 markdown2card 预览", () => this.activateView());
+    this.addRibbonIcon("presentation", "打开 markdown2card 预览", () => this.activateView());
     this.addSettingTab(new RedSettingTab(this.app, this));
   }
 

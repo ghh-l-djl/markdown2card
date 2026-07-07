@@ -42,7 +42,7 @@ export class ThemeManager {
       header.querySelectorAll<HTMLElement>(".red-user-name-container").forEach((el) => this.applyInlineStyle(el, styles.header.nameContainer));
       header.querySelectorAll<HTMLElement>(".red-user-name").forEach((el) => this.applyInlineStyle(el, styles.header.userName));
       header.querySelectorAll<HTMLElement>(".red-user-id").forEach((el) => this.applyInlineStyle(el, styles.header.userId));
-      header.querySelectorAll<HTMLElement>(".red-post-time").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
+      header.querySelectorAll<HTMLElement>(".red-post-time, .red-header-more").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
       header.querySelectorAll<HTMLElement>(".red-verified-icon").forEach((el) => this.applyInlineStyle(el, styles.header.verifiedIcon));
     }
 

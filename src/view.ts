@@ -19,6 +19,7 @@ export class RedView extends ItemView {
   previewEl: HTMLElement;
   copyButton: HTMLButtonElement;
   lockButton: HTMLButtonElement;
+  footerToggleButton: HTMLButtonElement;
   fontSizeSelect: HTMLInputElement;
   navigationButtons: { prev: HTMLButtonElement; next: HTMLButtonElement; indicator: HTMLElement };
   customTemplateSelect: HTMLElement;
@@ -36,7 +37,7 @@ export class RedView extends ItemView {
 
   getViewType(): string { return VIEW_TYPE_RED; }
   getDisplayText(): string { return "markdown2card"; }
-  getIcon(): string { return "image"; }
+  getIcon(): string { return "presentation"; }
 
   async onOpen(): Promise<void> {
     const container = this.containerEl.children[1] as HTMLElement;
@@ -162,6 +163,7 @@ export class RedView extends ItemView {
     const controls = bottom.createEl("div", { cls: "red-controls-group" });
     this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
+    this.initializeFooterToggleButton(controls);
     controls.createEl("button", { cls: "red-overview-button", text: "全览" }).addEventListener("click", () => this.openOverviewModal());
     this.initializeExportButtons(controls);
   }
@@ -172,7 +174,7 @@ export class RedView extends ItemView {
     const headingLevel = this.settingsManager.getSettings().headingLevel || "h1";
     parent.createEl("div", {
       cls: "red-help-tooltip",
-      text: `使用指南：\n1. 用${headingLevel === "h1" ? "一级标题(#)" : "二级标题(##)"}分割内容，每个标题生成一张图文卡片\n2. 标题下用 --- 可分成多页\n3. 模板=骨架，主题=配色，封面=首页第1页排版\n4. 字号支持 0.5 步进\n5. 点头像/昵称/页脚文字可直接修改`
+      text: `使用指南：\n1. 内容会按卡片高度自动分页，避免长内容被截断\n2. ${headingLevel === "h1" ? "一级标题(#)" : "二级标题(##)"}会作为分组边界；没有标题也能生成卡片\n3. 使用 --- 可手动强制换页\n4. 模板=骨架，主题=配色，封面=首页第1页排版\n5. 点头像/昵称/页脚文字可直接修改`
     });
   }
 
@@ -186,6 +188,26 @@ export class RedView extends ItemView {
         if (imagePreview) this.backgroundManager.applyBackgroundStyles(imagePreview, backgroundSettings);
       }, this.previewEl, this.backgroundManager, this.settingsManager.getSettings().backgroundSettings).open();
     });
+  }
+
+  initializeFooterToggleButton(parent: HTMLElement): void {
+    this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
+    setIcon(this.footerToggleButton, "panel-bottom");
+    this.updateFooterToggleButtonState();
+    this.footerToggleButton.addEventListener("click", async () => {
+      const showFooter = this.settingsManager.getSettings().showFooter === false;
+      await this.settingsManager.updateSettings({ showFooter });
+      this.updateFooterToggleButtonState();
+      await this.updatePreview();
+    });
+  }
+
+  updateFooterToggleButtonState(): void {
+    if (!this.footerToggleButton) return;
+    const visible = this.settingsManager.getSettings().showFooter !== false;
+    this.footerToggleButton.classList.toggle("red-footer-hidden", !visible);
+    this.footerToggleButton.setAttribute("aria-label", visible ? "隐藏页脚" : "显示页脚");
+    this.footerToggleButton.setAttribute("title", visible ? "隐藏页脚" : "显示页脚");
   }
 
   initializeExportButtons(parent: HTMLElement): void {
@@ -254,6 +276,10 @@ export class RedView extends ItemView {
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
+      this.syncFooterLayout();
+      await RedConverter.autoPaginate(this.previewEl);
+      this.themeManager.applyTheme(this.previewEl);
+      this.syncFooterLayout();
       this.setupImageZoom();
       this.setupTableResize();
       const settings = this.settingsManager.getSettings();
@@ -264,6 +290,22 @@ export class RedView extends ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+  }
+
+  private syncFooterLayout(): void {
+    const imagePreview = this.previewEl?.querySelector<HTMLElement>(".red-image-preview");
+    if (!imagePreview) return;
+    const footer = imagePreview.querySelector<HTMLElement>(":scope > .red-preview-footer");
+    if (!footer) {
+      imagePreview.classList.add("red-no-footer");
+      imagePreview.style.setProperty("--red-footer-height", "0px");
+      return;
+    }
+
+    imagePreview.classList.remove("red-no-footer");
+    imagePreview.style.setProperty("--red-footer-height", "0px");
+    const footerHeight = Math.ceil(Math.max(footer.getBoundingClientRect().height, footer.scrollHeight, 28));
+    imagePreview.style.setProperty("--red-footer-height", `${footerHeight}px`);
   }
 
   async onFileOpen(file: TFile | null): Promise<void> {
@@ -444,6 +486,7 @@ export class RedView extends ItemView {
       select.style.pointerEvents = enabled ? "auto" : "none";
     });
     if (this.fontSizeSelect) this.fontSizeSelect.disabled = !enabled;
+    if (this.footerToggleButton) this.footerToggleButton.disabled = !enabled;
     this.containerEl.querySelectorAll<HTMLButtonElement>(".red-font-size-btn").forEach((button) => button.disabled = !enabled);
     if (this.copyButton) this.copyButton.disabled = !enabled;
     this.containerEl.querySelectorAll<HTMLButtonElement>(".red-export-button").forEach((button) => button.disabled = !enabled);

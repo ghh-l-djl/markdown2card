@@ -29,10 +29,8 @@ export class DefaultTemplate implements ImgTemplate {
     const userLeft = userInfo.createEl("div", { cls: "red-user-left" });
     this.createAvatarSection(userLeft, settings);
     this.createUserMetaSection(userLeft, settings);
-    if (settings.showTime) {
-      const userRight = userInfo.createEl("div", { cls: "red-user-right" });
-      userRight.createEl("div", { cls: "red-post-time", text: new Date().toLocaleDateString(settings.timeFormat) });
-    }
+    const userRight = userInfo.createEl("div", { cls: "red-user-right" });
+    userRight.createEl("div", { cls: "red-header-more", text: "...", attr: { "aria-label": "更多" } });
   }
 
   createFooterContent(footerArea: HTMLElement): void {
@@ -50,9 +48,14 @@ export class DefaultTemplate implements ImgTemplate {
     if (settings.userAvatar) {
       avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
     } else {
-      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: "📷" });
+      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.avatarInitial(settings) });
     }
     avatar.addEventListener("click", () => this.handleAvatarClick());
+  }
+
+  private avatarInitial(settings: YanqiSettings): string {
+    const source = (settings.userName || settings.userId || "M").trim();
+    return Array.from(source.replace(/^@/, ""))[0]?.toUpperCase() || "M";
   }
 
   private createUserMetaSection(parent: HTMLElement, settings: YanqiSettings): void {
@@ -143,8 +146,7 @@ class NotesTemplate extends DefaultTemplate {
     }
     const footer = element.querySelector<HTMLElement>(".red-preview-footer");
     if (footer) {
-      footer.empty();
-      footer.removeAttribute("class");
+      footer.remove();
     }
   }
 }
@@ -187,6 +189,7 @@ class RedTemplateBase extends DefaultTemplate {
       footer.removeAttribute("class");
       footer.addClass("red-preview-footer");
       if (settings.showFooter !== false) this.buildFooter(footer, settings);
+      else footer.remove();
     }
     applyRoot(element, this.rootClass);
   }
@@ -335,5 +338,7 @@ export class ImgTemplateManager {
     if (!this.currentTemplate) this.currentTemplate = this.templates[0];
     this.currentTemplate?.render(previewEl, settings);
     this.themeManager.applyTheme(previewEl);
+    const preview = previewEl.querySelector<HTMLElement>(".red-image-preview");
+    preview?.classList.toggle("red-no-footer", !preview.querySelector(".red-preview-footer"));
   }
 }

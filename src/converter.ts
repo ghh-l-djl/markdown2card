@@ -4,6 +4,7 @@ import type YanqiPlugin from "./main";
 export class RedConverter {
   private static app: App;
   private static plugin: YanqiPlugin;
+  private static readonly overflowTolerance = 2;
 
   static initialize(app: App, plugin: YanqiPlugin): void {
     this.app = app;
@@ -11,24 +12,26 @@ export class RedConverter {
   }
 
   static hasValidContent(element: HTMLElement): boolean {
+    if (element.querySelectorAll(".red-content-section").length > 0) return true;
     const headingLevel = this.plugin.settingsManager?.getSettings().headingLevel || "h1";
-    return element.querySelectorAll(headingLevel).length > 0;
+    return element.querySelectorAll(headingLevel).length > 0 || this.hasRenderableContent(element);
   }
 
   static formatContent(element: HTMLElement): void {
     const settings = this.plugin.settingsManager?.getSettings();
     const headingLevel = settings?.headingLevel || "h1";
-    const headers = Array.from(element.querySelectorAll<HTMLElement>(headingLevel));
-    if (headers.length === 0) {
+    const sourceChildren = Array.from(element.children) as HTMLElement[];
+    if (!this.hasRenderableContent(element)) {
       element.empty();
       element.createEl("div", {
         cls: "red-empty-message",
-        text: `温馨提示\n请使用${headingLevel === "h1" ? "一级标题(#)" : "二级标题(##)"}来分割内容\n每个标题将生成一张独立的图片\n现在编辑文档，实时预览效果`
+        text: "温馨提示\n当前文档还没有可生成卡片的内容\n现在编辑文档，实时预览效果"
       });
       element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: false }, bubbles: true }));
       return;
     }
 
+    const headers = Array.from(element.querySelectorAll<HTMLElement>(headingLevel));
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
 
     const previewContainer = document.createElement("div");
@@ -51,10 +54,15 @@ export class RedConverter {
     const contentContainer = document.createElement("div");
     contentContainer.className = "red-content-container";
 
-    headers.forEach((header, index) => {
-      const section = this.createContentSection(header, index);
+    if (headers.length > 0) {
+      headers.forEach((header, index) => {
+        const section = this.createContentSection(header, index);
+        if (section) contentContainer.appendChild(section);
+      });
+    } else {
+      const section = this.createSectionsFromParts(null, sourceChildren.map((el) => el.cloneNode(true) as HTMLElement), 0, true);
       if (section) contentContainer.appendChild(section);
-    });
+    }
 
     contentArea.appendChild(contentContainer);
     imagePreview.appendChild(headerArea);
@@ -64,6 +72,26 @@ export class RedConverter {
     element.empty();
     element.appendChild(previewContainer);
     element.dispatchEvent(new CustomEvent("copy-button-added", { detail: { copyButton }, bubbles: true }));
+  }
+
+  static async autoPaginate(previewEl: HTMLElement): Promise<void> {
+    const contentContainer = previewEl.querySelector<HTMLElement>(".red-content-container");
+    if (!contentContainer) return;
+    await this.waitForImages(previewEl);
+    const sections = Array.from(contentContainer.querySelectorAll<HTMLElement>(":scope > .red-content-section"));
+    if (!sections.length) return;
+
+    const nextSections: HTMLElement[] = [];
+    sections.forEach((section) => nextSections.push(...this.splitSectionByHeight(section, contentContainer)));
+    if (!nextSections.length) return;
+
+    contentContainer.empty();
+    nextSections.forEach((section, index) => {
+      section.dataset.index = String(index);
+      section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
+      section.classList.toggle("red-section-active", index === 0);
+      contentContainer.appendChild(section);
+    });
   }
 
   private static createContentSection(header: HTMLElement, index: number): Node {
@@ -76,6 +104,11 @@ export class RedConverter {
       current = current.nextElementSibling as HTMLElement | null;
     }
 
+    return this.createSectionsFromParts(header.cloneNode(true) as HTMLElement, content, index, index === 0);
+  }
+
+  private static createSectionsFromParts(header: HTMLElement | null, content: HTMLElement[], index: number, isFirstCard: boolean): Node {
+    const settings = this.plugin.settingsManager?.getSettings();
     const pages: HTMLElement[][] = [[]];
     let currentPage = 0;
     content.forEach((el) => {
@@ -91,8 +124,8 @@ export class RedConverter {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
-      if (index === 0) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
-      section.appendChild(header.cloneNode(true));
+      if (isFirstCard) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
+      if (header) section.appendChild(header.cloneNode(true));
       content.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
@@ -104,13 +137,158 @@ export class RedConverter {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = `${index}-${pageIndex}`;
-      if (index === 0 && pageIndex === 0) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
-      section.appendChild(header.cloneNode(true));
+      if (isFirstCard && pageIndex === 0) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
+      if (header) section.appendChild(header.cloneNode(true));
       pageContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       fragment.appendChild(section);
     });
     return fragment;
+  }
+
+  private static splitSectionByHeight(section: HTMLElement, contentContainer: HTMLElement): HTMLElement[] {
+    const children = Array.from(section.children) as HTMLElement[];
+    if (!children.length) return [section.cloneNode(true) as HTMLElement];
+
+    const title = this.isHeading(children[0]) ? children[0] : null;
+    const body = title ? children.slice(1) : children;
+    const pages: HTMLElement[] = [];
+    const probe = this.createMeasureSection(section, contentContainer);
+    const makePage = (isFirstPage: boolean): HTMLElement => {
+      const page = section.cloneNode(false) as HTMLElement;
+      page.classList.remove("red-section-active");
+      if (!isFirstPage) {
+        page.classList.remove("red-cover");
+        const coverStyle = this.plugin.settingsManager?.getSettings().coverStyle;
+        if (coverStyle) page.classList.remove(coverStyle);
+      }
+      if (title) page.appendChild(title.cloneNode(true));
+      return page;
+    };
+    let current = makePage(true);
+
+    const hasBody = (page: HTMLElement) => page.childElementCount > (title ? 1 : 0);
+    const fits = (page: HTMLElement, candidate: HTMLElement): boolean => {
+      probe.replaceChildren(...Array.from(page.children).map((child) => child.cloneNode(true)), candidate.cloneNode(true));
+      return !this.isOverflowing(probe);
+    };
+
+    const pending = body.map((el) => el.cloneNode(true) as HTMLElement);
+    while (pending.length) {
+      const block = pending.shift()!;
+      if (fits(current, block)) {
+        current.appendChild(block);
+        continue;
+      }
+
+      if (hasBody(current)) {
+        pages.push(current);
+        current = makePage(false);
+        pending.unshift(block);
+        continue;
+      }
+
+      const splitBlocks = this.splitOversizedTextBlock(block, makePage(false), probe);
+      if (splitBlocks.length > 1) {
+        pending.unshift(...splitBlocks);
+        continue;
+      }
+
+      current.appendChild(block);
+      pages.push(current);
+      current = makePage(false);
+    }
+
+    if (hasBody(current) || !pages.length) pages.push(current);
+    probe.remove();
+    pages.forEach((page) => this.processElements(page));
+    return pages;
+  }
+
+  private static createMeasureSection(section: HTMLElement, contentContainer: HTMLElement): HTMLElement {
+    const probe = section.cloneNode(false) as HTMLElement;
+    probe.classList.add("red-section-active", "red-pagination-measure");
+    probe.style.setProperty("display", "block", "important");
+    probe.style.setProperty("position", "absolute", "important");
+    probe.style.setProperty("visibility", "hidden", "important");
+    probe.style.setProperty("pointer-events", "none", "important");
+    probe.style.setProperty("z-index", "-1", "important");
+    probe.style.setProperty("left", "0", "important");
+    probe.style.setProperty("top", "0", "important");
+    probe.style.setProperty("width", `${Math.max(1, contentContainer.clientWidth)}px`, "important");
+    probe.style.setProperty("height", `${Math.max(1, contentContainer.clientHeight)}px`, "important");
+    probe.style.setProperty("overflow", "hidden", "important");
+    contentContainer.appendChild(probe);
+    return probe;
+  }
+
+  private static isOverflowing(el: HTMLElement): boolean {
+    return el.scrollHeight > el.clientHeight + this.overflowTolerance;
+  }
+
+  private static splitOversizedTextBlock(block: HTMLElement, emptyPage: HTMLElement, probe: HTMLElement): HTMLElement[] {
+    if (!this.isSplittableTextBlock(block)) return [block];
+    const text = (block.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length < 2) return [block];
+
+    const chunks: HTMLElement[] = [];
+    let start = 0;
+    while (start < text.length && chunks.length < 80) {
+      let low = 1;
+      let high = text.length - start;
+      let best = 0;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const candidate = block.cloneNode(false) as HTMLElement;
+        candidate.textContent = text.slice(start, start + mid).trim();
+        probe.replaceChildren(...Array.from(emptyPage.children).map((child) => child.cloneNode(true)), candidate);
+        if (!this.isOverflowing(probe)) {
+          best = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      if (best <= 0) return [block];
+      const chunk = block.cloneNode(false) as HTMLElement;
+      chunk.textContent = text.slice(start, start + best).trim();
+      chunks.push(chunk);
+      start += best;
+      while (text[start] === " ") start++;
+    }
+
+    return start >= text.length ? chunks : [block];
+  }
+
+  private static isSplittableTextBlock(block: HTMLElement): boolean {
+    const tag = block.tagName.toLowerCase();
+    if (!["p", "li", "blockquote"].includes(tag)) return false;
+    if (block.querySelector("img, table, pre, code, iframe, video, audio")) return false;
+    return Boolean(block.textContent?.trim());
+  }
+
+  private static isHeading(el: HTMLElement): boolean {
+    return /^H[1-6]$/.test(el.tagName);
+  }
+
+  private static hasRenderableContent(element: HTMLElement): boolean {
+    return Array.from(element.children).some((child) => {
+      if (child.matches("style, script")) return false;
+      return Boolean(child.textContent?.trim() || child.querySelector("img, table, pre, code, iframe, video, audio"));
+    });
+  }
+
+  private static async waitForImages(element: HTMLElement): Promise<void> {
+    const images = Array.from(element.querySelectorAll<HTMLImageElement>("img"));
+    await Promise.all(images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      if (img.decode) return img.decode().catch(() => undefined);
+      return new Promise<void>((resolve) => {
+        img.addEventListener("load", () => resolve(), { once: true });
+        img.addEventListener("error", () => resolve(), { once: true });
+      });
+    }));
   }
 
   private static processElements(container: HTMLElement): void {
@@ -125,14 +303,16 @@ export class RedConverter {
       const pre = el.parentElement;
       if (!pre) return;
       pre.classList.add("red-pre");
-      const dots = document.createElement("div");
-      dots.className = "red-code-dots";
-      ["red", "yellow", "green"].forEach((color) => {
-        const dot = document.createElement("span");
-        dot.className = `red-code-dot red-code-dot-${color}`;
-        dots.appendChild(dot);
-      });
-      pre.insertBefore(dots, pre.firstChild);
+      if (!pre.querySelector(".red-code-dots")) {
+        const dots = document.createElement("div");
+        dots.className = "red-code-dots";
+        ["red", "yellow", "green"].forEach((color) => {
+          const dot = document.createElement("span");
+          dot.className = `red-code-dot red-code-dot-${color}`;
+          dots.appendChild(dot);
+        });
+        pre.insertBefore(dots, pre.firstChild);
+      }
       pre.querySelector(".copy-code-button")?.remove();
     });
     container.querySelectorAll("span.internal-embed[alt][src]").forEach((el) => this.replaceInternalEmbed(el as HTMLElement));

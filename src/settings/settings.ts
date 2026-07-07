@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   notesTitle: "备忘录",
   userId: "@markdown2card",
   showTime: true,
+  showFooter: true,
   timeFormat: "zh-CN",
   headingLevel: "h2",
   footerLeftText: "多搜索、多动手、多思考",

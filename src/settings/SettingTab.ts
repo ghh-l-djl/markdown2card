@@ -184,11 +184,11 @@ export class RedSettingTab extends PluginSettingTab {
 
   private renderBasicSettings(containerEl: HTMLElement): void {
     new Setting(containerEl)
-      .setName("内容分割标题级别")
-      .setDesc("选择用于分割内容生成图片的标题级别。")
+      .setName("标题分组级别")
+      .setDesc("选择用于优先划分内容组的标题级别；长内容会按卡片高度自动分页，没有标题也能生成卡片。")
       .addDropdown((dropdown) => dropdown
-        .addOption("h1", "一级标题(#) - 按大章节分割")
-        .addOption("h2", "二级标题(##) - 按小章节分割")
+        .addOption("h1", "一级标题(#) - 优先按大章节分组")
+        .addOption("h2", "二级标题(##) - 优先按小章节分组")
         .setValue(this.plugin.settingsManager.getSettings().headingLevel)
         .onChange(async (value) => {
           await this.plugin.settingsManager.updateSettings({ headingLevel: value });

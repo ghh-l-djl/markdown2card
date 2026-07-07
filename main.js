@@ -2745,26 +2745,26 @@ var RedConverter = class {
   }
   static hasValidContent(element) {
     var _a;
+    if (element.querySelectorAll(".red-content-section").length > 0)
+      return true;
     const headingLevel = ((_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings().headingLevel) || "h1";
-    return element.querySelectorAll(headingLevel).length > 0;
+    return element.querySelectorAll(headingLevel).length > 0 || this.hasRenderableContent(element);
   }
   static formatContent(element) {
     var _a;
     const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
     const headingLevel = (settings == null ? void 0 : settings.headingLevel) || "h1";
-    const headers = Array.from(element.querySelectorAll(headingLevel));
-    if (headers.length === 0) {
+    const sourceChildren = Array.from(element.children);
+    if (!this.hasRenderableContent(element)) {
       element.empty();
       element.createEl("div", {
         cls: "red-empty-message",
-        text: `\u6E29\u99A8\u63D0\u793A
-\u8BF7\u4F7F\u7528${headingLevel === "h1" ? "\u4E00\u7EA7\u6807\u9898(#)" : "\u4E8C\u7EA7\u6807\u9898(##)"}\u6765\u5206\u5272\u5185\u5BB9
-\u6BCF\u4E2A\u6807\u9898\u5C06\u751F\u6210\u4E00\u5F20\u72EC\u7ACB\u7684\u56FE\u7247
-\u73B0\u5728\u7F16\u8F91\u6587\u6863\uFF0C\u5B9E\u65F6\u9884\u89C8\u6548\u679C`
+        text: "\u6E29\u99A8\u63D0\u793A\n\u5F53\u524D\u6587\u6863\u8FD8\u6CA1\u6709\u53EF\u751F\u6210\u5361\u7247\u7684\u5185\u5BB9\n\u73B0\u5728\u7F16\u8F91\u6587\u6863\uFF0C\u5B9E\u65F6\u9884\u89C8\u6548\u679C"
       });
       element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: false }, bubbles: true }));
       return;
     }
+    const headers = Array.from(element.querySelectorAll(headingLevel));
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
     const previewContainer = document.createElement("div");
     previewContainer.className = "red-preview-container";
@@ -2784,11 +2784,17 @@ var RedConverter = class {
     footerArea.className = "red-preview-footer";
     const contentContainer = document.createElement("div");
     contentContainer.className = "red-content-container";
-    headers.forEach((header, index) => {
-      const section = this.createContentSection(header, index);
+    if (headers.length > 0) {
+      headers.forEach((header, index) => {
+        const section = this.createContentSection(header, index);
+        if (section)
+          contentContainer.appendChild(section);
+      });
+    } else {
+      const section = this.createSectionsFromParts(null, sourceChildren.map((el) => el.cloneNode(true)), 0, true);
       if (section)
         contentContainer.appendChild(section);
-    });
+    }
     contentArea.appendChild(contentContainer);
     imagePreview.appendChild(headerArea);
     imagePreview.appendChild(contentArea);
@@ -2797,6 +2803,26 @@ var RedConverter = class {
     element.empty();
     element.appendChild(previewContainer);
     element.dispatchEvent(new CustomEvent("copy-button-added", { detail: { copyButton }, bubbles: true }));
+  }
+  static async autoPaginate(previewEl) {
+    const contentContainer = previewEl.querySelector(".red-content-container");
+    if (!contentContainer)
+      return;
+    await this.waitForImages(previewEl);
+    const sections = Array.from(contentContainer.querySelectorAll(":scope > .red-content-section"));
+    if (!sections.length)
+      return;
+    const nextSections = [];
+    sections.forEach((section) => nextSections.push(...this.splitSectionByHeight(section, contentContainer)));
+    if (!nextSections.length)
+      return;
+    contentContainer.empty();
+    nextSections.forEach((section, index) => {
+      section.dataset.index = String(index);
+      section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
+      section.classList.toggle("red-section-active", index === 0);
+      contentContainer.appendChild(section);
+    });
   }
   static createContentSection(header, index) {
     var _a;
@@ -2808,6 +2834,11 @@ var RedConverter = class {
       content.push(current.cloneNode(true));
       current = current.nextElementSibling;
     }
+    return this.createSectionsFromParts(header.cloneNode(true), content, index, index === 0);
+  }
+  static createSectionsFromParts(header, content, index, isFirstCard) {
+    var _a;
+    const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
     const pages = [[]];
     let currentPage = 0;
     content.forEach((el) => {
@@ -2822,9 +2853,10 @@ var RedConverter = class {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
-      if (index === 0)
+      if (isFirstCard)
         section.classList.add("red-cover", (settings == null ? void 0 : settings.coverStyle) || "cover-classic");
-      section.appendChild(header.cloneNode(true));
+      if (header)
+        section.appendChild(header.cloneNode(true));
       content.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
@@ -2836,14 +2868,158 @@ var RedConverter = class {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = `${index}-${pageIndex}`;
-      if (index === 0 && pageIndex === 0)
+      if (isFirstCard && pageIndex === 0)
         section.classList.add("red-cover", (settings == null ? void 0 : settings.coverStyle) || "cover-classic");
-      section.appendChild(header.cloneNode(true));
+      if (header)
+        section.appendChild(header.cloneNode(true));
       pageContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       fragment.appendChild(section);
     });
     return fragment;
+  }
+  static splitSectionByHeight(section, contentContainer) {
+    const children = Array.from(section.children);
+    if (!children.length)
+      return [section.cloneNode(true)];
+    const title = this.isHeading(children[0]) ? children[0] : null;
+    const body = title ? children.slice(1) : children;
+    const pages = [];
+    const probe = this.createMeasureSection(section, contentContainer);
+    const makePage = (isFirstPage) => {
+      var _a;
+      const page = section.cloneNode(false);
+      page.classList.remove("red-section-active");
+      if (!isFirstPage) {
+        page.classList.remove("red-cover");
+        const coverStyle = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings().coverStyle;
+        if (coverStyle)
+          page.classList.remove(coverStyle);
+      }
+      if (title)
+        page.appendChild(title.cloneNode(true));
+      return page;
+    };
+    let current = makePage(true);
+    const hasBody = (page) => page.childElementCount > (title ? 1 : 0);
+    const fits = (page, candidate) => {
+      probe.replaceChildren(...Array.from(page.children).map((child) => child.cloneNode(true)), candidate.cloneNode(true));
+      return !this.isOverflowing(probe);
+    };
+    const pending = body.map((el) => el.cloneNode(true));
+    while (pending.length) {
+      const block = pending.shift();
+      if (fits(current, block)) {
+        current.appendChild(block);
+        continue;
+      }
+      if (hasBody(current)) {
+        pages.push(current);
+        current = makePage(false);
+        pending.unshift(block);
+        continue;
+      }
+      const splitBlocks = this.splitOversizedTextBlock(block, makePage(false), probe);
+      if (splitBlocks.length > 1) {
+        pending.unshift(...splitBlocks);
+        continue;
+      }
+      current.appendChild(block);
+      pages.push(current);
+      current = makePage(false);
+    }
+    if (hasBody(current) || !pages.length)
+      pages.push(current);
+    probe.remove();
+    pages.forEach((page) => this.processElements(page));
+    return pages;
+  }
+  static createMeasureSection(section, contentContainer) {
+    const probe = section.cloneNode(false);
+    probe.classList.add("red-section-active", "red-pagination-measure");
+    probe.style.setProperty("display", "block", "important");
+    probe.style.setProperty("position", "absolute", "important");
+    probe.style.setProperty("visibility", "hidden", "important");
+    probe.style.setProperty("pointer-events", "none", "important");
+    probe.style.setProperty("z-index", "-1", "important");
+    probe.style.setProperty("left", "0", "important");
+    probe.style.setProperty("top", "0", "important");
+    probe.style.setProperty("width", `${Math.max(1, contentContainer.clientWidth)}px`, "important");
+    probe.style.setProperty("height", `${Math.max(1, contentContainer.clientHeight)}px`, "important");
+    probe.style.setProperty("overflow", "hidden", "important");
+    contentContainer.appendChild(probe);
+    return probe;
+  }
+  static isOverflowing(el) {
+    return el.scrollHeight > el.clientHeight + this.overflowTolerance;
+  }
+  static splitOversizedTextBlock(block, emptyPage, probe) {
+    if (!this.isSplittableTextBlock(block))
+      return [block];
+    const text = (block.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length < 2)
+      return [block];
+    const chunks = [];
+    let start = 0;
+    while (start < text.length && chunks.length < 80) {
+      let low = 1;
+      let high = text.length - start;
+      let best = 0;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const candidate = block.cloneNode(false);
+        candidate.textContent = text.slice(start, start + mid).trim();
+        probe.replaceChildren(...Array.from(emptyPage.children).map((child) => child.cloneNode(true)), candidate);
+        if (!this.isOverflowing(probe)) {
+          best = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+      if (best <= 0)
+        return [block];
+      const chunk = block.cloneNode(false);
+      chunk.textContent = text.slice(start, start + best).trim();
+      chunks.push(chunk);
+      start += best;
+      while (text[start] === " ")
+        start++;
+    }
+    return start >= text.length ? chunks : [block];
+  }
+  static isSplittableTextBlock(block) {
+    var _a;
+    const tag = block.tagName.toLowerCase();
+    if (!["p", "li", "blockquote"].includes(tag))
+      return false;
+    if (block.querySelector("img, table, pre, code, iframe, video, audio"))
+      return false;
+    return Boolean((_a = block.textContent) == null ? void 0 : _a.trim());
+  }
+  static isHeading(el) {
+    return /^H[1-6]$/.test(el.tagName);
+  }
+  static hasRenderableContent(element) {
+    return Array.from(element.children).some((child) => {
+      var _a;
+      if (child.matches("style, script"))
+        return false;
+      return Boolean(((_a = child.textContent) == null ? void 0 : _a.trim()) || child.querySelector("img, table, pre, code, iframe, video, audio"));
+    });
+  }
+  static async waitForImages(element) {
+    const images = Array.from(element.querySelectorAll("img"));
+    await Promise.all(images.map((img) => {
+      if (img.complete)
+        return Promise.resolve();
+      if (img.decode)
+        return img.decode().catch(() => void 0);
+      return new Promise((resolve) => {
+        img.addEventListener("load", () => resolve(), { once: true });
+        img.addEventListener("error", () => resolve(), { once: true });
+      });
+    }));
   }
   static processElements(container) {
     container.querySelectorAll("strong, em").forEach((el) => el.classList.add("red-emphasis"));
@@ -2859,14 +3035,16 @@ var RedConverter = class {
       if (!pre)
         return;
       pre.classList.add("red-pre");
-      const dots = document.createElement("div");
-      dots.className = "red-code-dots";
-      ["red", "yellow", "green"].forEach((color) => {
-        const dot = document.createElement("span");
-        dot.className = `red-code-dot red-code-dot-${color}`;
-        dots.appendChild(dot);
-      });
-      pre.insertBefore(dots, pre.firstChild);
+      if (!pre.querySelector(".red-code-dots")) {
+        const dots = document.createElement("div");
+        dots.className = "red-code-dots";
+        ["red", "yellow", "green"].forEach((color) => {
+          const dot = document.createElement("span");
+          dot.className = `red-code-dot red-code-dot-${color}`;
+          dots.appendChild(dot);
+        });
+        pre.insertBefore(dots, pre.firstChild);
+      }
       (_a = pre.querySelector(".copy-code-button")) == null ? void 0 : _a.remove();
     });
     container.querySelectorAll("span.internal-embed[alt][src]").forEach((el) => this.replaceInternalEmbed(el));
@@ -2898,6 +3076,7 @@ var RedConverter = class {
     }
   }
 };
+RedConverter.overflowTolerance = 2;
 
 // src/settings/SettingTab.ts
 var import_obsidian = require("obsidian");
@@ -3074,7 +3253,7 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
     }
   }
   renderBasicSettings(containerEl) {
-    new import_obsidian.Setting(containerEl).setName("\u5185\u5BB9\u5206\u5272\u6807\u9898\u7EA7\u522B").setDesc("\u9009\u62E9\u7528\u4E8E\u5206\u5272\u5185\u5BB9\u751F\u6210\u56FE\u7247\u7684\u6807\u9898\u7EA7\u522B\u3002").addDropdown((dropdown) => dropdown.addOption("h1", "\u4E00\u7EA7\u6807\u9898(#) - \u6309\u5927\u7AE0\u8282\u5206\u5272").addOption("h2", "\u4E8C\u7EA7\u6807\u9898(##) - \u6309\u5C0F\u7AE0\u8282\u5206\u5272").setValue(this.plugin.settingsManager.getSettings().headingLevel).onChange(async (value) => {
+    new import_obsidian.Setting(containerEl).setName("\u6807\u9898\u5206\u7EC4\u7EA7\u522B").setDesc("\u9009\u62E9\u7528\u4E8E\u4F18\u5148\u5212\u5206\u5185\u5BB9\u7EC4\u7684\u6807\u9898\u7EA7\u522B\uFF1B\u957F\u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u6CA1\u6709\u6807\u9898\u4E5F\u80FD\u751F\u6210\u5361\u7247\u3002").addDropdown((dropdown) => dropdown.addOption("h1", "\u4E00\u7EA7\u6807\u9898(#) - \u4F18\u5148\u6309\u5927\u7AE0\u8282\u5206\u7EC4").addOption("h2", "\u4E8C\u7EA7\u6807\u9898(##) - \u4F18\u5148\u6309\u5C0F\u7AE0\u8282\u5206\u7EC4").setValue(this.plugin.settingsManager.getSettings().headingLevel).onChange(async (value) => {
       await this.plugin.settingsManager.updateSettings({ headingLevel: value });
     }));
     containerEl.createEl("h4", { text: "\u5B57\u4F53\u7BA1\u7406" });
@@ -3954,6 +4133,7 @@ var DEFAULT_SETTINGS = {
   notesTitle: "\u5907\u5FD8\u5F55",
   userId: "@markdown2card",
   showTime: true,
+  showFooter: true,
   timeFormat: "zh-CN",
   headingLevel: "h2",
   footerLeftText: "\u591A\u641C\u7D22\u3001\u591A\u52A8\u624B\u3001\u591A\u601D\u8003",
@@ -4137,7 +4317,7 @@ var ThemeManager = class {
       header.querySelectorAll(".red-user-name-container").forEach((el) => this.applyInlineStyle(el, styles.header.nameContainer));
       header.querySelectorAll(".red-user-name").forEach((el) => this.applyInlineStyle(el, styles.header.userName));
       header.querySelectorAll(".red-user-id").forEach((el) => this.applyInlineStyle(el, styles.header.userId));
-      header.querySelectorAll(".red-post-time").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
+      header.querySelectorAll(".red-post-time, .red-header-more").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
       header.querySelectorAll(".red-verified-icon").forEach((el) => this.applyInlineStyle(el, styles.header.verifiedIcon));
     }
     const footer = element.querySelector(".red-preview-footer");
@@ -5445,10 +5625,8 @@ var DefaultTemplate = class {
     const userLeft = userInfo.createEl("div", { cls: "red-user-left" });
     this.createAvatarSection(userLeft, settings);
     this.createUserMetaSection(userLeft, settings);
-    if (settings.showTime) {
-      const userRight = userInfo.createEl("div", { cls: "red-user-right" });
-      userRight.createEl("div", { cls: "red-post-time", text: (/* @__PURE__ */ new Date()).toLocaleDateString(settings.timeFormat) });
-    }
+    const userRight = userInfo.createEl("div", { cls: "red-user-right" });
+    userRight.createEl("div", { cls: "red-header-more", text: "...", attr: { "aria-label": "\u66F4\u591A" } });
   }
   createFooterContent(footerArea) {
     footerArea.empty();
@@ -5464,9 +5642,14 @@ var DefaultTemplate = class {
     if (settings.userAvatar) {
       avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "\u7528\u6237\u5934\u50CF" } });
     } else {
-      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: "\u{1F4F7}" });
+      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.avatarInitial(settings) });
     }
     avatar.addEventListener("click", () => this.handleAvatarClick());
+  }
+  avatarInitial(settings) {
+    var _a;
+    const source = (settings.userName || settings.userId || "M").trim();
+    return ((_a = Array.from(source.replace(/^@/, ""))[0]) == null ? void 0 : _a.toUpperCase()) || "M";
   }
   createUserMetaSection(parent, settings) {
     const userMeta = parent.createEl("div", { cls: "red-user-meta" });
@@ -5554,8 +5737,7 @@ var NotesTemplate = class extends DefaultTemplate {
     }
     const footer = element.querySelector(".red-preview-footer");
     if (footer) {
-      footer.empty();
-      footer.removeAttribute("class");
+      footer.remove();
     }
   }
 };
@@ -5604,6 +5786,8 @@ var RedTemplateBase = class extends DefaultTemplate {
       footer.addClass("red-preview-footer");
       if (settings.showFooter !== false)
         this.buildFooter(footer, settings);
+      else
+        footer.remove();
     }
     applyRoot(element, this.rootClass);
   }
@@ -5765,6 +5949,8 @@ var ImgTemplateManager = class {
       this.currentTemplate = this.templates[0];
     (_a = this.currentTemplate) == null ? void 0 : _a.render(previewEl, settings);
     this.themeManager.applyTheme(previewEl);
+    const preview = previewEl.querySelector(".red-image-preview");
+    preview == null ? void 0 : preview.classList.toggle("red-no-footer", !preview.querySelector(".red-preview-footer"));
   }
 };
 
@@ -5790,7 +5976,7 @@ var RedView = class extends import_obsidian4.ItemView {
     return "markdown2card";
   }
   getIcon() {
-    return "image";
+    return "presentation";
   }
   async onOpen() {
     const container = this.containerEl.children[1];
@@ -5914,6 +6100,7 @@ var RedView = class extends import_obsidian4.ItemView {
     const controls = bottom.createEl("div", { cls: "red-controls-group" });
     this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
+    this.initializeFooterToggleButton(controls);
     controls.createEl("button", { cls: "red-overview-button", text: "\u5168\u89C8" }).addEventListener("click", () => this.openOverviewModal());
     this.initializeExportButtons(controls);
   }
@@ -5924,10 +6111,10 @@ var RedView = class extends import_obsidian4.ItemView {
     parent.createEl("div", {
       cls: "red-help-tooltip",
       text: `\u4F7F\u7528\u6307\u5357\uFF1A
-1. \u7528${headingLevel === "h1" ? "\u4E00\u7EA7\u6807\u9898(#)" : "\u4E8C\u7EA7\u6807\u9898(##)"}\u5206\u5272\u5185\u5BB9\uFF0C\u6BCF\u4E2A\u6807\u9898\u751F\u6210\u4E00\u5F20\u56FE\u6587\u5361\u7247
-2. \u6807\u9898\u4E0B\u7528 --- \u53EF\u5206\u6210\u591A\u9875
-3. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248
-4. \u5B57\u53F7\u652F\u6301 0.5 \u6B65\u8FDB
+1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD
+2. ${headingLevel === "h1" ? "\u4E00\u7EA7\u6807\u9898(#)" : "\u4E8C\u7EA7\u6807\u9898(##)"}\u4F1A\u4F5C\u4E3A\u5206\u7EC4\u8FB9\u754C\uFF1B\u6CA1\u6709\u6807\u9898\u4E5F\u80FD\u751F\u6210\u5361\u7247
+3. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875
+4. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248
 5. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539`
     });
   }
@@ -5942,6 +6129,25 @@ var RedView = class extends import_obsidian4.ItemView {
           this.backgroundManager.applyBackgroundStyles(imagePreview, backgroundSettings);
       }, this.previewEl, this.backgroundManager, this.settingsManager.getSettings().backgroundSettings).open();
     });
+  }
+  initializeFooterToggleButton(parent) {
+    this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
+    (0, import_obsidian4.setIcon)(this.footerToggleButton, "panel-bottom");
+    this.updateFooterToggleButtonState();
+    this.footerToggleButton.addEventListener("click", async () => {
+      const showFooter = this.settingsManager.getSettings().showFooter === false;
+      await this.settingsManager.updateSettings({ showFooter });
+      this.updateFooterToggleButtonState();
+      await this.updatePreview();
+    });
+  }
+  updateFooterToggleButtonState() {
+    if (!this.footerToggleButton)
+      return;
+    const visible = this.settingsManager.getSettings().showFooter !== false;
+    this.footerToggleButton.classList.toggle("red-footer-hidden", !visible);
+    this.footerToggleButton.setAttribute("aria-label", visible ? "\u9690\u85CF\u9875\u811A" : "\u663E\u793A\u9875\u811A");
+    this.footerToggleButton.setAttribute("title", visible ? "\u9690\u85CF\u9875\u811A" : "\u663E\u793A\u9875\u811A");
   }
   initializeExportButtons(parent) {
     const single = parent.createEl("button", { cls: "red-export-button", text: "\u4E0B\u8F7D\u5F53\u524D\u9875" });
@@ -6016,6 +6222,10 @@ var RedView = class extends import_obsidian4.ItemView {
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
+      this.syncFooterLayout();
+      await RedConverter.autoPaginate(this.previewEl);
+      this.themeManager.applyTheme(this.previewEl);
+      this.syncFooterLayout();
       this.setupImageZoom();
       this.setupTableResize();
       const settings = this.settingsManager.getSettings();
@@ -6027,6 +6237,22 @@ var RedView = class extends import_obsidian4.ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+  }
+  syncFooterLayout() {
+    var _a;
+    const imagePreview = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-image-preview");
+    if (!imagePreview)
+      return;
+    const footer = imagePreview.querySelector(":scope > .red-preview-footer");
+    if (!footer) {
+      imagePreview.classList.add("red-no-footer");
+      imagePreview.style.setProperty("--red-footer-height", "0px");
+      return;
+    }
+    imagePreview.classList.remove("red-no-footer");
+    imagePreview.style.setProperty("--red-footer-height", "0px");
+    const footerHeight = Math.ceil(Math.max(footer.getBoundingClientRect().height, footer.scrollHeight, 28));
+    imagePreview.style.setProperty("--red-footer-height", `${footerHeight}px`);
   }
   async onFileOpen(file) {
     var _a, _b;
@@ -6323,6 +6549,8 @@ var RedView = class extends import_obsidian4.ItemView {
     });
     if (this.fontSizeSelect)
       this.fontSizeSelect.disabled = !enabled;
+    if (this.footerToggleButton)
+      this.footerToggleButton.disabled = !enabled;
     this.containerEl.querySelectorAll(".red-font-size-btn").forEach((button) => button.disabled = !enabled);
     if (this.copyButton)
       this.copyButton.disabled = !enabled;
@@ -6551,7 +6779,7 @@ var YanqiPlugin = class extends import_obsidian5.Plugin {
       name: "\u6253\u5F00 markdown2card \u9884\u89C8",
       callback: () => this.activateView()
     });
-    this.addRibbonIcon("image", "\u6253\u5F00 markdown2card \u9884\u89C8", () => this.activateView());
+    this.addRibbonIcon("presentation", "\u6253\u5F00 markdown2card \u9884\u89C8", () => this.activateView());
     this.addSettingTab(new RedSettingTab(this.app, this));
   }
   async activateView() {
