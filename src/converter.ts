@@ -415,6 +415,8 @@ export class RedConverter {
       const availableHeight = Math.max(120, contentHeight - 36 - headingReserve);
       const availableWidth = Math.max(120, pageInnerWidth - 36);
       const scale = Math.min(1, availableWidth / width, availableHeight / height);
+      block.dataset.redMermaidOriginalWidth = String(Math.ceil(width));
+      block.dataset.redMermaidOriginalHeight = String(Math.ceil(height));
       block.style.setProperty("--red-mermaid-scale", String(scale));
       block.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
       block.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);

@@ -3133,6 +3133,8 @@ var RedConverter = class {
       const availableHeight = Math.max(120, contentHeight - 36 - headingReserve);
       const availableWidth = Math.max(120, pageInnerWidth - 36);
       const scale = Math.min(1, availableWidth / width, availableHeight / height);
+      block.dataset.redMermaidOriginalWidth = String(Math.ceil(width));
+      block.dataset.redMermaidOriginalHeight = String(Math.ceil(height));
       block.style.setProperty("--red-mermaid-scale", String(scale));
       block.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
       block.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
@@ -5715,6 +5717,10 @@ var DownloadManager = class {
     await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
     const blob = await this.renderBlob(imageElement);
     this.downloadBlob(blob, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_${Date.now()}.png`);
+    const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
+    mermaidBlobs.forEach((mermaid, index) => {
+      this.downloadBlob(mermaid.blob, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${index + 2}\u9875.png`);
+    });
   }
   static async downloadAllImages(element) {
     const zip = new import_jszip.default();
@@ -5727,6 +5733,7 @@ var DownloadManager = class {
       hidden: section.classList.contains("red-section-hidden"),
       active: section.classList.contains("red-section-active")
     }));
+    const appendedMermaidBlobs = [];
     for (let i = 0; i < sections.length; i++) {
       sections.forEach((section) => {
         section.classList.add("red-section-hidden");
@@ -5740,10 +5747,17 @@ var DownloadManager = class {
         continue;
       try {
         zip.file(`\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${i + 1}\u9875.png`, await this.renderBlob(imageElement));
+        const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
+        mermaidBlobs.forEach((mermaid) => {
+          appendedMermaidBlobs.push(mermaid.blob);
+        });
       } catch (error) {
         console.error(`\u7B2C${i + 1}\u9875\u5BFC\u51FA\u5931\u8D25`, error);
       }
     }
+    appendedMermaidBlobs.forEach((blob, index) => {
+      zip.file(`\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${sections.length + index + 1}\u9875.png`, blob);
+    });
     sections.forEach((section, index) => {
       section.classList.toggle("red-section-visible", originalVisibility[index].visible);
       section.classList.toggle("red-section-hidden", originalVisibility[index].hidden);
@@ -5753,14 +5767,107 @@ var DownloadManager = class {
     this.downloadBlob(content, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_${Date.now()}.zip`);
   }
   static async renderBlob(imageElement) {
+    return this.renderBlobWithConfig(imageElement);
+  }
+  static async renderOversizedMermaidBlobs(imageElement) {
+    const blocks = this.findActiveOversizedMermaidBlocks(imageElement);
+    const results = [];
+    for (const block of blocks) {
+      const exportNode = this.createOriginalSizeMermaidExportNode(block);
+      if (!exportNode)
+        continue;
+      document.body.appendChild(exportNode.wrapper);
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      try {
+        results.push({ blob: await this.renderBlobWithConfig(exportNode.target, {
+          width: exportNode.width,
+          height: exportNode.height
+        }) });
+      } catch (error) {
+        console.error("Mermaid \u539F\u6BD4\u4F8B\u5BFC\u51FA\u5931\u8D25", error);
+      } finally {
+        exportNode.wrapper.remove();
+      }
+    }
+    return results;
+  }
+  static findActiveOversizedMermaidBlocks(imageElement) {
+    const activeSections = Array.from(imageElement.querySelectorAll(
+      ".red-content-section.red-section-active, .red-content-section.red-section-visible"
+    )).filter((section) => !section.classList.contains("red-section-hidden"));
+    const scopes = activeSections.length ? activeSections : [imageElement];
+    const seen = /* @__PURE__ */ new Set();
+    const blocks = [];
+    scopes.forEach((scope) => {
+      scope.querySelectorAll(".red-mermaid.red-mermaid-scaled, .mermaid.red-mermaid-scaled").forEach((block) => {
+        if (seen.has(block))
+          return;
+        seen.add(block);
+        blocks.push(block);
+      });
+    });
+    return blocks;
+  }
+  static createOriginalSizeMermaidExportNode(block) {
+    const sourceSvg = block.querySelector("svg");
+    if (!sourceSvg)
+      return null;
+    const sourceSize = this.getMermaidOriginalSize(block, sourceSvg);
+    if (!sourceSize)
+      return null;
+    const wrapper = document.createElement("div");
+    wrapper.className = "red-content-section red-mermaid-export-root";
+    wrapper.style.position = "fixed";
+    wrapper.style.left = "-100000px";
+    wrapper.style.top = "0";
+    wrapper.style.visibility = "visible";
+    wrapper.style.pointerEvents = "none";
+    wrapper.style.zIndex = "-1";
+    const clone = block.cloneNode(true);
+    const cloneSvg = clone.querySelector("svg");
+    if (!cloneSvg)
+      return null;
+    clone.classList.remove("red-mermaid-scaled");
+    clone.style.removeProperty("--red-mermaid-scale");
+    clone.style.removeProperty("--red-mermaid-width");
+    clone.style.removeProperty("--red-mermaid-height");
+    clone.style.width = `${sourceSize.width + 30}px`;
+    clone.style.maxWidth = "none";
+    clone.style.display = "block";
+    cloneSvg.style.width = `${sourceSize.width}px`;
+    cloneSvg.style.height = `${sourceSize.height}px`;
+    cloneSvg.style.maxWidth = "none";
+    cloneSvg.style.display = "block";
+    if (!cloneSvg.getAttribute("viewBox"))
+      cloneSvg.setAttribute("viewBox", `0 0 ${sourceSize.width} ${sourceSize.height}`);
+    wrapper.appendChild(clone);
+    return {
+      wrapper,
+      target: clone,
+      width: sourceSize.width + 30,
+      height: sourceSize.height + 30
+    };
+  }
+  static getMermaidOriginalSize(block, svg) {
+    const width = Number(block.dataset.redMermaidOriginalWidth) || svg.viewBox.baseVal.width || svg.getBoundingClientRect().width;
+    const height = Number(block.dataset.redMermaidOriginalHeight) || svg.viewBox.baseVal.height || svg.getBoundingClientRect().height;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0)
+      return null;
+    return { width: Math.ceil(width), height: Math.ceil(height) };
+  }
+  static async renderBlobWithConfig(imageElement, dimensions) {
+    const config = {
+      ...this.getExportConfig(),
+      ...dimensions ? { width: dimensions.width, height: dimensions.height } : {}
+    };
     try {
-      const blob = await toBlob(imageElement, this.getExportConfig());
+      const blob = await toBlob(imageElement, config);
       if (blob instanceof Blob)
         return blob;
       throw new Error("Blob \u5BF9\u8C61\u4E3A\u7A7A");
     } catch (error) {
       console.warn("\u5BFC\u51FA\u5931\u8D25\uFF0C\u5C1D\u8BD5\u5907\u7528\u65B9\u6CD5", error);
-      const canvas = await toCanvas(imageElement, this.getExportConfig());
+      const canvas = await toCanvas(imageElement, config);
       return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Canvas \u8F6C\u6362\u4E3A Blob \u5931\u8D25")), "image/png", 1);
       });
@@ -6421,7 +6528,8 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeCopyButtonListener() {
     const handler = async (event) => {
-      const { copyButton } = event.detail || {};
+      const customEvent = event;
+      const { copyButton } = customEvent.detail || {};
       if (!copyButton)
         return;
       copyButton.addEventListener("click", async () => {
@@ -6473,7 +6581,9 @@ var RedView = class extends import_obsidian5.ItemView {
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
+      this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
+      await this.waitForPreviewLayout();
       await RedConverter.autoPaginate(this.previewEl);
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
@@ -6488,6 +6598,12 @@ var RedView = class extends import_obsidian5.ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+  }
+  async waitForPreviewLayout() {
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    const fonts = document.fonts;
+    if (fonts == null ? void 0 : fonts.ready)
+      await fonts.ready.catch(() => void 0);
   }
   syncFooterLayout() {
     var _a;
@@ -6869,7 +6985,10 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   onSelectChange(container, callback) {
     var _a;
-    (_a = container.querySelector(".red-select")) == null ? void 0 : _a.addEventListener("change", (event) => callback(event.detail.value));
+    (_a = container.querySelector(".red-select")) == null ? void 0 : _a.addEventListener("change", (event) => {
+      const customEvent = event;
+      return callback(customEvent.detail.value);
+    });
   }
   getThemeOptions() {
     const themes = this.settingsManager.getVisibleThemes();
