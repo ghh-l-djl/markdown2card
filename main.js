@@ -2919,6 +2919,7 @@ var RedConverter = class {
     };
     const pending = body.map((el) => el.cloneNode(true));
     this.preprocessMermaidBlocks(pending, probe);
+    this.scaleMermaidBlocksInSpecialGroups(pending, probe, contentContainer);
     while (pending.length) {
       const block = pending[0];
       if (this.isPageBreakMarker(block)) {
@@ -3511,6 +3512,59 @@ var RedConverter = class {
       svg.style.display = "block";
     });
     tempProbe.remove();
+  }
+  static scaleMermaidBlocksInSpecialGroups(blocks, probe, contentContainer) {
+    const contentHeight = Math.max(1, contentContainer.clientHeight);
+    const pageInnerWidth = Math.max(1, contentContainer.clientWidth - 4);
+    for (let i = 0; i < blocks.length; i++) {
+      if (this.isMermaidBlock(blocks[i])) {
+        const mermaidBlock = blocks[i];
+        let group = null;
+        for (let j = Math.max(0, i - 4); j <= i; j++) {
+          const candidateGroup = this.getKeepTogetherGroup(blocks.slice(j), probe);
+          if (candidateGroup && candidateGroup.includes(mermaidBlock)) {
+            group = candidateGroup;
+            break;
+          }
+        }
+        let reserveHeight = 0;
+        if (group) {
+          group.forEach((el) => {
+            if (el !== mermaidBlock && !this.isPageBreakMarker(el)) {
+              probe.replaceChildren(el.cloneNode(true));
+              const style = window.getComputedStyle(el);
+              const marginTop = parseFloat(style.marginTop) || 0;
+              const marginBottom = parseFloat(style.marginBottom) || 0;
+              reserveHeight += el.offsetHeight + marginTop + marginBottom;
+            }
+          });
+        }
+        const svg = mermaidBlock.querySelector("svg");
+        if (svg) {
+          const width = Math.max(svg.viewBox.baseVal.width || svg.getBoundingClientRect().width || svg.clientWidth, 1);
+          const height = Math.max(svg.viewBox.baseVal.height || svg.getBoundingClientRect().height || svg.clientHeight, 1);
+          if (!svg.getAttribute("viewBox"))
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+          const availableHeight = Math.max(120, contentHeight - 48 - reserveHeight);
+          const availableWidth = Math.max(120, pageInnerWidth - 36);
+          const scale = Math.min(1, availableWidth / width, availableHeight / height);
+          mermaidBlock.dataset.redMermaidOriginalWidth = String(Math.ceil(width));
+          mermaidBlock.dataset.redMermaidOriginalHeight = String(Math.ceil(height));
+          mermaidBlock.style.setProperty("--red-mermaid-scale", String(scale));
+          mermaidBlock.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
+          mermaidBlock.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
+          if (scale < 1)
+            mermaidBlock.classList.add("red-mermaid-scaled");
+          else
+            mermaidBlock.classList.remove("red-mermaid-scaled");
+          svg.style.width = "var(--red-mermaid-width)";
+          svg.style.height = "var(--red-mermaid-height)";
+          svg.style.maxWidth = "100%";
+          svg.style.display = "block";
+        }
+      }
+    }
+    probe.replaceChildren();
   }
   static previousContentIsHeading(block) {
     let previous = block.previousElementSibling;
