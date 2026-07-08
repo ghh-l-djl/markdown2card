@@ -507,10 +507,10 @@ export class RedConverter {
             const succeedingText = blocks[succTextIdx];
             const lines = this.countTextLines(succeedingText, probe);
             if (lines > 2) {
-              const [suffix, prefix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
+              const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
               const pageBreak = document.createElement("div");
               pageBreak.className = "red-page-break";
-              blocks.splice(succTextIdx, 1, suffix, pageBreak, prefix);
+              blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
             }
           }
         }
