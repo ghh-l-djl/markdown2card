@@ -11,6 +11,7 @@
 - 读取当前 Markdown 文件，将渲染后的 Markdown DOM 重组为固定比例图文卡片。
 - 内容按最终渲染高度自动分页，避免长内容被同一张卡片截断。
 - `---` 仍可作为手动强制分页符。
+- Mermaid 代码块会在卡片重组前渲染为 SVG，并在暗色主题下强制使用可读的图表文字、连线和节点配色。
 - 将每个分页渲染为 `.red-content-section`，置入统一的 `.red-image-preview` 画布。
 - 支持模板骨架、主题配色、封面风格三层独立切换。
 - 小红书模板保留三等分底部互动条；微博模板使用头像、红 V、当前时间、可编辑地址和关注按钮，并禁用底部提示。
@@ -28,6 +29,7 @@
 Obsidian 当前文件
   -> vault.cachedRead
   -> MarkdownRenderer.render
+  -> RedConverter.renderMermaidCodeBlocks
   -> RedConverter.formatContent
   -> ImgTemplateManager.applyTemplate
   -> RedView.syncFooterLayout
@@ -39,14 +41,14 @@ Obsidian 当前文件
   -> PNG 下载 / JSZip 批量下载 / ClipboardItem 写剪贴板
 ```
 
-## 反向拆出的模块
+## 模块
 
 - `src/main.ts`：插件入口，注册视图、命令、自定义 Ribbon 图标和设置页。
 - `src/icons.ts`：插件自定义图标名称和 SVG 路径定义。
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出、图片和表格交互。
-- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，并在模板/主题生效后按 DOM 高度自动分页。
+- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，并在模板/主题生效后按 DOM 高度自动分页。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
-- `src/themeManager.ts`：把主题对象中的 CSS 字符串应用到 DOM。
+- `src/themeManager.ts`：把主题对象中的 CSS 字符串应用到 DOM，并修正 Mermaid 图表在深色卡片主题下的文字与线条对比度。
 - `src/settings/settings.ts`：默认配置、主题/字体持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。
 - `src/downloadManager.ts`：单页 PNG 和全部 ZIP 导出。
