@@ -11,13 +11,14 @@ export class AiManager {
 
   static async rewriteContent(content: string, settings: YanqiSettings): Promise<string> {
     const { geminiApiKey, geminiModel, aiPromptTemplate } = settings;
+    const isZh = settings.uiLanguage === "zh";
 
     if (!geminiApiKey) {
-      new Notice("请在插件设置中配置 Gemini API Key");
+      new Notice(isZh ? "请在插件设置中配置 Gemini API Key" : "Please configure Gemini API Key in plugin settings");
       throw new Error("Missing Gemini API Key");
     }
 
-    const prompt = aiPromptTemplate.replace("${content}", content);
+    const prompt = aiPromptTemplate.replaceAll("${content}", content);
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
@@ -53,9 +54,14 @@ export class AiManager {
       }
 
       return generatedText.trim();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini request failed:", error);
-      new Notice(`AI 重写失败: ${error.message || error}`);
+      const errMsg = (error.status !== undefined || error.text !== undefined)
+        ? `Status ${error.status}: ${error.text || error.message || ""}`
+        : (error.message || String(error));
+      
+      const noticePrefix = isZh ? "AI 重写失败: " : "AI rewrite failed: ";
+      new Notice(`${noticePrefix}${errMsg}`);
       throw error;
     }
   }
