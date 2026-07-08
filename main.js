@@ -2735,10 +2735,110 @@ __export(main_exports, {
   default: () => YanqiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
+
+// src/aiManager.ts
+var import_child_process = require("child_process");
+var import_obsidian = require("obsidian");
+var AiManager = class {
+  constructor(app, plugin) {
+    this.app = app;
+    this.plugin = plugin;
+  }
+  async summarizeActiveFile() {
+    const file = this.app.workspace.getActiveFile();
+    if (!file || file.extension !== "md") {
+      new import_obsidian.Notice("\u8BF7\u5148\u6253\u5F00\u4E00\u4E2A Markdown \u6587\u4EF6");
+      return;
+    }
+    const content = await this.app.vault.read(file);
+    if (!content.trim()) {
+      new import_obsidian.Notice("\u5F53\u524D\u6587\u4EF6\u6CA1\u6709\u53EF\u603B\u7ED3\u7684\u5185\u5BB9");
+      return;
+    }
+    new import_obsidian.Notice("\u6B63\u5728\u8C03\u7528 AI \u603B\u7ED3\u5F53\u524D\u6587\u4EF6...");
+    const summary = await this.runSummary(content, file);
+    const outputFile = await this.createSummaryFile(file, summary);
+    await this.app.workspace.getLeaf(false).openFile(outputFile);
+    await this.plugin.activateView();
+    new import_obsidian.Notice("AI \u603B\u7ED3\u5DF2\u751F\u6210");
+  }
+  async runSummary(content, file) {
+    const settings = this.plugin.settingsManager.getSettings();
+    const prompt = settings.aiSummaryPrompt.split("{{title}}").join(file.basename).split("{{path}}").join(file.path).split("{{content}}").join(content);
+    const args = this.parseArgs(settings.aiCliArgs);
+    args.push(prompt);
+    return this.execCli(settings.aiCliPath || "agy", args);
+  }
+  execCli(command, args) {
+    return new Promise((resolve, reject) => {
+      (0, import_child_process.execFile)(command, args, {
+        timeout: 12e4,
+        maxBuffer: 1024 * 1024 * 10
+      }, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr.trim() || error.message));
+          return;
+        }
+        const output = stdout.trim();
+        if (!output) {
+          reject(new Error(stderr.trim() || "AI CLI \u6CA1\u6709\u8FD4\u56DE\u5185\u5BB9"));
+          return;
+        }
+        resolve(output);
+      });
+    });
+  }
+  async createSummaryFile(source, summary) {
+    const settings = this.plugin.settingsManager.getSettings();
+    const folder = (0, import_obsidian.normalizePath)(settings.aiOutputFolder || "AI Summaries");
+    await this.ensureFolder(folder);
+    const baseName = this.sanitizeFileName(`${source.basename} AI \u603B\u7ED3`);
+    const path = await this.nextAvailablePath(folder, baseName);
+    const body = `# ${source.basename} AI \u603B\u7ED3
+
+> \u6765\u6E90\uFF1A[[${source.basename}]]
+
+${summary}
+`;
+    return this.app.vault.create(path, body);
+  }
+  async ensureFolder(folder) {
+    const parts = (0, import_obsidian.normalizePath)(folder).split("/").filter(Boolean);
+    let current = "";
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!await this.app.vault.adapter.exists(current)) {
+        await this.app.vault.createFolder(current);
+      }
+    }
+  }
+  async nextAvailablePath(folder, baseName) {
+    let index = 0;
+    while (true) {
+      const suffix = index === 0 ? "" : ` ${index + 1}`;
+      const path = (0, import_obsidian.normalizePath)(`${folder}/${baseName}${suffix}.md`);
+      if (!await this.app.vault.adapter.exists(path))
+        return path;
+      index++;
+    }
+  }
+  sanitizeFileName(name) {
+    return name.replace(/[\\/:*?"<>|#^[\]]/g, " ").replace(/\s+/g, " ").trim() || "AI \u603B\u7ED3";
+  }
+  parseArgs(raw) {
+    var _a, _b;
+    const args = [];
+    const pattern = /"([^"]*)"|'([^']*)'|[^\s]+/g;
+    for (const match of raw.matchAll(pattern)) {
+      args.push((_b = (_a = match[1]) != null ? _a : match[2]) != null ? _b : match[0]);
+    }
+    return args;
+  }
+};
 
 // src/converter.ts
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 var RedConverter = class {
   static initialize(app, plugin) {
     this.app = app;
@@ -2755,7 +2855,7 @@ var RedConverter = class {
     if (!blocks.length)
       return;
     try {
-      const mermaid = await (0, import_obsidian.loadMermaid)();
+      const mermaid = await (0, import_obsidian2.loadMermaid)();
       for (const { container, source } of blocks) {
         await this.renderMermaidBlock(mermaid, container, source);
       }
@@ -3218,8 +3318,8 @@ RedConverter.overflowTolerance = 2;
 var MARKDOWN2CARD_ICON = "file-image";
 
 // src/settings/SettingTab.ts
-var import_obsidian2 = require("obsidian");
-var ConfirmModal = class extends import_obsidian2.Modal {
+var import_obsidian3 = require("obsidian");
+var ConfirmModal = class extends import_obsidian3.Modal {
   constructor(app, title, message, onConfirm) {
     super(app);
     this.message = message;
@@ -3230,8 +3330,8 @@ var ConfirmModal = class extends import_obsidian2.Modal {
   onOpen() {
     this.contentEl.createEl("p", { text: this.message });
     const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-    buttons.createEl("button", { text: "\u53D6\u6D88" }).addEventListener("click", () => this.close());
-    buttons.createEl("button", { cls: "mod-cta", text: "\u786E\u8BA4" }).addEventListener("click", () => {
+    buttons.createEl("button", { text: "Cancel" }).addEventListener("click", () => this.close());
+    buttons.createEl("button", { cls: "mod-cta", text: "Confirm" }).addEventListener("click", () => {
       this.confirmed = true;
       this.close();
     });
@@ -3242,7 +3342,7 @@ var ConfirmModal = class extends import_obsidian2.Modal {
       await this.onConfirm();
   }
 };
-var CreateFontModal = class extends import_obsidian2.Modal {
+var CreateFontModal = class extends import_obsidian3.Modal {
   constructor(app, onSubmit, existingFont) {
     super(app);
     this.onSubmit = onSubmit;
@@ -3251,18 +3351,18 @@ var CreateFontModal = class extends import_obsidian2.Modal {
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("red-font-modal");
-    this.contentEl.createEl("h3", { text: this.font.label ? "\u7F16\u8F91\u5B57\u4F53" : "\u6DFB\u52A0\u5B57\u4F53" });
-    new import_obsidian2.Setting(this.contentEl).setName("\u5B57\u4F53\u540D\u79F0").setDesc("\u663E\u793A\u5728\u4E0B\u62C9\u83DC\u5355\u4E2D\u7684\u540D\u79F0").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
-    new import_obsidian2.Setting(this.contentEl).setName("\u5B57\u4F53\u503C").setDesc("CSS font-family \u7684\u503C").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
-    new import_obsidian2.Setting(this.contentEl).addButton((button) => button.setButtonText("\u786E\u5B9A").setCta().onClick(async () => {
+    this.contentEl.createEl("h3", { text: this.font.label ? "Edit font" : "Add font" });
+    new import_obsidian3.Setting(this.contentEl).setName("Font name").setDesc("The label shown in the font menu.").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
+    new import_obsidian3.Setting(this.contentEl).setName("Font family").setDesc("CSS font-family value.").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
+    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
       if (!this.font.label || !this.font.value)
         return;
       await this.onSubmit(this.font);
       this.close();
-    })).addButton((button) => button.setButtonText("\u53D6\u6D88").onClick(() => this.close()));
+    })).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close()));
   }
 };
-var ThemePreviewModal = class extends import_obsidian2.Modal {
+var ThemePreviewModal = class extends import_obsidian3.Modal {
   constructor(app, plugin, theme) {
     super(app);
     this.plugin = plugin;
@@ -3271,7 +3371,7 @@ var ThemePreviewModal = class extends import_obsidian2.Modal {
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("theme-preview-modal");
-    this.contentEl.createEl("h2", { text: `\u4E3B\u9898\u9884\u89C8: ${this.theme.name}`, cls: "red-theme-title" });
+    this.contentEl.createEl("h2", { text: `Theme preview: ${this.theme.name}`, cls: "red-theme-title" });
     const container = this.contentEl.createDiv("tp-red-preview-container");
     const preview = container.createDiv("red-image-preview");
     const header = preview.createDiv("red-preview-header");
@@ -3285,20 +3385,20 @@ var ThemePreviewModal = class extends import_obsidian2.Modal {
     meta.createEl("div", { cls: "red-user-id", text: settings.userId });
     userInfo.createEl("div", { cls: "red-user-right" }).createEl("div", { cls: "red-post-time", text: "2025/4/20" });
     const content = preview.createDiv("red-preview-content");
-    content.createEl("h2", { text: "\u63A2\u7D22 markdown2card \u7684\u65E0\u9650\u53EF\u80FD" });
+    content.createEl("h2", { text: "Explore markdown2card" });
     const p = content.createEl("p");
-    p.appendText("\u63D2\u4EF6\u63D0\u4F9B\u591A\u79CD");
-    p.createEl("strong", { text: "\u4F18\u96C5\u7684\u64CD\u4F5C\uFF0C" });
-    p.appendText("\u52A9\u4F60\u8F7B\u677E\u53D1\u5E03\u7B14\u8BB0\u3002");
+    p.appendText("Create polished");
+    p.createEl("strong", { text: " social cards " });
+    p.appendText("from your notes.");
     const list = content.createEl("ul");
-    list.createEl("li", { text: "\u8F7B\u677E\u5B9A\u5236\u4E3B\u9898\u6837\u5F0F" });
-    list.createEl("li", { text: "\u5B9E\u65F6\u9884\u89C8\u4E3B\u9898\u6548\u679C" });
-    content.createEl("blockquote").createEl("p", { text: "\u8BA9\u7B14\u8BB0\u53D1\u5E16\u53D8\u5F97\u5982\u6B64\u7B80\u5355\u3002" });
+    list.createEl("li", { text: "Customize card themes" });
+    list.createEl("li", { text: "Preview changes instantly" });
+    content.createEl("blockquote").createEl("p", { text: "Turn notes into publishable images." });
     preview.createDiv("red-preview-footer").createEl("div", { cls: "red-footer-text", text: settings.footerLeftText });
     this.plugin.themeManager.applyTheme(container, this.theme);
   }
 };
-var CreateThemeModal = class extends import_obsidian2.Modal {
+var CreateThemeModal = class extends import_obsidian3.Modal {
   constructor(app, plugin, onSubmit, existingTheme) {
     super(app);
     this.plugin = plugin;
@@ -3319,19 +3419,19 @@ var CreateThemeModal = class extends import_obsidian2.Modal {
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("red-theme-modal");
-    this.contentEl.createEl("h2", { text: this.existingTheme ? "\u7F16\u8F91\u4E3B\u9898" : "\u65B0\u5EFA\u4E3B\u9898" });
-    new import_obsidian2.Setting(this.contentEl).setName("\u4E3B\u9898\u540D\u79F0").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
-    new import_obsidian2.Setting(this.contentEl).setName("\u4E3B\u9898\u63CF\u8FF0").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
-    new import_obsidian2.Setting(this.contentEl).setName("\u6837\u5F0F JSON").setDesc("\u4E0E\u5185\u7F6E\u4E3B\u9898 styles \u7ED3\u6784\u4E00\u81F4").addTextArea((area) => {
+    this.contentEl.createEl("h2", { text: this.existingTheme ? "Edit theme" : "Create theme" });
+    new import_obsidian3.Setting(this.contentEl).setName("Theme name").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
+    new import_obsidian3.Setting(this.contentEl).setName("Theme description").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
+    new import_obsidian3.Setting(this.contentEl).setName("Styles JSON").setDesc("Use the same styles structure as built-in themes.").addTextArea((area) => {
       area.setValue(this.raw).onChange((value) => this.raw = value);
       area.inputEl.addClass("custom-css-input");
       area.inputEl.rows = 18;
     });
-    new import_obsidian2.Setting(this.contentEl).addButton((button) => button.setButtonText("\u9884\u89C8").onClick(() => {
+    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Preview").onClick(() => {
       const theme = this.buildTheme();
       if (theme)
         new ThemePreviewModal(this.app, this.plugin, theme).open();
-    })).addButton((button) => button.setButtonText("\u53D6\u6D88").onClick(() => this.close())).addButton((button) => button.setButtonText("\u4FDD\u5B58").setCta().onClick(async () => {
+    })).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close())).addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
       const theme = this.buildTheme();
       if (!theme)
         return;
@@ -3357,7 +3457,7 @@ var CreateThemeModal = class extends import_obsidian2.Modal {
     }
   }
 };
-var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
+var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -3367,86 +3467,119 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("red-settings");
-    containerEl.createEl("h2", { text: "markdown2card \u8BBE\u7F6E" });
-    this.createSection(containerEl, "\u57FA\u672C\u8BBE\u7F6E", (el) => this.renderBasicSettings(el));
-    this.createSection(containerEl, "\u4E3B\u9898\u8BBE\u7F6E", (el) => this.renderThemeSettings(el));
+    containerEl.createEl("h2", { text: "markdown2card Settings" });
+    this.renderCommunitySettings(containerEl);
+    this.createSection(containerEl, "General", (el) => this.renderBasicSettings(el));
+    this.createSection(containerEl, "AI", (el) => this.renderAiSettings(el));
+    this.createSection(containerEl, "Export", (el) => this.renderExportSettings(el));
+    this.createSection(containerEl, "Themes", (el) => this.renderThemeSettings(el));
   }
   createSection(containerEl, title, render) {
     const section = containerEl.createDiv("settings-section");
     const header = section.createDiv("settings-section-header");
     const toggle = header.createSpan("settings-section-toggle");
-    (0, import_obsidian2.setIcon)(toggle, "chevron-right");
+    (0, import_obsidian3.setIcon)(toggle, "chevron-right");
     header.createEl("h4", { text: title });
     const content = section.createDiv("settings-section-content");
     render(content);
     header.addEventListener("click", () => {
       const expanded = !section.hasClass("is-expanded");
       section.toggleClass("is-expanded", expanded);
-      (0, import_obsidian2.setIcon)(toggle, expanded ? "chevron-down" : "chevron-right");
+      (0, import_obsidian3.setIcon)(toggle, expanded ? "chevron-down" : "chevron-right");
       expanded ? this.expandedSections.add(title) : this.expandedSections.delete(title);
     });
     if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(title)) {
       section.addClass("is-expanded");
-      (0, import_obsidian2.setIcon)(toggle, "chevron-down");
+      (0, import_obsidian3.setIcon)(toggle, "chevron-down");
       this.expandedSections.add(title);
     }
   }
   renderBasicSettings(containerEl) {
-    containerEl.createEl("h4", { text: "\u5B57\u4F53\u7BA1\u7406" });
+    const settings = this.plugin.settingsManager.getSettings();
+    new import_obsidian3.Setting(containerEl).setName("Interface language").setDesc("Choose the language used by the preview controls.").addDropdown((dropdown) => dropdown.addOption("en", "English").addOption("zh", "\u4E2D\u6587").setValue(settings.uiLanguage || "en").onChange(async (value) => {
+      await this.plugin.settingsManager.updateSettings({ uiLanguage: value });
+      this.display();
+    }));
+    new import_obsidian3.Setting(containerEl).setName("Show time").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
+    new import_obsidian3.Setting(containerEl).setName("Show footer").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
+    containerEl.createEl("h4", { text: "Fonts" });
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
-      const setting = new import_obsidian2.Setting(containerEl).setName(font.label).setDesc(font.value);
+      const setting = new import_obsidian3.Setting(containerEl).setName(font.label).setDesc(font.value);
       if (!font.isPreset) {
-        setting.addExtraButton((button) => button.setIcon("pencil").setTooltip("\u7F16\u8F91").onClick(() => {
+        setting.addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
           new CreateFontModal(this.app, async (updated) => {
             await this.plugin.settingsManager.updateFont(font.value, updated);
             this.display();
           }, font).open();
-        })).addExtraButton((button) => button.setIcon("trash").setTooltip("\u5220\u9664").onClick(() => {
-          new ConfirmModal(this.app, "\u786E\u8BA4\u5220\u9664\u5B57\u4F53", `\u786E\u5B9A\u8981\u5220\u9664\u300C${font.label}\u300D\u5B57\u4F53\u914D\u7F6E\u5417\uFF1F`, async () => {
+        })).addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
+          new ConfirmModal(this.app, "Delete font", `Delete the "${font.label}" font configuration?`, async () => {
             await this.plugin.settingsManager.removeFont(font.value);
             this.display();
           }).open();
         }));
       }
     });
-    new import_obsidian2.Setting(containerEl).addButton((button) => button.setButtonText("+ \u6DFB\u52A0\u5B57\u4F53").setCta().onClick(() => {
+    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText("+ Add font").setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
         this.display();
       }).open();
     }));
   }
-  renderThemeSettings(containerEl) {
+  renderExportSettings(containerEl) {
     const settings = this.plugin.settingsManager.getSettings();
-    new import_obsidian2.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u65F6\u95F4").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
-    new import_obsidian2.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u9875\u811A").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
-    containerEl.createEl("h4", { text: "\u4E3B\u9898\u663E\u793A" });
+    new import_obsidian3.Setting(containerEl).setName("Export path").setDesc("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.").addText((text) => text.setPlaceholder("markdown2card-exports").setValue(settings.exportPath).onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
+    new import_obsidian3.Setting(containerEl).setName("Export format").setDesc("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.").addDropdown((dropdown) => dropdown.addOption("zip", "Zip archive").addOption("png-folder", "PNG folder").setValue(settings.exportFormat).onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value })));
+    new import_obsidian3.Setting(containerEl).setName("Post-export actions").setDesc("After export, mark the source note as source material, create a publish-ready note, and link the exported assets.").addToggle((toggle) => toggle.setValue(settings.enablePostExportActions).onChange((value) => this.plugin.settingsManager.updateSettings({ enablePostExportActions: value })));
+  }
+  renderAiSettings(containerEl) {
+    const settings = this.plugin.settingsManager.getSettings();
+    new import_obsidian3.Setting(containerEl).setName("AI CLI path").setDesc("Defaults to agy. If Obsidian cannot find the command, enter the full path.").addText((text) => text.setPlaceholder("agy").setValue(settings.aiCliPath).onChange((value) => this.plugin.settingsManager.updateSettings({ aiCliPath: value.trim() || "agy" })));
+    new import_obsidian3.Setting(containerEl).setName("AI CLI arguments").setDesc("The prompt is appended to the end of these arguments. The default is for agy --print.").addText((text) => text.setPlaceholder("--print").setValue(settings.aiCliArgs).onChange((value) => this.plugin.settingsManager.updateSettings({ aiCliArgs: value })));
+    new import_obsidian3.Setting(containerEl).setName("Summary output folder").setDesc("Vault-relative folder for generated summary drafts.").addText((text) => text.setPlaceholder("AI Summaries").setValue(settings.aiOutputFolder).onChange((value) => this.plugin.settingsManager.updateSettings({ aiOutputFolder: value.trim() || "AI Summaries" })));
+    new import_obsidian3.Setting(containerEl).setName("Summary prompt").setDesc("Supports {{title}}, {{path}}, and {{content}} placeholders.").addTextArea((area) => {
+      area.setValue(settings.aiSummaryPrompt).onChange((value) => this.plugin.settingsManager.updateSettings({ aiSummaryPrompt: value }));
+      area.inputEl.rows = 12;
+      area.inputEl.addClass("custom-css-input");
+    });
+  }
+  renderThemeSettings(containerEl) {
+    containerEl.createEl("h4", { text: "Visible themes" });
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
-      new import_obsidian2.Setting(containerEl).setName(theme.name).setDesc(theme.description || (theme.isPreset ? "\u5185\u7F6E\u4E3B\u9898" : "\u81EA\u5B9A\u4E49\u4E3B\u9898")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
+      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || (theme.isPreset ? "Built-in theme" : "Custom theme")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
         await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
         this.display();
-      })).addExtraButton((button) => button.setIcon("eye").setTooltip("\u9884\u89C8").onClick(() => new ThemePreviewModal(this.app, this.plugin, theme).open()));
+      })).addExtraButton((button) => button.setIcon("eye").setTooltip("Preview").onClick(() => new ThemePreviewModal(this.app, this.plugin, theme).open()));
     });
-    containerEl.createEl("h4", { text: "\u81EA\u5B9A\u4E49\u4E3B\u9898" });
+    containerEl.createEl("h4", { text: "Custom themes" });
     this.plugin.settingsManager.getAllThemes().filter((theme) => !theme.isPreset).forEach((theme) => {
-      new import_obsidian2.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip("\u7F16\u8F91").onClick(() => {
+      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
         new CreateThemeModal(this.app, this.plugin, async (updated) => {
           await this.plugin.settingsManager.updateTheme(theme.id, updated);
           this.display();
         }, theme).open();
-      })).addExtraButton((button) => button.setIcon("trash").setTooltip("\u5220\u9664").onClick(() => {
-        new ConfirmModal(this.app, "\u786E\u8BA4\u5220\u9664\u4E3B\u9898", `\u786E\u5B9A\u8981\u5220\u9664\u300C${theme.name}\u300D\u4E3B\u9898\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u6062\u590D\u3002`, async () => {
+      })).addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
+        new ConfirmModal(this.app, "Delete theme", `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
           await this.plugin.settingsManager.removeTheme(theme.id);
           this.display();
         }).open();
       }));
     });
-    new import_obsidian2.Setting(containerEl).addButton((button) => button.setButtonText("+ \u65B0\u5EFA\u4E3B\u9898").setCta().onClick(() => {
+    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText("+ Create theme").setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
         this.display();
       }).open();
     }));
+  }
+  renderCommunitySettings(containerEl) {
+    const section = containerEl.createDiv("red-community-section");
+    section.createEl("h4", { text: "Community" });
+    section.createEl("p", {
+      cls: "red-settings-note",
+      text: "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem."
+    });
+    new import_obsidian3.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open("https://ghh-l-djl.github.io/", "_blank")));
   }
 };
 
@@ -4272,8 +4405,8 @@ var DEFAULT_SETTINGS = {
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  footerLeftText: "\u591A\u641C\u7D22\u3001\u591A\u52A8\u624B\u3001\u591A\u601D\u8003",
-  footerRightText: "Vibe Anything",
+  footerLeftText: "hazel",
+  footerRightText: "ai-vibe.cn",
   customFonts: [
     {
       value: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC", Cambria, Cochin, Georgia, Times, "Times New Roman", serif',
@@ -4289,7 +4422,25 @@ var DEFAULT_SETTINGS = {
     imageUrl: "",
     scale: 1,
     position: { x: 0, y: 0 }
-  }
+  },
+  exportPath: "markdown2card-exports",
+  exportFormat: "zip",
+  enablePostExportActions: false,
+  uiLanguage: "en",
+  aiCliPath: "agy",
+  aiCliArgs: "--print",
+  aiSummaryPrompt: `\u8BF7\u628A\u4E0B\u9762\u8FD9\u7BC7 Obsidian \u7B14\u8BB0\u603B\u7ED3\u6210\u9002\u5408\u751F\u6210\u77E5\u8BC6\u5361\u7247\u7684 Markdown\u3002
+
+\u8981\u6C42\uFF1A
+1. \u4FDD\u7559\u539F\u6587\u6700\u91CD\u8981\u7684\u89C2\u70B9\u548C\u4E8B\u5B9E
+2. \u8F93\u51FA\u4E00\u4E2A\u9192\u76EE\u7684\u6807\u9898
+3. \u4F7F\u7528 3-6 \u4E2A\u5C0F\u8282
+4. \u8BED\u8A00\u7B80\u6D01\uFF0C\u9002\u5408\u76F4\u63A5\u751F\u6210\u5361\u7247
+5. \u4E0D\u8981\u7F16\u9020\u539F\u6587\u6CA1\u6709\u7684\u4FE1\u606F
+
+\u7B14\u8BB0\u5185\u5BB9\uFF1A
+{{content}}`,
+  aiOutputFolder: "AI Summaries"
 };
 var SettingsManager = class extends import_events.EventEmitter {
   constructor(plugin) {
@@ -4327,8 +4478,11 @@ var SettingsManager = class extends import_events.EventEmitter {
     await this.plugin.saveData(this.settings);
   }
   async updateSettings(settings) {
+    const languageChanged = settings.uiLanguage && settings.uiLanguage !== this.settings.uiLanguage;
     this.settings = { ...this.settings, ...settings };
     await this.saveSettings();
+    if (languageChanged)
+      this.emit("language-changed");
   }
   getAllThemes() {
     return [...this.settings.themes, ...this.settings.customThemes];
@@ -4707,10 +4861,12 @@ var ThemeManager = class {
 };
 
 // src/view.ts
-var import_obsidian5 = require("obsidian");
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var import_obsidian6 = require("obsidian");
 
 // src/backgroundManager.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/assets/backgrounds.ts
 var builtinBackgrounds = [
@@ -4737,7 +4893,7 @@ var BackgroundManager = class {
     element.style.backgroundRepeat = "";
   }
 };
-var BackgroundSettingModal = class extends import_obsidian3.Modal {
+var BackgroundSettingModal = class extends import_obsidian4.Modal {
   constructor(app, onSubmit, targetPreviewEl, backgroundManager, initialSettings) {
     super(app);
     this.onSubmit = onSubmit;
@@ -4782,14 +4938,14 @@ var BackgroundSettingModal = class extends import_obsidian3.Modal {
       this.initDrag();
     }
     const controls = container.createEl("div", { cls: "red-background-controls" });
-    new import_obsidian3.Setting(controls).addButton((button) => button.setButtonText("\u9009\u62E9\u56FE\u7247").onClick(() => this.handleImageUpload())).addButton((button) => button.setButtonText("\u6E05\u9664\u56FE\u7247").onClick(() => this.handleClearImage()));
-    new import_obsidian3.Setting(controls).setName("\u7F29\u653E").addSlider((slider) => {
+    new import_obsidian4.Setting(controls).addButton((button) => button.setButtonText("\u9009\u62E9\u56FE\u7247").onClick(() => this.handleImageUpload())).addButton((button) => button.setButtonText("\u6E05\u9664\u56FE\u7247").onClick(() => this.handleClearImage()));
+    new import_obsidian4.Setting(controls).setName("\u7F29\u653E").addSlider((slider) => {
       slider.setLimits(0.1, 2, 0.01).setValue(this.scale).onChange((value) => {
         this.scale = value;
         this.applyPreview();
       });
     });
-    new import_obsidian3.Setting(controls).addButton((button) => button.setButtonText("\u786E\u8BA4").setCta().onClick(async () => {
+    new import_obsidian4.Setting(controls).addButton((button) => button.setButtonText("\u786E\u8BA4").setCta().onClick(async () => {
       await this.onSubmit(this.getSettings());
       this.close();
     })).addButton((button) => button.setButtonText("\u53D6\u6D88").onClick(() => this.close()));
@@ -5711,20 +5867,29 @@ var DownloadManager = class {
     };
   }
   static async downloadSingleImage(element) {
-    const imageElement = element.querySelector(".red-image-preview");
+    const images = await this.renderCurrentPageImages(element, "\u5C0F\u7EA2\u4E66\u7B14\u8BB0");
+    images.forEach((image) => this.downloadBlob(image.blob, image.filename));
+  }
+  static async downloadAllImages(element) {
+    const baseName = `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_${Date.now()}`;
+    const content = await this.renderAllImagesZip(element, baseName);
+    this.downloadBlob(content, `${baseName}.zip`);
+  }
+  static async renderCurrentPageImages(element, baseName) {
+    const imageElement = this.getImageElement(element);
     if (!imageElement)
       throw new Error("\u627E\u4E0D\u5230\u9884\u89C8\u533A\u57DF");
     await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
-    const blob = await this.renderBlob(imageElement);
-    this.downloadBlob(blob, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_${Date.now()}.png`);
+    const images = [{ filename: `${baseName}.png`, blob: await this.renderBlob(imageElement) }];
     const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
     mermaidBlobs.forEach((mermaid, index) => {
-      this.downloadBlob(mermaid.blob, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${index + 2}\u9875.png`);
+      images.push({ filename: `${baseName}_\u7B2C${index + 2}\u9875.png`, blob: mermaid.blob });
     });
+    return images;
   }
-  static async downloadAllImages(element) {
-    const zip = new import_jszip.default();
-    const previewContainer = element.querySelector(".red-preview-container");
+  static async renderAllPageImages(element, baseName) {
+    const images = [];
+    const previewContainer = this.getPreviewContainer(element);
     if (!previewContainer)
       throw new Error("\u627E\u4E0D\u5230\u9884\u89C8\u5BB9\u5668");
     const sections = Array.from(previewContainer.querySelectorAll(".red-content-section"));
@@ -5734,37 +5899,56 @@ var DownloadManager = class {
       active: section.classList.contains("red-section-active")
     }));
     const appendedMermaidBlobs = [];
-    for (let i = 0; i < sections.length; i++) {
-      sections.forEach((section) => {
-        section.classList.add("red-section-hidden");
-        section.classList.remove("red-section-visible", "red-section-active");
-      });
-      sections[i].classList.remove("red-section-hidden");
-      sections[i].classList.add("red-section-visible", "red-section-active");
-      await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
-      const imageElement = element.querySelector(".red-image-preview");
-      if (!imageElement)
-        continue;
-      try {
-        zip.file(`\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${i + 1}\u9875.png`, await this.renderBlob(imageElement));
-        const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
-        mermaidBlobs.forEach((mermaid) => {
-          appendedMermaidBlobs.push(mermaid.blob);
+    try {
+      for (let i = 0; i < sections.length; i++) {
+        sections.forEach((section) => {
+          section.classList.add("red-section-hidden");
+          section.classList.remove("red-section-visible", "red-section-active");
         });
-      } catch (error) {
-        console.error(`\u7B2C${i + 1}\u9875\u5BFC\u51FA\u5931\u8D25`, error);
+        sections[i].classList.remove("red-section-hidden");
+        sections[i].classList.add("red-section-visible", "red-section-active");
+        await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+        const imageElement = this.getImageElement(element);
+        if (!imageElement)
+          continue;
+        try {
+          images.push({ filename: `${baseName}_\u7B2C${i + 1}\u9875.png`, blob: await this.renderBlob(imageElement) });
+          const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
+          mermaidBlobs.forEach((mermaid) => {
+            appendedMermaidBlobs.push(mermaid.blob);
+          });
+        } catch (error) {
+          console.error(`\u7B2C${i + 1}\u9875\u5BFC\u51FA\u5931\u8D25`, error);
+        }
       }
+    } finally {
+      sections.forEach((section, index) => {
+        section.classList.toggle("red-section-visible", originalVisibility[index].visible);
+        section.classList.toggle("red-section-hidden", originalVisibility[index].hidden);
+        section.classList.toggle("red-section-active", originalVisibility[index].active);
+      });
     }
     appendedMermaidBlobs.forEach((blob, index) => {
-      zip.file(`\u5C0F\u7EA2\u4E66\u7B14\u8BB0_\u7B2C${sections.length + index + 1}\u9875.png`, blob);
+      images.push({ filename: `${baseName}_\u7B2C${sections.length + index + 1}\u9875.png`, blob });
     });
-    sections.forEach((section, index) => {
-      section.classList.toggle("red-section-visible", originalVisibility[index].visible);
-      section.classList.toggle("red-section-hidden", originalVisibility[index].hidden);
-      section.classList.toggle("red-section-active", originalVisibility[index].active);
-    });
-    const content = await zip.generateAsync({ type: "blob", compression: "STORE" });
-    this.downloadBlob(content, `\u5C0F\u7EA2\u4E66\u7B14\u8BB0_${Date.now()}.zip`);
+    return images;
+  }
+  static async renderAllImagesZip(element, baseName) {
+    return this.renderImagesZip(await this.renderAllPageImages(element, baseName));
+  }
+  static async renderCurrentImagesZip(element, baseName) {
+    return this.renderImagesZip(await this.renderCurrentPageImages(element, baseName));
+  }
+  static async renderImagesZip(images) {
+    const zip = new import_jszip.default();
+    images.forEach((image) => zip.file(image.filename, image.blob));
+    return zip.generateAsync({ type: "blob", compression: "STORE" });
+  }
+  static getPreviewContainer(element) {
+    return element.matches(".red-preview-container") ? element : element.querySelector(".red-preview-container");
+  }
+  static getImageElement(element) {
+    return element.matches(".red-image-preview") ? element : element.querySelector(".red-image-preview");
   }
   static async renderBlob(imageElement) {
     return this.renderBlobWithConfig(imageElement);
@@ -5919,7 +6103,7 @@ var ClipboardManager = class {
 };
 
 // src/imgTemplates/index.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var VERIFIED_ICON = `<svg viewBox="0 0 22 22"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"></path></g></svg>`;
 var DefaultTemplate = class {
   constructor(settingsManager, onSettingsUpdate) {
@@ -5998,7 +6182,7 @@ var DefaultTemplate = class {
         await this.settingsManager.updateSettings({ userAvatar: String(((_a2 = event.target) == null ? void 0 : _a2.result) || "") });
         await this.onSettingsUpdate();
       };
-      reader.onerror = () => new import_obsidian4.Notice("\u5934\u50CF\u66F4\u65B0\u5931\u8D25");
+      reader.onerror = () => new import_obsidian5.Notice("\u5934\u50CF\u66F4\u65B0\u5931\u8D25");
       reader.readAsDataURL(file);
     });
     input.click();
@@ -6015,7 +6199,7 @@ var DefaultTemplate = class {
   }
   async handleFooterTextEdit(element, position) {
     await this.editText(element, "\u8BF7\u8F93\u5165\u9875\u811A\u6587\u672C", async (value) => {
-      await this.settingsManager.updateSettings(position === "left" ? { footerLeftText: value || "\u591A\u641C\u7D22\u3001\u591A\u52A8\u624B\u3001\u591A\u601D\u8003" } : { footerRightText: value || "Vibe Anything" });
+      await this.settingsManager.updateSettings(position === "left" ? { footerLeftText: value || "hazel" } : { footerRightText: value || "ai-vibe.cn" });
     }, "red-footer-edit-input");
   }
   async editText(element, placeholder, save, className = "red-user-edit-input") {
@@ -6319,7 +6503,130 @@ var ImgTemplateManager = class {
 
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
-var RedView = class extends import_obsidian5.ItemView {
+var UI_TEXT = {
+  en: {
+    templateLabel: "Template",
+    coverLabel: "Cover style",
+    fontLabel: "Font",
+    overview: "Overview",
+    downloadCurrent: "Download current",
+    exportAll: "Export all",
+    exporting: "Exporting...",
+    exportSuccess: "Exported",
+    exportFailed: "Export failed",
+    guide: "Guide",
+    guideText: "Guide:\n1. Content is paginated automatically to fit each card\n2. Use --- to force a page break\n3. Template controls layout, theme controls colors, cover controls the first page\n4. Click avatar, name, or footer text to edit",
+    background: "Set background image",
+    hideFooter: "Hide footer",
+    showFooter: "Show footer",
+    realtimeOff: "Disable live preview",
+    realtimeOn: "Enable live preview",
+    markdownOnly: "Only markdown files can be previewed",
+    copied: "Image copied to clipboard",
+    copyFailed: "Copy failed",
+    previewFirst: "Generate a preview first",
+    noPages: "No pages to preview",
+    overviewTitle: "Overview \xB7 {count} pages",
+    defaultTheme: "Default theme",
+    defaultTemplate: "Default template",
+    notes: "Notes",
+    xhs: "Xiaohongshu note",
+    weibo: "Weibo card",
+    wechat: "WeChat article",
+    magazine: "Magazine masthead",
+    newspaper: "Newspaper masthead",
+    quote: "Quote card",
+    terminal: "Terminal window",
+    github: "GitHub card",
+    minimalCover: "Minimal headerless",
+    signature: "Signature",
+    coverClassic: "Classic centered",
+    coverBold: "Poster",
+    coverMag: "Magazine",
+    coverNumber: "Numbered",
+    coverMin: "Minimal",
+    defaultFont: "Default font",
+    simsun: "Songti",
+    simhei: "Heiti",
+    kaiti: "Kaiti",
+    yahei: "Microsoft YaHei"
+  },
+  zh: {
+    templateLabel: "\u9AA8\u67B6\u6A21\u677F",
+    coverLabel: "\u5C01\u9762\u98CE\u683C",
+    fontLabel: "\u5B57\u4F53",
+    overview: "\u5168\u89C8",
+    downloadCurrent: "\u4E0B\u8F7D\u5F53\u524D\u9875",
+    exportAll: "\u5BFC\u51FA\u5168\u90E8\u9875",
+    exporting: "\u5BFC\u51FA\u4E2D...",
+    exportSuccess: "\u5BFC\u51FA\u6210\u529F",
+    exportFailed: "\u5BFC\u51FA\u5931\u8D25",
+    guide: "\u4F7F\u7528\u6307\u5357",
+    guideText: "\u4F7F\u7528\u6307\u5357\uFF1A\n1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD\n2. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875\n3. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248\n4. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539",
+    background: "\u8BBE\u7F6E\u80CC\u666F\u56FE\u7247",
+    hideFooter: "\u9690\u85CF\u9875\u811A",
+    showFooter: "\u663E\u793A\u9875\u811A",
+    realtimeOff: "\u5173\u95ED\u5B9E\u65F6\u9884\u89C8\u72B6\u6001",
+    realtimeOn: "\u5F00\u542F\u5B9E\u65F6\u9884\u89C8\u72B6\u6001",
+    markdownOnly: "\u53EA\u80FD\u9884\u89C8 markdown \u6587\u672C\u6587\u6863",
+    copied: "\u56FE\u7247\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F",
+    copyFailed: "\u590D\u5236\u5931\u8D25",
+    previewFirst: "\u8BF7\u5148\u751F\u6210\u9884\u89C8",
+    noPages: "\u6CA1\u6709\u53EF\u9884\u89C8\u7684\u9875\u9762",
+    overviewTitle: "\u5168\u89C8 \xB7 \u5168\u90E8 {count} \u9875",
+    defaultTheme: "\u9ED8\u8BA4\u4E3B\u9898",
+    defaultTemplate: "\u9ED8\u8BA4\u6A21\u677F",
+    notes: "\u5907\u5FD8\u5F55",
+    xhs: "\u5C0F\u7EA2\u4E66\u7B14\u8BB0",
+    weibo: "\u5FAE\u535A\u5361",
+    wechat: "\u516C\u4F17\u53F7\u5361",
+    magazine: "\u6742\u5FD7\u520A\u5934",
+    newspaper: "\u62A5\u7EB8\u62A5\u5934",
+    quote: "\u8BED\u5F55\u5361",
+    terminal: "\u7EC8\u7AEF\u7A97\u53E3",
+    github: "GitHub \u5361",
+    minimalCover: "\u6781\u7B80\u65E0\u5934",
+    signature: "\u7EAF\u7F72\u540D",
+    coverClassic: "\u7ECF\u5178\u5C45\u4E2D",
+    coverBold: "\u5927\u5B57\u62A5",
+    coverMag: "\u6742\u5FD7",
+    coverNumber: "\u7F16\u53F7",
+    coverMin: "\u6781\u7B80",
+    defaultFont: "\u9ED8\u8BA4\u5B57\u4F53",
+    simsun: "\u5B8B\u4F53",
+    simhei: "\u9ED1\u4F53",
+    kaiti: "\u6977\u4F53",
+    yahei: "\u96C5\u9ED1"
+  }
+};
+var TEMPLATE_LABEL_KEYS = {
+  default: "defaultTemplate",
+  notes: "notes",
+  xhs: "xhs",
+  weibo: "weibo",
+  wechat: "wechat",
+  magazine: "magazine",
+  newspaper: "newspaper",
+  quote: "quote",
+  terminal: "terminal",
+  github: "github",
+  "minimal-cover": "minimalCover",
+  signature: "signature"
+};
+var EN_THEME_LABELS = {
+  default: "Default theme",
+  elegant: "Elegant dark",
+  cyber: "Cyberpunk",
+  yueling: "Warm brown",
+  starry: "Starry dream",
+  ocean: "Deep ocean",
+  warm: "Warm literary",
+  forest: "Forest morning",
+  metal: "Metal tech",
+  minimal: "Minimal theme",
+  sakura: "Sakura"
+};
+var RedView = class extends import_obsidian6.ItemView {
   constructor(leaf, themeManager, settingsManager) {
     super(leaf);
     this.themeManager = themeManager;
@@ -6357,27 +6664,22 @@ var RedView = class extends import_obsidian5.ItemView {
     this.initializeLockButton(controls);
     this.customTemplateSelect = this.createCustomSelect(controls, "red-template-select", this.getTemplateOptions());
     this.customTemplateSelect.id = "template-select";
+    this.customTemplateSelect.dataset.label = this.t("templateLabel");
     this.onSelectChange(this.customTemplateSelect, async (value) => {
       this.imgTemplateManager.setCurrentTemplate(value);
       await this.settingsManager.updateSettings({ templateId: value });
       await this.updatePreview();
     });
-    this.customThemeSelect = this.createCustomSelect(controls, "red-theme-select", this.getThemeOptions());
-    this.customThemeSelect.id = "theme-select";
-    this.onSelectChange(this.customThemeSelect, async (value) => {
-      this.themeManager.setCurrentTheme(value);
-      await this.settingsManager.updateSettings({ themeId: value });
-      this.themeManager.applyTheme(this.previewEl);
-      await this.restoreThemeSettings(value);
-    });
     this.customCoverSelect = this.createCustomSelect(controls, "red-cover-select", this.getCoverOptions());
     this.customCoverSelect.id = "cover-select";
+    this.customCoverSelect.dataset.label = this.t("coverLabel");
     this.onSelectChange(this.customCoverSelect, async (value) => {
       await this.settingsManager.updateSettings({ coverStyle: value });
       await this.updatePreview();
     });
     this.customFontSelect = this.createCustomSelect(controls, "red-font-select", this.getFontOptions());
     this.customFontSelect.id = "font-select";
+    this.customFontSelect.dataset.label = this.t("fontLabel");
     this.onSelectChange(this.customFontSelect, async (value) => {
       this.themeManager.setFont(value);
       await this.settingsManager.updateSettings({ fontFamily: value });
@@ -6388,8 +6690,8 @@ var RedView = class extends import_obsidian5.ItemView {
     await this.restoreSettings();
   }
   initializeLockButton(parent) {
-    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": "\u5173\u95ED\u5B9E\u65F6\u9884\u89C8\u72B6\u6001" } });
-    (0, import_obsidian5.setIcon)(this.lockButton, "lock");
+    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
+    (0, import_obsidian6.setIcon)(this.lockButton, "lock");
     this.lockButton.addEventListener("click", () => this.togglePreviewLock());
   }
   initializeFontSizeControls(parent) {
@@ -6430,16 +6732,15 @@ var RedView = class extends import_obsidian5.ItemView {
     themes.forEach((theme) => {
       var _a, _b, _c;
       const chip = strip.createEl("div", { cls: "red-theme-chip", attr: { title: theme.name } });
+      chip.dataset.themeId = theme.id;
       if (theme.id === active)
         chip.addClass("red-theme-chip-active");
       const swatch = chip.createEl("div", { cls: "red-theme-chip-swatch" });
       swatch.style.background = this.pickColor(theme.styles.imagePreview, "#ffffff");
       swatch.createEl("div", { cls: "red-theme-chip-bar" }).style.background = this.pickColor((_b = (_a = theme.styles.title) == null ? void 0 : _a.h2) == null ? void 0 : _b.content, "#222222");
       swatch.createEl("div", { cls: "red-theme-chip-dot" }).style.background = this.pickColor((_c = theme.styles.emphasis) == null ? void 0 : _c.strong, "#888888");
-      chip.createEl("div", { cls: "red-theme-chip-name", text: theme.name });
+      chip.createEl("div", { cls: "red-theme-chip-name", text: this.translateThemeName(theme.id, theme.name) });
       chip.addEventListener("click", async () => {
-        strip.querySelectorAll(".red-theme-chip").forEach((el) => el.removeClass("red-theme-chip-active"));
-        chip.addClass("red-theme-chip-active");
         this.themeManager.setCurrentTheme(theme.id);
         await this.settingsManager.updateSettings({ themeId: theme.id });
         this.themeManager.applyTheme(this.previewEl);
@@ -6464,20 +6765,20 @@ var RedView = class extends import_obsidian5.ItemView {
     this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
     this.initializeFooterToggleButton(controls);
-    controls.createEl("button", { cls: "red-overview-button", text: "\u5168\u89C8" }).addEventListener("click", () => this.openOverviewModal());
+    controls.createEl("button", { cls: "red-overview-button", text: this.t("overview") }).addEventListener("click", () => this.openOverviewModal());
     this.initializeExportButtons(controls);
   }
   initializeHelpButton(parent) {
-    const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": "\u4F7F\u7528\u6307\u5357" } });
-    (0, import_obsidian5.setIcon)(help, "help");
+    const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": this.t("guide") } });
+    (0, import_obsidian6.setIcon)(help, "help");
     parent.createEl("div", {
       cls: "red-help-tooltip",
-      text: "\u4F7F\u7528\u6307\u5357\uFF1A\n1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD\n2. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875\n3. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248\n4. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539"
+      text: this.t("guideText")
     });
   }
   initializeBackgroundButton(parent) {
-    const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": "\u8BBE\u7F6E\u80CC\u666F\u56FE\u7247" } });
-    (0, import_obsidian5.setIcon)(button, "image");
+    const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": this.t("background") } });
+    (0, import_obsidian6.setIcon)(button, "image");
     button.addEventListener("click", () => {
       new BackgroundSettingModal(this.app, async (backgroundSettings) => {
         await this.settingsManager.updateSettings({ backgroundSettings });
@@ -6489,7 +6790,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeFooterToggleButton(parent) {
     this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
-    (0, import_obsidian5.setIcon)(this.footerToggleButton, "panel-bottom");
+    (0, import_obsidian6.setIcon)(this.footerToggleButton, "panel-bottom");
     this.updateFooterToggleButtonState();
     this.footerToggleButton.addEventListener("click", async () => {
       const showFooter = this.settingsManager.getSettings().showFooter === false;
@@ -6503,26 +6804,29 @@ var RedView = class extends import_obsidian5.ItemView {
       return;
     const visible = this.settingsManager.getSettings().showFooter !== false;
     this.footerToggleButton.classList.toggle("red-footer-hidden", !visible);
-    this.footerToggleButton.setAttribute("aria-label", visible ? "\u9690\u85CF\u9875\u811A" : "\u663E\u793A\u9875\u811A");
-    this.footerToggleButton.setAttribute("title", visible ? "\u9690\u85CF\u9875\u811A" : "\u663E\u793A\u9875\u811A");
+    this.footerToggleButton.setAttribute("aria-label", visible ? this.t("hideFooter") : this.t("showFooter"));
+    this.footerToggleButton.setAttribute("title", visible ? this.t("hideFooter") : this.t("showFooter"));
   }
   initializeExportButtons(parent) {
-    const single = parent.createEl("button", { cls: "red-export-button", text: "\u4E0B\u8F7D\u5F53\u524D\u9875" });
+    const single = parent.createEl("button", { cls: "red-export-button", text: this.t("downloadCurrent") });
     single.addEventListener("click", async () => {
       if (!this.previewEl)
         return;
-      await this.withButtonState(single, "\u5BFC\u51FA\u4E2D...", "\u4E0B\u8F7D\u5F53\u524D\u9875", () => DownloadManager.downloadSingleImage(this.previewEl));
+      await this.withButtonState(single, this.t("exporting"), this.t("downloadCurrent"), () => this.exportToVault(false));
     });
-    this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: "\u5BFC\u51FA\u5168\u90E8\u9875" });
+    this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: this.t("exportAll") });
     this.copyButton.addEventListener("click", async () => {
       if (!this.previewEl)
         return;
-      await this.withButtonState(this.copyButton, "\u5BFC\u51FA\u4E2D...", "\u5BFC\u51FA\u5168\u90E8\u9875", () => DownloadManager.downloadAllImages(this.previewEl));
+      await this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
   }
   initializeEventListeners() {
     this.registerEvent(this.app.workspace.on("file-open", this.onFileOpen.bind(this)));
     this.registerEvent(this.app.vault.on("modify", this.onFileModify.bind(this)));
+    const onLanguageChanged = () => this.refreshLanguageLabels();
+    this.settingsManager.on("language-changed", onLanguageChanged);
+    this.register(() => this.settingsManager.off("language-changed", onLanguageChanged));
     this.initializeCopyButtonListener();
     this.initializeSync();
   }
@@ -6536,7 +6840,7 @@ var RedView = class extends import_obsidian5.ItemView {
         copyButton.disabled = true;
         try {
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
-          new import_obsidian5.Notice(ok ? "\u56FE\u7247\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F" : "\u590D\u5236\u5931\u8D25");
+          new import_obsidian6.Notice(ok ? this.t("copied") : this.t("copyFailed"));
         } finally {
           window.setTimeout(() => {
             copyButton.disabled = false;
@@ -6575,7 +6879,7 @@ var RedView = class extends import_obsidian5.ItemView {
       return;
     this.previewEl.empty();
     const content = await this.app.vault.cachedRead(this.currentFile);
-    await import_obsidian5.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
+    await import_obsidian6.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
     await RedConverter.renderMermaidCodeBlocks(this.previewEl);
     RedConverter.formatContent(this.previewEl);
     const valid = RedConverter.hasValidContent(this.previewEl);
@@ -6627,13 +6931,13 @@ var RedView = class extends import_obsidian5.ItemView {
     this.currentImageIndex = 0;
     if (!file || file.extension !== "md") {
       (_a = this.previewEl) == null ? void 0 : _a.empty();
-      (_b = this.previewEl) == null ? void 0 : _b.createEl("div", { cls: "red-empty-state", text: "\u53EA\u80FD\u9884\u89C8 markdown \u6587\u672C\u6587\u6863" });
+      (_b = this.previewEl) == null ? void 0 : _b.createEl("div", { cls: "red-empty-state", text: this.t("markdownOnly") });
       this.updateControlsState(false);
       return;
     }
     this.updateControlsState(true);
     this.isPreviewLocked = false;
-    (0, import_obsidian5.setIcon)(this.lockButton, "unlock");
+    (0, import_obsidian6.setIcon)(this.lockButton, "unlock");
     await this.updatePreview();
   }
   async onFileModify(file) {
@@ -6645,8 +6949,8 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   async togglePreviewLock() {
     this.isPreviewLocked = !this.isPreviewLocked;
-    (0, import_obsidian5.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
-    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? "\u5F00\u542F\u5B9E\u65F6\u9884\u89C8\u72B6\u6001" : "\u5173\u95ED\u5B9E\u65F6\u9884\u89C8\u72B6\u6001");
+    (0, import_obsidian6.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
+    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
     if (!this.isPreviewLocked)
       await this.updatePreview();
   }
@@ -6673,17 +6977,17 @@ var RedView = class extends import_obsidian5.ItemView {
     var _a;
     const preview = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-image-preview");
     if (!preview) {
-      new import_obsidian5.Notice("\u8BF7\u5148\u751F\u6210\u9884\u89C8");
+      new import_obsidian6.Notice(this.t("previewFirst"));
       return;
     }
     const sections = Array.from(preview.querySelectorAll(".red-content-section"));
     if (!sections.length) {
-      new import_obsidian5.Notice("\u6CA1\u6709\u53EF\u9884\u89C8\u7684\u9875\u9762");
+      new import_obsidian6.Notice(this.t("noPages"));
       return;
     }
-    const modal = new import_obsidian5.Modal(this.app);
+    const modal = new import_obsidian6.Modal(this.app);
     modal.modalEl.addClass("red-overview-modal");
-    modal.titleEl.setText(`\u5168\u89C8 \xB7 \u5168\u90E8 ${sections.length} \u9875`);
+    modal.titleEl.setText(this.t("overviewTitle").replace("{count}", String(sections.length)));
     const grid = modal.contentEl.createEl("div", { cls: "red-overview-grid" });
     sections.forEach((_, index) => {
       const cell = grid.createEl("div", { cls: "red-overview-cell" });
@@ -6907,7 +7211,7 @@ var RedView = class extends import_obsidian5.ItemView {
   updateControlsState(enabled) {
     if (this.lockButton)
       this.lockButton.disabled = !enabled;
-    [this.customTemplateSelect, this.customThemeSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
+    [this.customTemplateSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
       const select = container == null ? void 0 : container.querySelector(".red-select");
       if (!select)
         return;
@@ -6940,7 +7244,9 @@ var RedView = class extends import_obsidian5.ItemView {
     await this.restoreSelect(this.customTemplateSelect, value, this.getTemplateOptions());
   }
   async restoreThemeSettings(value) {
-    await this.restoreSelect(this.customThemeSelect, value, this.getThemeOptions());
+    this.containerEl.querySelectorAll(".red-theme-chip").forEach((chip) => {
+      chip.classList.toggle("red-theme-chip-active", chip.dataset.themeId === value);
+    });
   }
   async restoreSelect(container, value, options) {
     const selected = options.find((option) => option.value === value);
@@ -6990,24 +7296,102 @@ var RedView = class extends import_obsidian5.ItemView {
       return callback(customEvent.detail.value);
     });
   }
+  refreshLanguageLabels() {
+    var _a, _b, _c, _d, _e;
+    if (this.customTemplateSelect) {
+      this.customTemplateSelect.dataset.label = this.t("templateLabel");
+      this.refreshSelectLabels(this.customTemplateSelect, this.getTemplateOptions());
+    }
+    if (this.customCoverSelect) {
+      this.customCoverSelect.dataset.label = this.t("coverLabel");
+      this.refreshSelectLabels(this.customCoverSelect, this.getCoverOptions());
+    }
+    if (this.customFontSelect) {
+      this.customFontSelect.dataset.label = this.t("fontLabel");
+      this.refreshSelectLabels(this.customFontSelect, this.getFontOptions());
+    }
+    this.containerEl.querySelectorAll(".red-theme-chip").forEach((chip) => {
+      const theme = this.settingsManager.getTheme(chip.dataset.themeId || "");
+      const name = chip.querySelector(".red-theme-chip-name");
+      if (theme && name)
+        name.setText(this.translateThemeName(theme.id, theme.name));
+    });
+    (_a = this.containerEl.querySelector(".red-overview-button")) == null ? void 0 : _a.setText(this.t("overview"));
+    (_b = this.containerEl.querySelector(".red-export-button:not(.red-export-primary)")) == null ? void 0 : _b.setText(this.t("downloadCurrent"));
+    (_c = this.containerEl.querySelector(".red-export-primary")) == null ? void 0 : _c.setText(this.t("exportAll"));
+    (_d = this.containerEl.querySelector(".red-help-button")) == null ? void 0 : _d.setAttribute("aria-label", this.t("guide"));
+    const tooltip = this.containerEl.querySelector(".red-help-tooltip");
+    if (tooltip)
+      tooltip.setText(this.t("guideText"));
+    (_e = this.containerEl.querySelector(".red-background-button")) == null ? void 0 : _e.setAttribute("aria-label", this.t("background"));
+    if (this.lockButton)
+      this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
+    this.updateFooterToggleButtonState();
+  }
+  refreshSelectLabels(container, options) {
+    var _a;
+    const select = container.querySelector(".red-select");
+    const value = select == null ? void 0 : select.dataset.value;
+    const selected = options.find((option) => option.value === value);
+    if (selected)
+      (_a = container.querySelector(".red-select-text")) == null ? void 0 : _a.setText(selected.label);
+    container.querySelectorAll(".red-select-item").forEach((item) => {
+      const option = options.find((candidate) => candidate.value === item.dataset.value);
+      if (option)
+        item.setText(option.label);
+    });
+  }
   getThemeOptions() {
     const themes = this.settingsManager.getVisibleThemes();
-    return themes.length ? themes.map((theme) => ({ value: theme.id, label: theme.name })) : [{ value: "default", label: "\u9ED8\u8BA4\u4E3B\u9898" }];
+    return themes.length ? themes.map((theme) => ({ value: theme.id, label: this.translateThemeName(theme.id, theme.name) })) : [{ value: "default", label: this.t("defaultTheme") }];
   }
   getTemplateOptions() {
-    return this.imgTemplateManager.getImgTemplateOptions();
+    return this.imgTemplateManager.getImgTemplateOptions().map((template) => ({
+      value: template.value,
+      label: this.translateTemplateName(template.value, template.label)
+    }));
   }
   getFontOptions() {
-    return this.settingsManager.getFontOptions().map((font) => ({ value: font.value, label: font.label }));
+    return this.settingsManager.getFontOptions().map((font) => ({
+      value: font.value,
+      label: this.translateFontName(font.label)
+    }));
   }
   getCoverOptions() {
     return [
-      { value: "cover-classic", label: "\u7ECF\u5178\u5C45\u4E2D" },
-      { value: "cover-bold", label: "\u5927\u5B57\u62A5" },
-      { value: "cover-mag", label: "\u6742\u5FD7" },
-      { value: "cover-number", label: "\u7F16\u53F7" },
-      { value: "cover-min", label: "\u6781\u7B80" }
+      { value: "cover-classic", label: this.t("coverClassic") },
+      { value: "cover-bold", label: this.t("coverBold") },
+      { value: "cover-mag", label: this.t("coverMag") },
+      { value: "cover-number", label: this.t("coverNumber") },
+      { value: "cover-min", label: this.t("coverMin") }
     ];
+  }
+  getLanguage() {
+    return this.settingsManager.getSettings().uiLanguage || "en";
+  }
+  t(key) {
+    return UI_TEXT[this.getLanguage()][key] || UI_TEXT.en[key] || key;
+  }
+  translateTemplateName(id, fallback) {
+    const key = TEMPLATE_LABEL_KEYS[id];
+    return key ? this.t(key) : fallback;
+  }
+  translateThemeName(id, fallback) {
+    if (this.getLanguage() === "en" && EN_THEME_LABELS[id])
+      return EN_THEME_LABELS[id];
+    if (id === "default")
+      return this.t("defaultTheme");
+    return fallback;
+  }
+  translateFontName(label) {
+    const map = {
+      "\u9ED8\u8BA4\u5B57\u4F53": this.t("defaultFont"),
+      "\u5B8B\u4F53": this.t("simsun"),
+      "\u9ED1\u4F53": this.t("simhei"),
+      "\u6977\u4F53": this.t("kaiti"),
+      "\u96C5\u9ED1": this.t("yahei")
+    };
+    return map[label] || label;
   }
   buildLineMap() {
     var _a, _b;
@@ -7059,7 +7443,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   syncPreviewFromEditor() {
     var _a, _b;
-    const active = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+    const active = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
     if (!active || active.file !== this.currentFile || !active.editor)
       return;
     const focused = document.activeElement;
@@ -7082,15 +7466,146 @@ var RedView = class extends import_obsidian5.ItemView {
       (_b = this.previewEl.querySelector(".red-content-section.red-section-active")) == null ? void 0 : _b.scrollIntoView({ block: "nearest" });
     }
   }
+  async exportToVault(allPages) {
+    if (!this.currentFile)
+      throw new Error("No active markdown file");
+    const settings = this.settingsManager.getSettings();
+    const baseName = this.safeFileName(this.currentFile.basename);
+    const exportRoot = this.resolveExportRoot(settings.exportPath || "markdown2card-exports");
+    await this.ensureExportFolder(exportRoot.path, exportRoot.isAbsolute);
+    let assetPath;
+    if (settings.exportFormat === "png-folder") {
+      const folderPath = this.joinExportPath(exportRoot, baseName);
+      await this.ensureExportFolder(folderPath, exportRoot.isAbsolute);
+      const images = allPages ? await DownloadManager.renderAllPageImages(this.previewEl, baseName) : await DownloadManager.renderCurrentPageImages(this.previewEl, baseName);
+      for (const image of images) {
+        await this.writeExportBlob(this.joinExportPath({ ...exportRoot, path: folderPath }, image.filename), image.blob, exportRoot.isAbsolute);
+      }
+      assetPath = folderPath;
+    } else {
+      const zipPath = this.joinExportPath(exportRoot, `${baseName}.zip`);
+      const zipBlob = allPages ? await DownloadManager.renderAllImagesZip(this.previewEl, baseName) : await DownloadManager.renderCurrentImagesZip(this.previewEl, baseName);
+      await this.writeExportBlob(zipPath, zipBlob, exportRoot.isAbsolute);
+      assetPath = zipPath;
+    }
+    if (settings.enablePostExportActions) {
+      await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
+    }
+    new import_obsidian6.Notice(`Exported to ${assetPath}`);
+  }
+  resolveExportRoot(rawPath) {
+    const value = rawPath.trim() || "markdown2card-exports";
+    const isAbsolute = this.isAbsoluteExportPath(value);
+    return {
+      path: isAbsolute ? (0, import_path.normalize)(value) : (0, import_obsidian6.normalizePath)(value),
+      isAbsolute
+    };
+  }
+  isAbsoluteExportPath(path) {
+    return import_path.posix.isAbsolute(path) || import_path.win32.isAbsolute(path);
+  }
+  joinExportPath(root, child) {
+    return root.isAbsolute ? (0, import_path.join)(root.path, child) : (0, import_obsidian6.normalizePath)(`${root.path}/${child}`);
+  }
+  async writeExportBlob(path, blob, isAbsolute) {
+    const arrayBuffer = await blob.arrayBuffer();
+    if (isAbsolute) {
+      await (0, import_promises.mkdir)((0, import_path.dirname)(path), { recursive: true });
+      await (0, import_promises.writeFile)(path, Buffer.from(arrayBuffer));
+      return;
+    }
+    await this.app.vault.adapter.writeBinary(path, arrayBuffer);
+  }
+  async ensureExportFolder(path, isAbsolute) {
+    if (isAbsolute) {
+      await (0, import_promises.mkdir)(path, { recursive: true });
+      return;
+    }
+    await this.ensureFolder(path);
+  }
+  async ensureFolder(path) {
+    const normalized = (0, import_obsidian6.normalizePath)(path);
+    if (!normalized || normalized === "/")
+      return;
+    const parts = normalized.split("/").filter(Boolean);
+    let current = "";
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!this.app.vault.getAbstractFileByPath(current)) {
+        await this.app.vault.createFolder(current);
+      }
+    }
+  }
+  async applyPostExportActions(assetPath, assetPathIsAbsolute) {
+    if (!this.currentFile)
+      return;
+    const sourceFile = this.currentFile;
+    const sourceContent = await this.app.vault.cachedRead(sourceFile);
+    const publishPath = this.getPublishPath(sourceFile);
+    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.app.vault.adapter.getFullPath(assetPath);
+    const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
+    const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
+    if (existingPublishFile instanceof import_obsidian6.TFile) {
+      await this.app.vault.modify(existingPublishFile, publishContent);
+    } else {
+      await this.ensureFolder(this.dirname(publishPath));
+      await this.app.vault.create(publishPath, publishContent);
+    }
+    await this.app.fileManager.processFrontMatter(sourceFile, (frontmatter) => {
+      if (frontmatter.content_role !== "source_material") {
+        frontmatter.content_role = "source_material";
+      }
+      const current = Array.isArray(frontmatter.derived_to) ? frontmatter.derived_to : frontmatter.derived_to ? [frontmatter.derived_to] : [];
+      if (!current.includes(publishPath))
+        current.push(publishPath);
+      frontmatter.derived_to = current;
+    });
+  }
+  buildPublishMarkdown(sourceContent, sourcePath, absoluteAssetPath) {
+    const body = this.stripFrontMatter(sourceContent);
+    return [
+      "---",
+      "content_role: publish_package",
+      "publish_status: ready",
+      "publish_platform: xhs",
+      "publish_medium: screenshot",
+      "publish_variant: xhs_screenshot",
+      "derived_from:",
+      `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
+      `assets: ${this.yamlQuote(`files://${absoluteAssetPath}`)}`,
+      "---",
+      body
+    ].join("\n");
+  }
+  stripFrontMatter(content) {
+    if (!content.startsWith("---"))
+      return content;
+    const match = content.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+    return match ? content.slice(match[0].length) : content;
+  }
+  getPublishPath(file) {
+    const folder = this.dirname(file.path);
+    return (0, import_obsidian6.normalizePath)(folder ? `${folder}/${file.basename}_\u53D1\u5E03\u7248.md` : `${file.basename}_\u53D1\u5E03\u7248.md`);
+  }
+  dirname(path) {
+    const index = path.lastIndexOf("/");
+    return index === -1 ? "" : path.slice(0, index);
+  }
+  safeFileName(name) {
+    return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "markdown2card";
+  }
+  yamlQuote(value) {
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
   async withButtonState(button, loading, normal, action) {
     button.disabled = true;
     button.setText(loading);
     try {
       await action();
-      button.setText("\u5BFC\u51FA\u6210\u529F");
+      button.setText(this.t("exportSuccess"));
     } catch (error) {
       console.error(error);
-      button.setText("\u5BFC\u51FA\u5931\u8D25");
+      button.setText(this.t("exportFailed"));
     } finally {
       window.setTimeout(() => {
         button.disabled = false;
@@ -7118,7 +7633,7 @@ var RedView = class extends import_obsidian5.ItemView {
 };
 
 // src/main.ts
-var YanqiPlugin = class extends import_obsidian6.Plugin {
+var YanqiPlugin = class extends import_obsidian7.Plugin {
   async onload() {
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
@@ -7126,15 +7641,30 @@ var YanqiPlugin = class extends import_obsidian6.Plugin {
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
+    this.aiManager = new AiManager(this.app, this);
     RedConverter.initialize(this.app, this);
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({
       id: "open-mp-preview",
-      name: "\u6253\u5F00 markdown2card \u9884\u89C8",
+      name: "open markdown2card preview",
       callback: () => this.activateView()
     });
+    this.addCommand({
+      id: "ai-summarize-current-note",
+      name: "AI \u603B\u7ED3\u5F53\u524D\u6587\u4EF6\u4E3A\u5361\u7247\u8349\u7A3F",
+      callback: () => this.summarizeActiveFile()
+    });
     this.addRibbonIcon(MARKDOWN2CARD_ICON, "\u6253\u5F00 markdown2card \u9884\u89C8", () => this.activateView());
+    this.addRibbonIcon("sparkles", "AI \u603B\u7ED3\u5F53\u524D\u6587\u4EF6\u4E3A\u5361\u7247\u8349\u7A3F", () => this.summarizeActiveFile());
     this.addSettingTab(new RedSettingTab(this.app, this));
+  }
+  async summarizeActiveFile() {
+    try {
+      await this.aiManager.summarizeActiveFile();
+    } catch (error) {
+      console.error("AI \u603B\u7ED3\u5931\u8D25:", error);
+      new import_obsidian7.Notice(`AI \u603B\u7ED3\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`);
+    }
   }
   async activateView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);
@@ -7144,7 +7674,7 @@ var YanqiPlugin = class extends import_obsidian6.Plugin {
     }
     const rightLeaf = this.app.workspace.getRightLeaf(false);
     if (!rightLeaf) {
-      new import_obsidian6.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
+      new import_obsidian7.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
       return;
     }
     await rightLeaf.setViewState({ type: VIEW_TYPE_RED, active: true });

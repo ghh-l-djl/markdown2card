@@ -1,4 +1,6 @@
-import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, setIcon } from "obsidian";
+import { mkdir, writeFile } from "fs/promises";
+import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
+import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
@@ -11,6 +13,133 @@ import type { ThemeManager } from "./themeManager";
 export const VIEW_TYPE_RED = "note-to-red";
 
 type CustomSelectOption = { value: string; label: string };
+type UiLanguage = "en" | "zh";
+
+const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
+  en: {
+    templateLabel: "Template",
+    coverLabel: "Cover style",
+    fontLabel: "Font",
+    overview: "Overview",
+    downloadCurrent: "Download current",
+    exportAll: "Export all",
+    exporting: "Exporting...",
+    exportSuccess: "Exported",
+    exportFailed: "Export failed",
+    guide: "Guide",
+    guideText: "Guide:\n1. Content is paginated automatically to fit each card\n2. Use --- to force a page break\n3. Template controls layout, theme controls colors, cover controls the first page\n4. Click avatar, name, or footer text to edit",
+    background: "Set background image",
+    hideFooter: "Hide footer",
+    showFooter: "Show footer",
+    realtimeOff: "Disable live preview",
+    realtimeOn: "Enable live preview",
+    markdownOnly: "Only markdown files can be previewed",
+    copied: "Image copied to clipboard",
+    copyFailed: "Copy failed",
+    previewFirst: "Generate a preview first",
+    noPages: "No pages to preview",
+    overviewTitle: "Overview · {count} pages",
+    defaultTheme: "Default theme",
+    defaultTemplate: "Default template",
+    notes: "Notes",
+    xhs: "Xiaohongshu note",
+    weibo: "Weibo card",
+    wechat: "WeChat article",
+    magazine: "Magazine masthead",
+    newspaper: "Newspaper masthead",
+    quote: "Quote card",
+    terminal: "Terminal window",
+    github: "GitHub card",
+    minimalCover: "Minimal headerless",
+    signature: "Signature",
+    coverClassic: "Classic centered",
+    coverBold: "Poster",
+    coverMag: "Magazine",
+    coverNumber: "Numbered",
+    coverMin: "Minimal",
+    defaultFont: "Default font",
+    simsun: "Songti",
+    simhei: "Heiti",
+    kaiti: "Kaiti",
+    yahei: "Microsoft YaHei"
+  },
+  zh: {
+    templateLabel: "骨架模板",
+    coverLabel: "封面风格",
+    fontLabel: "字体",
+    overview: "全览",
+    downloadCurrent: "下载当前页",
+    exportAll: "导出全部页",
+    exporting: "导出中...",
+    exportSuccess: "导出成功",
+    exportFailed: "导出失败",
+    guide: "使用指南",
+    guideText: "使用指南：\n1. 内容会按卡片高度自动分页，避免长内容被截断\n2. 使用 --- 可手动强制换页\n3. 模板=骨架，主题=配色，封面=首页第1页排版\n4. 点头像/昵称/页脚文字可直接修改",
+    background: "设置背景图片",
+    hideFooter: "隐藏页脚",
+    showFooter: "显示页脚",
+    realtimeOff: "关闭实时预览状态",
+    realtimeOn: "开启实时预览状态",
+    markdownOnly: "只能预览 markdown 文本文档",
+    copied: "图片已复制到剪贴板",
+    copyFailed: "复制失败",
+    previewFirst: "请先生成预览",
+    noPages: "没有可预览的页面",
+    overviewTitle: "全览 · 全部 {count} 页",
+    defaultTheme: "默认主题",
+    defaultTemplate: "默认模板",
+    notes: "备忘录",
+    xhs: "小红书笔记",
+    weibo: "微博卡",
+    wechat: "公众号卡",
+    magazine: "杂志刊头",
+    newspaper: "报纸报头",
+    quote: "语录卡",
+    terminal: "终端窗口",
+    github: "GitHub 卡",
+    minimalCover: "极简无头",
+    signature: "纯署名",
+    coverClassic: "经典居中",
+    coverBold: "大字报",
+    coverMag: "杂志",
+    coverNumber: "编号",
+    coverMin: "极简",
+    defaultFont: "默认字体",
+    simsun: "宋体",
+    simhei: "黑体",
+    kaiti: "楷体",
+    yahei: "雅黑"
+  }
+};
+
+const TEMPLATE_LABEL_KEYS: Record<string, string> = {
+  default: "defaultTemplate",
+  notes: "notes",
+  xhs: "xhs",
+  weibo: "weibo",
+  wechat: "wechat",
+  magazine: "magazine",
+  newspaper: "newspaper",
+  quote: "quote",
+  terminal: "terminal",
+  github: "github",
+  "minimal-cover": "minimalCover",
+  signature: "signature"
+};
+
+const EN_THEME_LABELS: Record<string, string> = {
+  default: "Default theme",
+  elegant: "Elegant dark",
+  cyber: "Cyberpunk",
+  yueling: "Warm brown",
+  starry: "Starry dream",
+  ocean: "Deep ocean",
+  warm: "Warm literary",
+  forest: "Forest morning",
+  metal: "Metal tech",
+  minimal: "Minimal theme",
+  sakura: "Sakura"
+};
 
 export class RedView extends ItemView {
   currentFile: TFile | null = null;
@@ -24,7 +153,6 @@ export class RedView extends ItemView {
   fontSizeSelect: HTMLInputElement;
   navigationButtons: { prev: HTMLButtonElement; next: HTMLButtonElement; indicator: HTMLElement };
   customTemplateSelect: HTMLElement;
-  customThemeSelect: HTMLElement;
   customCoverSelect: HTMLElement;
   customFontSelect: HTMLElement;
   imgTemplateManager: ImgTemplateManager;
@@ -57,27 +185,22 @@ export class RedView extends ItemView {
     this.initializeLockButton(controls);
     this.customTemplateSelect = this.createCustomSelect(controls, "red-template-select", this.getTemplateOptions());
     this.customTemplateSelect.id = "template-select";
+    this.customTemplateSelect.dataset.label = this.t("templateLabel");
     this.onSelectChange(this.customTemplateSelect, async (value) => {
       this.imgTemplateManager.setCurrentTemplate(value);
       await this.settingsManager.updateSettings({ templateId: value });
       await this.updatePreview();
     });
-    this.customThemeSelect = this.createCustomSelect(controls, "red-theme-select", this.getThemeOptions());
-    this.customThemeSelect.id = "theme-select";
-    this.onSelectChange(this.customThemeSelect, async (value) => {
-      this.themeManager.setCurrentTheme(value);
-      await this.settingsManager.updateSettings({ themeId: value });
-      this.themeManager.applyTheme(this.previewEl);
-      await this.restoreThemeSettings(value);
-    });
     this.customCoverSelect = this.createCustomSelect(controls, "red-cover-select", this.getCoverOptions());
     this.customCoverSelect.id = "cover-select";
+    this.customCoverSelect.dataset.label = this.t("coverLabel");
     this.onSelectChange(this.customCoverSelect, async (value) => {
       await this.settingsManager.updateSettings({ coverStyle: value });
       await this.updatePreview();
     });
     this.customFontSelect = this.createCustomSelect(controls, "red-font-select", this.getFontOptions());
     this.customFontSelect.id = "font-select";
+    this.customFontSelect.dataset.label = this.t("fontLabel");
     this.onSelectChange(this.customFontSelect, async (value) => {
       this.themeManager.setFont(value);
       await this.settingsManager.updateSettings({ fontFamily: value });
@@ -89,7 +212,7 @@ export class RedView extends ItemView {
   }
 
   initializeLockButton(parent: HTMLElement): void {
-    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": "关闭实时预览状态" } });
+    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
     setIcon(this.lockButton, "lock");
     this.lockButton.addEventListener("click", () => this.togglePreviewLock());
   }
@@ -130,15 +253,14 @@ export class RedView extends ItemView {
     const active = this.settingsManager.getSettings().themeId;
     themes.forEach((theme) => {
       const chip = strip.createEl("div", { cls: "red-theme-chip", attr: { title: theme.name } });
+      chip.dataset.themeId = theme.id;
       if (theme.id === active) chip.addClass("red-theme-chip-active");
       const swatch = chip.createEl("div", { cls: "red-theme-chip-swatch" });
       swatch.style.background = this.pickColor(theme.styles.imagePreview, "#ffffff");
       swatch.createEl("div", { cls: "red-theme-chip-bar" }).style.background = this.pickColor(theme.styles.title?.h2?.content, "#222222");
       swatch.createEl("div", { cls: "red-theme-chip-dot" }).style.background = this.pickColor(theme.styles.emphasis?.strong, "#888888");
-      chip.createEl("div", { cls: "red-theme-chip-name", text: theme.name });
+      chip.createEl("div", { cls: "red-theme-chip-name", text: this.translateThemeName(theme.id, theme.name) });
       chip.addEventListener("click", async () => {
-        strip.querySelectorAll(".red-theme-chip").forEach((el) => el.removeClass("red-theme-chip-active"));
-        chip.addClass("red-theme-chip-active");
         this.themeManager.setCurrentTheme(theme.id);
         await this.settingsManager.updateSettings({ themeId: theme.id });
         this.themeManager.applyTheme(this.previewEl);
@@ -165,21 +287,21 @@ export class RedView extends ItemView {
     this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
     this.initializeFooterToggleButton(controls);
-    controls.createEl("button", { cls: "red-overview-button", text: "全览" }).addEventListener("click", () => this.openOverviewModal());
+    controls.createEl("button", { cls: "red-overview-button", text: this.t("overview") }).addEventListener("click", () => this.openOverviewModal());
     this.initializeExportButtons(controls);
   }
 
   initializeHelpButton(parent: HTMLElement): void {
-    const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": "使用指南" } });
+    const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": this.t("guide") } });
     setIcon(help, "help");
     parent.createEl("div", {
       cls: "red-help-tooltip",
-      text: "使用指南：\n1. 内容会按卡片高度自动分页，避免长内容被截断\n2. 使用 --- 可手动强制换页\n3. 模板=骨架，主题=配色，封面=首页第1页排版\n4. 点头像/昵称/页脚文字可直接修改"
+      text: this.t("guideText")
     });
   }
 
   initializeBackgroundButton(parent: HTMLElement): void {
-    const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": "设置背景图片" } });
+    const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": this.t("background") } });
     setIcon(button, "image");
     button.addEventListener("click", () => {
       new BackgroundSettingModal(this.app, async (backgroundSettings) => {
@@ -206,26 +328,29 @@ export class RedView extends ItemView {
     if (!this.footerToggleButton) return;
     const visible = this.settingsManager.getSettings().showFooter !== false;
     this.footerToggleButton.classList.toggle("red-footer-hidden", !visible);
-    this.footerToggleButton.setAttribute("aria-label", visible ? "隐藏页脚" : "显示页脚");
-    this.footerToggleButton.setAttribute("title", visible ? "隐藏页脚" : "显示页脚");
+    this.footerToggleButton.setAttribute("aria-label", visible ? this.t("hideFooter") : this.t("showFooter"));
+    this.footerToggleButton.setAttribute("title", visible ? this.t("hideFooter") : this.t("showFooter"));
   }
 
   initializeExportButtons(parent: HTMLElement): void {
-    const single = parent.createEl("button", { cls: "red-export-button", text: "下载当前页" });
+    const single = parent.createEl("button", { cls: "red-export-button", text: this.t("downloadCurrent") });
     single.addEventListener("click", async () => {
       if (!this.previewEl) return;
-      await this.withButtonState(single, "导出中...", "下载当前页", () => DownloadManager.downloadSingleImage(this.previewEl));
+      await this.withButtonState(single, this.t("exporting"), this.t("downloadCurrent"), () => this.exportToVault(false));
     });
-    this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: "导出全部页" });
+    this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: this.t("exportAll") });
     this.copyButton.addEventListener("click", async () => {
       if (!this.previewEl) return;
-      await this.withButtonState(this.copyButton, "导出中...", "导出全部页", () => DownloadManager.downloadAllImages(this.previewEl));
+      await this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
   }
 
   initializeEventListeners(): void {
     this.registerEvent(this.app.workspace.on("file-open", this.onFileOpen.bind(this)));
     this.registerEvent(this.app.vault.on("modify", this.onFileModify.bind(this)));
+    const onLanguageChanged = () => this.refreshLanguageLabels();
+    this.settingsManager.on("language-changed", onLanguageChanged);
+    this.register(() => this.settingsManager.off("language-changed", onLanguageChanged));
     this.initializeCopyButtonListener();
     this.initializeSync();
   }
@@ -239,7 +364,7 @@ export class RedView extends ItemView {
         copyButton.disabled = true;
         try {
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
-          new Notice(ok ? "图片已复制到剪贴板" : "复制失败");
+          new Notice(ok ? this.t("copied") : this.t("copyFailed"));
         } finally {
           window.setTimeout(() => { copyButton.disabled = false; }, 1000);
         }
@@ -323,7 +448,7 @@ export class RedView extends ItemView {
     this.currentImageIndex = 0;
     if (!file || file.extension !== "md") {
       this.previewEl?.empty();
-      this.previewEl?.createEl("div", { cls: "red-empty-state", text: "只能预览 markdown 文本文档" });
+      this.previewEl?.createEl("div", { cls: "red-empty-state", text: this.t("markdownOnly") });
       this.updateControlsState(false);
       return;
     }
@@ -342,7 +467,7 @@ export class RedView extends ItemView {
   async togglePreviewLock(): Promise<void> {
     this.isPreviewLocked = !this.isPreviewLocked;
     setIcon(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
-    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? "开启实时预览状态" : "关闭实时预览状态");
+    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
     if (!this.isPreviewLocked) await this.updatePreview();
   }
 
@@ -365,12 +490,12 @@ export class RedView extends ItemView {
 
   openOverviewModal(): void {
     const preview = this.previewEl?.querySelector<HTMLElement>(".red-image-preview");
-    if (!preview) { new Notice("请先生成预览"); return; }
+    if (!preview) { new Notice(this.t("previewFirst")); return; }
     const sections = Array.from(preview.querySelectorAll<HTMLElement>(".red-content-section"));
-    if (!sections.length) { new Notice("没有可预览的页面"); return; }
+    if (!sections.length) { new Notice(this.t("noPages")); return; }
     const modal = new Modal(this.app);
     modal.modalEl.addClass("red-overview-modal");
-    modal.titleEl.setText(`全览 · 全部 ${sections.length} 页`);
+    modal.titleEl.setText(this.t("overviewTitle").replace("{count}", String(sections.length)));
     const grid = modal.contentEl.createEl("div", { cls: "red-overview-grid" });
     sections.forEach((_, index) => {
       const cell = grid.createEl("div", { cls: "red-overview-cell" });
@@ -489,7 +614,7 @@ export class RedView extends ItemView {
 
   updateControlsState(enabled: boolean): void {
     if (this.lockButton) this.lockButton.disabled = !enabled;
-    [this.customTemplateSelect, this.customThemeSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
+    [this.customTemplateSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
       const select = container?.querySelector<HTMLElement>(".red-select");
       if (!select) return;
       select.classList.toggle("disabled", !enabled);
@@ -516,7 +641,11 @@ export class RedView extends ItemView {
   }
 
   async restoreTemplateSettings(value: string): Promise<void> { await this.restoreSelect(this.customTemplateSelect, value, this.getTemplateOptions()); }
-  async restoreThemeSettings(value: string): Promise<void> { await this.restoreSelect(this.customThemeSelect, value, this.getThemeOptions()); }
+  async restoreThemeSettings(value: string): Promise<void> {
+    this.containerEl.querySelectorAll<HTMLElement>(".red-theme-chip").forEach((chip) => {
+      chip.classList.toggle("red-theme-chip-active", chip.dataset.themeId === value);
+    });
+  }
 
   async restoreSelect(container: HTMLElement, value: string, options: CustomSelectOption[]): Promise<void> {
     const selected = options.find((option) => option.value === value);
@@ -562,21 +691,105 @@ export class RedView extends ItemView {
     });
   }
 
-  getThemeOptions(): CustomSelectOption[] {
-    const themes = this.settingsManager.getVisibleThemes();
-    return themes.length ? themes.map((theme) => ({ value: theme.id, label: theme.name })) : [{ value: "default", label: "默认主题" }];
+  private refreshLanguageLabels(): void {
+    if (this.customTemplateSelect) {
+      this.customTemplateSelect.dataset.label = this.t("templateLabel");
+      this.refreshSelectLabels(this.customTemplateSelect, this.getTemplateOptions());
+    }
+    if (this.customCoverSelect) {
+      this.customCoverSelect.dataset.label = this.t("coverLabel");
+      this.refreshSelectLabels(this.customCoverSelect, this.getCoverOptions());
+    }
+    if (this.customFontSelect) {
+      this.customFontSelect.dataset.label = this.t("fontLabel");
+      this.refreshSelectLabels(this.customFontSelect, this.getFontOptions());
+    }
+    this.containerEl.querySelectorAll<HTMLElement>(".red-theme-chip").forEach((chip) => {
+      const theme = this.settingsManager.getTheme(chip.dataset.themeId || "");
+      const name = chip.querySelector<HTMLElement>(".red-theme-chip-name");
+      if (theme && name) name.setText(this.translateThemeName(theme.id, theme.name));
+    });
+    this.containerEl.querySelector<HTMLButtonElement>(".red-overview-button")?.setText(this.t("overview"));
+    this.containerEl.querySelector<HTMLButtonElement>(".red-export-button:not(.red-export-primary)")?.setText(this.t("downloadCurrent"));
+    this.containerEl.querySelector<HTMLButtonElement>(".red-export-primary")?.setText(this.t("exportAll"));
+    this.containerEl.querySelector<HTMLElement>(".red-help-button")?.setAttribute("aria-label", this.t("guide"));
+    const tooltip = this.containerEl.querySelector<HTMLElement>(".red-help-tooltip");
+    if (tooltip) tooltip.setText(this.t("guideText"));
+    this.containerEl.querySelector<HTMLElement>(".red-background-button")?.setAttribute("aria-label", this.t("background"));
+    if (this.lockButton) this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
+    this.updateFooterToggleButtonState();
   }
 
-  getTemplateOptions(): CustomSelectOption[] { return this.imgTemplateManager.getImgTemplateOptions(); }
-  getFontOptions(): CustomSelectOption[] { return this.settingsManager.getFontOptions().map((font) => ({ value: font.value, label: font.label })); }
+  private refreshSelectLabels(container: HTMLElement, options: CustomSelectOption[]): void {
+    const select = container.querySelector<HTMLElement>(".red-select");
+    const value = select?.dataset.value;
+    const selected = options.find((option) => option.value === value);
+    if (selected) container.querySelector<HTMLElement>(".red-select-text")?.setText(selected.label);
+    container.querySelectorAll<HTMLElement>(".red-select-item").forEach((item) => {
+      const option = options.find((candidate) => candidate.value === item.dataset.value);
+      if (option) item.setText(option.label);
+    });
+  }
+
+  getThemeOptions(): CustomSelectOption[] {
+    const themes = this.settingsManager.getVisibleThemes();
+    return themes.length
+      ? themes.map((theme) => ({ value: theme.id, label: this.translateThemeName(theme.id, theme.name) }))
+      : [{ value: "default", label: this.t("defaultTheme") }];
+  }
+
+  getTemplateOptions(): CustomSelectOption[] {
+    return this.imgTemplateManager.getImgTemplateOptions().map((template) => ({
+      value: template.value,
+      label: this.translateTemplateName(template.value, template.label)
+    }));
+  }
+
+  getFontOptions(): CustomSelectOption[] {
+    return this.settingsManager.getFontOptions().map((font) => ({
+      value: font.value,
+      label: this.translateFontName(font.label)
+    }));
+  }
+
   getCoverOptions(): CustomSelectOption[] {
     return [
-      { value: "cover-classic", label: "经典居中" },
-      { value: "cover-bold", label: "大字报" },
-      { value: "cover-mag", label: "杂志" },
-      { value: "cover-number", label: "编号" },
-      { value: "cover-min", label: "极简" }
+      { value: "cover-classic", label: this.t("coverClassic") },
+      { value: "cover-bold", label: this.t("coverBold") },
+      { value: "cover-mag", label: this.t("coverMag") },
+      { value: "cover-number", label: this.t("coverNumber") },
+      { value: "cover-min", label: this.t("coverMin") }
     ];
+  }
+
+  private getLanguage(): UiLanguage {
+    return this.settingsManager.getSettings().uiLanguage || "en";
+  }
+
+  private t(key: string): string {
+    return UI_TEXT[this.getLanguage()][key] || UI_TEXT.en[key] || key;
+  }
+
+  private translateTemplateName(id: string, fallback: string): string {
+    const key = TEMPLATE_LABEL_KEYS[id];
+    return key ? this.t(key) : fallback;
+  }
+
+  private translateThemeName(id: string, fallback: string): string {
+    if (this.getLanguage() === "en" && EN_THEME_LABELS[id]) return EN_THEME_LABELS[id];
+    if (id === "default") return this.t("defaultTheme");
+    return fallback;
+  }
+
+  private translateFontName(label: string): string {
+    const map: Record<string, string> = {
+      "默认字体": this.t("defaultFont"),
+      "宋体": this.t("simsun"),
+      "黑体": this.t("simhei"),
+      "楷体": this.t("kaiti"),
+      "雅黑": this.t("yahei")
+    };
+    return map[label] || label;
   }
 
   private buildLineMap(): number[] {
@@ -638,15 +851,168 @@ export class RedView extends ItemView {
     }
   }
 
+  private async exportToVault(allPages: boolean): Promise<void> {
+    if (!this.currentFile) throw new Error("No active markdown file");
+    const settings = this.settingsManager.getSettings();
+    const baseName = this.safeFileName(this.currentFile.basename);
+    const exportRoot = this.resolveExportRoot(settings.exportPath || "markdown2card-exports");
+    await this.ensureExportFolder(exportRoot.path, exportRoot.isAbsolute);
+
+    let assetPath: string;
+    if (settings.exportFormat === "png-folder") {
+      const folderPath = this.joinExportPath(exportRoot, baseName);
+      await this.ensureExportFolder(folderPath, exportRoot.isAbsolute);
+      const images = allPages
+        ? await DownloadManager.renderAllPageImages(this.previewEl, baseName)
+        : await DownloadManager.renderCurrentPageImages(this.previewEl, baseName);
+      for (const image of images) {
+        await this.writeExportBlob(this.joinExportPath({ ...exportRoot, path: folderPath }, image.filename), image.blob, exportRoot.isAbsolute);
+      }
+      assetPath = folderPath;
+    } else {
+      const zipPath = this.joinExportPath(exportRoot, `${baseName}.zip`);
+      const zipBlob = allPages
+        ? await DownloadManager.renderAllImagesZip(this.previewEl, baseName)
+        : await DownloadManager.renderCurrentImagesZip(this.previewEl, baseName);
+      await this.writeExportBlob(zipPath, zipBlob, exportRoot.isAbsolute);
+      assetPath = zipPath;
+    }
+
+    if (settings.enablePostExportActions) {
+      await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
+    }
+
+    new Notice(`Exported to ${assetPath}`);
+  }
+
+  private resolveExportRoot(rawPath: string): { path: string; isAbsolute: boolean } {
+    const value = rawPath.trim() || "markdown2card-exports";
+    const isAbsolute = this.isAbsoluteExportPath(value);
+    return {
+      path: isAbsolute ? nodeNormalize(value) : normalizePath(value),
+      isAbsolute
+    };
+  }
+
+  private isAbsoluteExportPath(path: string): boolean {
+    return posix.isAbsolute(path) || win32.isAbsolute(path);
+  }
+
+  private joinExportPath(root: { path: string; isAbsolute: boolean }, child: string): string {
+    return root.isAbsolute ? nodeJoin(root.path, child) : normalizePath(`${root.path}/${child}`);
+  }
+
+  private async writeExportBlob(path: string, blob: Blob, isAbsolute: boolean): Promise<void> {
+    const arrayBuffer = await blob.arrayBuffer();
+    if (isAbsolute) {
+      await mkdir(nodeDirname(path), { recursive: true });
+      await writeFile(path, Buffer.from(arrayBuffer));
+      return;
+    }
+    await this.app.vault.adapter.writeBinary(path, arrayBuffer);
+  }
+
+  private async ensureExportFolder(path: string, isAbsolute: boolean): Promise<void> {
+    if (isAbsolute) {
+      await mkdir(path, { recursive: true });
+      return;
+    }
+    await this.ensureFolder(path);
+  }
+
+  private async ensureFolder(path: string): Promise<void> {
+    const normalized = normalizePath(path);
+    if (!normalized || normalized === "/") return;
+    const parts = normalized.split("/").filter(Boolean);
+    let current = "";
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!this.app.vault.getAbstractFileByPath(current)) {
+        await this.app.vault.createFolder(current);
+      }
+    }
+  }
+
+  private async applyPostExportActions(assetPath: string, assetPathIsAbsolute: boolean): Promise<void> {
+    if (!this.currentFile) return;
+    const sourceFile = this.currentFile;
+    const sourceContent = await this.app.vault.cachedRead(sourceFile);
+    const publishPath = this.getPublishPath(sourceFile);
+    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.app.vault.adapter.getFullPath(assetPath);
+    const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
+    const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
+
+    if (existingPublishFile instanceof TFile) {
+      await this.app.vault.modify(existingPublishFile, publishContent);
+    } else {
+      await this.ensureFolder(this.dirname(publishPath));
+      await this.app.vault.create(publishPath, publishContent);
+    }
+
+    await this.app.fileManager.processFrontMatter(sourceFile, (frontmatter) => {
+      if (frontmatter.content_role !== "source_material") {
+        frontmatter.content_role = "source_material";
+      }
+      const current = Array.isArray(frontmatter.derived_to)
+        ? frontmatter.derived_to
+        : frontmatter.derived_to
+          ? [frontmatter.derived_to]
+          : [];
+      if (!current.includes(publishPath)) current.push(publishPath);
+      frontmatter.derived_to = current;
+    });
+  }
+
+  private buildPublishMarkdown(sourceContent: string, sourcePath: string, absoluteAssetPath: string): string {
+    const body = this.stripFrontMatter(sourceContent);
+    return [
+      "---",
+      "content_role: publish_package",
+      "publish_status: ready",
+      "publish_platform: xhs",
+      "publish_medium: screenshot",
+      "publish_variant: xhs_screenshot",
+      "derived_from:",
+      `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
+      `assets: ${this.yamlQuote(`files://${absoluteAssetPath}`)}`,
+      "---",
+      body
+    ].join("\n");
+  }
+
+  private stripFrontMatter(content: string): string {
+    if (!content.startsWith("---")) return content;
+    const match = content.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+    return match ? content.slice(match[0].length) : content;
+  }
+
+  private getPublishPath(file: TFile): string {
+    const folder = this.dirname(file.path);
+    return normalizePath(folder ? `${folder}/${file.basename}_发布版.md` : `${file.basename}_发布版.md`);
+  }
+
+  private dirname(path: string): string {
+    const index = path.lastIndexOf("/");
+    return index === -1 ? "" : path.slice(0, index);
+  }
+
+  private safeFileName(name: string): string {
+    return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "markdown2card";
+  }
+
+  private yamlQuote(value: string): string {
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+  }
+
   private async withButtonState(button: HTMLButtonElement, loading: string, normal: string, action: () => Promise<void>): Promise<void> {
     button.disabled = true;
     button.setText(loading);
     try {
       await action();
-      button.setText("导出成功");
+      button.setText(this.t("exportSuccess"));
     } catch (error) {
       console.error(error);
-      button.setText("导出失败");
+      button.setText(this.t("exportFailed"));
     } finally {
       window.setTimeout(() => {
         button.disabled = false;

@@ -1259,6 +1259,25 @@
 .red-settings .settings-section.is-expanded .settings-section-content {
   display: block;
 }
+.red-community-section {
+  margin-bottom: 2rem;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background-color: var(--background-primary);
+}
+.red-community-section h4 {
+  padding: 0px 12px;
+  margin: 0 0 16px;
+  font-size: 1.2em;
+  color: var(--text-normal);
+}
+.red-settings-note {
+  padding: 0px 12px;
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
 .red-settings .theme-management {
   max-height: 400px;
   overflow-y: auto;
@@ -1912,22 +1931,22 @@
 
 /* ============================================================
    控制面板 UX 优化 — 由 Claude 追加
-   1) 三个下拉 + 封面下拉加标签  2) 字号框加宽  3) 导出按钮分主次
+   1) 下拉控件加标签  2) 字号框加宽  3) 导出按钮分主次
    ============================================================ */
 
-/* 下拉加标签:模板/主题/封面/字体,解决"分不清谁是谁" */
-#template-select, #theme-select, #cover-select, #font-select {
+/* 下拉加标签:模板/封面/字体,解决"分不清谁是谁" */
+.red-toolbar .red-controls-group {
+  align-items: flex-end !important;
+}
+
+.red-select-container[data-label] {
   display: flex !important; flex-direction: column; gap: 3px;
 }
-#template-select::before, #theme-select::before,
-#cover-select::before, #font-select::before {
+.red-select-container[data-label]::before {
+  content: attr(data-label);
   font-size: 10.5px; line-height: 1.2; letter-spacing: 0.5px;
   color: var(--text-faint, #9a9a9a); padding-left: 2px; font-weight: 600;
 }
-#template-select::before { content: "骨架模板"; }
-#theme-select::before  { content: "配色主题"; }
-#cover-select::before  { content: "封面风格"; }
-#font-select::before   { content: "字体"; }
 
 /* 字号输入框加宽,放得下 16.5 这种半号 */
 .red-font-size-input { width: 42px !important; text-align: center; }

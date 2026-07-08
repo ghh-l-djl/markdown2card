@@ -4,6 +4,11 @@ import { toBlob, toCanvas } from "html-to-image";
 export const EXPORT_PIXEL_RATIO = 3;
 export const EXPORT_SETTLE_MS = 80;
 
+export interface ExportedImage {
+  filename: string;
+  blob: Blob;
+}
+
 export class DownloadManager {
   static getExportConfig() {
     return {
@@ -16,20 +21,31 @@ export class DownloadManager {
   }
 
   static async downloadSingleImage(element: HTMLElement): Promise<void> {
-    const imageElement = element.querySelector<HTMLElement>(".red-image-preview");
-    if (!imageElement) throw new Error("找不到预览区域");
-    await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
-    const blob = await this.renderBlob(imageElement);
-    this.downloadBlob(blob, `小红书笔记_${Date.now()}.png`);
-    const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
-    mermaidBlobs.forEach((mermaid, index) => {
-      this.downloadBlob(mermaid.blob, `小红书笔记_第${index + 2}页.png`);
-    });
+    const images = await this.renderCurrentPageImages(element, "小红书笔记");
+    images.forEach((image) => this.downloadBlob(image.blob, image.filename));
   }
 
   static async downloadAllImages(element: HTMLElement): Promise<void> {
-    const zip = new JSZip();
-    const previewContainer = element.querySelector<HTMLElement>(".red-preview-container");
+    const baseName = `小红书笔记_${Date.now()}`;
+    const content = await this.renderAllImagesZip(element, baseName);
+    this.downloadBlob(content, `${baseName}.zip`);
+  }
+
+  static async renderCurrentPageImages(element: HTMLElement, baseName: string): Promise<ExportedImage[]> {
+    const imageElement = this.getImageElement(element);
+    if (!imageElement) throw new Error("找不到预览区域");
+    await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+    const images: ExportedImage[] = [{ filename: `${baseName}.png`, blob: await this.renderBlob(imageElement) }];
+    const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
+    mermaidBlobs.forEach((mermaid, index) => {
+      images.push({ filename: `${baseName}_第${index + 2}页.png`, blob: mermaid.blob });
+    });
+    return images;
+  }
+
+  static async renderAllPageImages(element: HTMLElement, baseName: string): Promise<ExportedImage[]> {
+    const images: ExportedImage[] = [];
+    const previewContainer = this.getPreviewContainer(element);
     if (!previewContainer) throw new Error("找不到预览容器");
     const sections = Array.from(previewContainer.querySelectorAll<HTMLElement>(".red-content-section"));
     const originalVisibility = sections.map((section) => ({
@@ -39,39 +55,61 @@ export class DownloadManager {
     }));
     const appendedMermaidBlobs: Blob[] = [];
 
-    for (let i = 0; i < sections.length; i++) {
-      sections.forEach((section) => {
-        section.classList.add("red-section-hidden");
-        section.classList.remove("red-section-visible", "red-section-active");
-      });
-      sections[i].classList.remove("red-section-hidden");
-      sections[i].classList.add("red-section-visible", "red-section-active");
-      await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
-      const imageElement = element.querySelector<HTMLElement>(".red-image-preview");
-      if (!imageElement) continue;
-      try {
-        zip.file(`小红书笔记_第${i + 1}页.png`, await this.renderBlob(imageElement));
-        const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
-        mermaidBlobs.forEach((mermaid) => {
-          appendedMermaidBlobs.push(mermaid.blob);
+    try {
+      for (let i = 0; i < sections.length; i++) {
+        sections.forEach((section) => {
+          section.classList.add("red-section-hidden");
+          section.classList.remove("red-section-visible", "red-section-active");
         });
-      } catch (error) {
-        console.error(`第${i + 1}页导出失败`, error);
+        sections[i].classList.remove("red-section-hidden");
+        sections[i].classList.add("red-section-visible", "red-section-active");
+        await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+        const imageElement = this.getImageElement(element);
+        if (!imageElement) continue;
+        try {
+          images.push({ filename: `${baseName}_第${i + 1}页.png`, blob: await this.renderBlob(imageElement) });
+          const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
+          mermaidBlobs.forEach((mermaid) => {
+            appendedMermaidBlobs.push(mermaid.blob);
+          });
+        } catch (error) {
+          console.error(`第${i + 1}页导出失败`, error);
+        }
       }
+    } finally {
+      sections.forEach((section, index) => {
+        section.classList.toggle("red-section-visible", originalVisibility[index].visible);
+        section.classList.toggle("red-section-hidden", originalVisibility[index].hidden);
+        section.classList.toggle("red-section-active", originalVisibility[index].active);
+      });
     }
 
     appendedMermaidBlobs.forEach((blob, index) => {
-      zip.file(`小红书笔记_第${sections.length + index + 1}页.png`, blob);
+      images.push({ filename: `${baseName}_第${sections.length + index + 1}页.png`, blob });
     });
+    return images;
+  }
 
-    sections.forEach((section, index) => {
-      section.classList.toggle("red-section-visible", originalVisibility[index].visible);
-      section.classList.toggle("red-section-hidden", originalVisibility[index].hidden);
-      section.classList.toggle("red-section-active", originalVisibility[index].active);
-    });
+  static async renderAllImagesZip(element: HTMLElement, baseName: string): Promise<Blob> {
+    return this.renderImagesZip(await this.renderAllPageImages(element, baseName));
+  }
 
-    const content = await zip.generateAsync({ type: "blob", compression: "STORE" });
-    this.downloadBlob(content, `小红书笔记_${Date.now()}.zip`);
+  static async renderCurrentImagesZip(element: HTMLElement, baseName: string): Promise<Blob> {
+    return this.renderImagesZip(await this.renderCurrentPageImages(element, baseName));
+  }
+
+  private static async renderImagesZip(images: ExportedImage[]): Promise<Blob> {
+    const zip = new JSZip();
+    images.forEach((image) => zip.file(image.filename, image.blob));
+    return zip.generateAsync({ type: "blob", compression: "STORE" });
+  }
+
+  private static getPreviewContainer(element: HTMLElement): HTMLElement | null {
+    return element.matches(".red-preview-container") ? element : element.querySelector<HTMLElement>(".red-preview-container");
+  }
+
+  private static getImageElement(element: HTMLElement): HTMLElement | null {
+    return element.matches(".red-image-preview") ? element : element.querySelector<HTMLElement>(".red-image-preview");
   }
 
   private static async renderBlob(imageElement: HTMLElement): Promise<Blob> {

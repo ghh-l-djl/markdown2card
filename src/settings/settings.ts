@@ -22,8 +22,8 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  footerLeftText: "多搜索、多动手、多思考",
-  footerRightText: "Vibe Anything",
+  footerLeftText: "hazel",
+  footerRightText: "ai-vibe.cn",
   customFonts: [
     {
       value: 'Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, "PingFang SC", Cambria, Cochin, Georgia, Times, "Times New Roman", serif',
@@ -39,7 +39,25 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
     imageUrl: "",
     scale: 1,
     position: { x: 0, y: 0 }
-  }
+  },
+  exportPath: "markdown2card-exports",
+  exportFormat: "zip",
+  enablePostExportActions: false,
+  uiLanguage: "en",
+  aiCliPath: "agy",
+  aiCliArgs: "--print",
+  aiSummaryPrompt: `请把下面这篇 Obsidian 笔记总结成适合生成知识卡片的 Markdown。
+
+要求：
+1. 保留原文最重要的观点和事实
+2. 输出一个醒目的标题
+3. 使用 3-6 个小节
+4. 语言简洁，适合直接生成卡片
+5. 不要编造原文没有的信息
+
+笔记内容：
+{{content}}`,
+  aiOutputFolder: "AI Summaries"
 };
 
 export class SettingsManager extends EventEmitter {
@@ -78,8 +96,10 @@ export class SettingsManager extends EventEmitter {
   }
 
   async updateSettings(settings: Partial<YanqiSettings>): Promise<void> {
+    const languageChanged = settings.uiLanguage && settings.uiLanguage !== this.settings.uiLanguage;
     this.settings = { ...this.settings, ...settings };
     await this.saveSettings();
+    if (languageChanged) this.emit("language-changed");
   }
 
   getAllThemes(): YanqiTheme[] {

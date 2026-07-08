@@ -101,8 +101,8 @@ export class DefaultTemplate implements ImgTemplate {
   async handleFooterTextEdit(element: HTMLElement, position: "left" | "right"): Promise<void> {
     await this.editText(element, "请输入页脚文本", async (value) => {
       await this.settingsManager.updateSettings(position === "left"
-        ? { footerLeftText: value || "多搜索、多动手、多思考" }
-        : { footerRightText: value || "Vibe Anything" });
+        ? { footerLeftText: value || "hazel" }
+        : { footerRightText: value || "ai-vibe.cn" });
     }, "red-footer-edit-input");
   }
 
