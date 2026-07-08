@@ -2930,18 +2930,25 @@ var RedConverter = class {
         continue;
       }
       const group = this.getKeepTogetherGroup(pending, probe);
-      if (group && group.length > 1 && hasBody(current)) {
-        const fitsGroup = (page, elements) => {
-          probe.replaceChildren(
-            ...Array.from(page.children).map((child) => child.cloneNode(true)),
-            ...elements.map((el) => el.cloneNode(true))
-          );
-          return !this.isOverflowing(probe);
-        };
-        if (!fitsGroup(current, group) && fitsGroup(makePage(false), group)) {
-          pages.push(current);
-          current = makePage(false);
+      if (group && group.length > 1) {
+        if (hasBody(current)) {
+          const fitsGroup = (page, elements) => {
+            probe.replaceChildren(
+              ...Array.from(page.children).map((child) => child.cloneNode(true)),
+              ...elements.map((el) => el.cloneNode(true))
+            );
+            return !this.isOverflowing(probe);
+          };
+          if (!fitsGroup(current, group) && fitsGroup(makePage(false), group)) {
+            pages.push(current);
+            current = makePage(false);
+          }
         }
+        group.forEach((el) => {
+          current.appendChild(el);
+        });
+        pending.splice(0, group.length);
+        continue;
       }
       pending.shift();
       if (fits(current, block)) {
@@ -3282,19 +3289,25 @@ var RedConverter = class {
             return null;
           continue;
         }
+        if (lines === 2) {
+          textBlockCount++;
+          if (textBlockCount > 1)
+            return null;
+          continue;
+        }
       }
       return null;
     }
     if (hasOneLineText) {
-      if (headingsCount > 1) {
-        return pending.slice(mermaidIdx - 2, mermaidIdx + 1);
-      }
+      const start = Math.max(0, mermaidIdx - 2);
+      return pending.slice(start, mermaidIdx + 1);
+    } else if (textBlockCount > 0) {
+      const start = mermaidIdx - 1;
+      return pending.slice(start, mermaidIdx + 1);
     } else {
-      if (headingsCount > 2) {
-        return pending.slice(mermaidIdx - 2, mermaidIdx + 1);
-      }
+      const start = Math.max(0, mermaidIdx - 2);
+      return pending.slice(start, mermaidIdx + 1);
     }
-    return pending.slice(0, mermaidIdx + 1);
   }
   static endsWithHeading(page) {
     const last = page.lastElementChild;
