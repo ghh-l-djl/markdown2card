@@ -555,17 +555,17 @@ export class RedConverter {
             blocks.splice(preTextIdx, 1, prefix, pageBreak, suffix);
             i += 2;
           }
-        }
-        
-        const succTextIdx = this.findSucceedingTextBlock(blocks, i + 1);
-        if (succTextIdx !== -1) {
-          const succeedingText = blocks[succTextIdx];
-          const lines = this.countTextLines(succeedingText, probe);
-          if (lines > 2) {
-            const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
-            const pageBreak = document.createElement("div");
-            pageBreak.className = "red-page-break";
-            blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
+        } else {
+          const succTextIdx = this.findSucceedingTextBlock(blocks, i + 1);
+          if (succTextIdx !== -1) {
+            const succeedingText = blocks[succTextIdx];
+            const lines = this.countTextLines(succeedingText, probe);
+            if (lines > 2) {
+              const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
+              const pageBreak = document.createElement("div");
+              pageBreak.className = "red-page-break";
+              blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
+            }
           }
         }
       }
