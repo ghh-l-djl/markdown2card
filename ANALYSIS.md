@@ -48,6 +48,8 @@ Obsidian 当前文件
   -> 可选 YAML frontmatter 后处理 / ClipboardItem 写剪贴板
 ```
 
+首次启用插件时，Obsidian 的 Markdown 后处理器和右侧视图布局可能晚于插件视图创建完成。预览链路因此带有两层稳定化处理：渲染过程用 `previewRenderId` 丢弃过期异步结果；首轮完成后如果仍检测到原始 Mermaid 代码块，或单页内容实际溢出，会延迟执行一次 settle retry。`RedConverter` 也会展平 Obsidian 的 `markdown-preview-*` 包装层，避免整篇文档被当成不可拆分块，并在 Mermaid DOM 源码为空时从原始 Markdown fence 回填源码。
+
 ## 模块
 
 - `src/main.ts`：插件入口，注册视图、命令、自定义 Ribbon 图标和设置页。

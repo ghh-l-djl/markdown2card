@@ -1,5 +1,7 @@
 # markdown2card
 
+Language: English | [简体中文](./README.zh-CN.md)
+
 This repository contains the source for the `markdown2card` Obsidian plugin.
 It renders the active Markdown note as exportable social-card images.
 
@@ -35,6 +37,6 @@ layout expected by Obsidian community plugins.
 
 There is currently no automated test script. For UI changes, run `npm run build`
 and manually verify preview generation, auto pagination, Mermaid rendering,
-template switching, theme switching, language switching, export path handling,
+first-enable rendering, template switching, theme switching, language switching, export path handling,
 ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,
 appended oversized Mermaid exports, and copy behavior in an Obsidian vault.
