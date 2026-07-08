@@ -292,7 +292,13 @@ export class RedConverter {
     probe.style.setProperty("z-index", "-1", "important");
     probe.style.setProperty("left", "0", "important");
     probe.style.setProperty("top", "0", "important");
-    probe.style.setProperty("width", `${Math.max(1, contentContainer.clientWidth)}px`, "important");
+    const style = window.getComputedStyle(section);
+    const marginLeft = parseFloat(style.marginLeft) || 0;
+    const marginRight = parseFloat(style.marginRight) || 0;
+    const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+    const borderRight = parseFloat(style.borderRightWidth) || 0;
+    const computedWidth = contentContainer.clientWidth - marginLeft - marginRight - borderLeft - borderRight;
+    probe.style.setProperty("width", `${Math.max(1, computedWidth)}px`, "important");
     probe.style.setProperty("height", `${Math.max(1, contentContainer.clientHeight)}px`, "important");
     probe.style.setProperty("overflow", "hidden", "important");
     contentContainer.appendChild(probe);
