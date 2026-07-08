@@ -1,4 +1,4 @@
-import type { App } from "obsidian";
+import { loadMermaid, type App } from "obsidian";
 import type YanqiPlugin from "./main";
 
 export class RedConverter {
@@ -14,6 +14,21 @@ export class RedConverter {
   static hasValidContent(element: HTMLElement): boolean {
     if (element.querySelectorAll(".red-content-section").length > 0) return true;
     return this.hasRenderableContent(element);
+  }
+
+  static async renderMermaidCodeBlocks(element: HTMLElement): Promise<void> {
+    await this.waitForNativeMermaid(element);
+    const blocks = this.collectMermaidCodeBlocks(element);
+    if (!blocks.length) return;
+
+    try {
+      const mermaid = await loadMermaid();
+      for (const { container, source } of blocks) {
+        await this.renderMermaidBlock(mermaid, container, source);
+      }
+    } catch (error) {
+      console.error("Mermaid 渲染失败:", error);
+    }
   }
 
   static formatContent(element: HTMLElement): void {
@@ -67,15 +82,18 @@ export class RedConverter {
     const contentContainer = previewEl.querySelector<HTMLElement>(".red-content-container");
     if (!contentContainer) return;
     await this.waitForImages(previewEl);
+    await this.waitForMermaid(previewEl);
+    this.prepareMermaidBlocks(previewEl, contentContainer);
     const sections = Array.from(contentContainer.querySelectorAll<HTMLElement>(":scope > .red-content-section"));
     if (!sections.length) return;
 
     const nextSections: HTMLElement[] = [];
     sections.forEach((section) => nextSections.push(...this.splitSectionByHeight(section, contentContainer)));
-    if (!nextSections.length) return;
+    const visibleSections = nextSections.filter((section) => this.hasRenderableContent(section));
+    if (!visibleSections.length) return;
 
     contentContainer.empty();
-    nextSections.forEach((section, index) => {
+    visibleSections.forEach((section, index) => {
       section.dataset.index = String(index);
       section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
       section.classList.toggle("red-section-active", index === 0);
@@ -85,9 +103,10 @@ export class RedConverter {
 
   private static createSectionsFromParts(content: HTMLElement[], index: number, isFirstCard: boolean): Node {
     const settings = this.plugin.settingsManager?.getSettings();
+    const renderableContent = content.filter((el) => this.isRenderableElement(el));
     const pages: HTMLElement[][] = [[]];
     let currentPage = 0;
-    content.forEach((el) => {
+    renderableContent.forEach((el) => {
       if (this.isManualPageBreak(el)) {
         currentPage++;
         pages[currentPage] = [];
@@ -96,12 +115,12 @@ export class RedConverter {
       }
     });
 
-    if (pages.length === 1 && !content.some((el) => this.isManualPageBreak(el))) {
+    if (pages.length === 1 && !renderableContent.some((el) => this.isManualPageBreak(el))) {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
       if (isFirstCard) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
-      content.forEach((el) => section.appendChild(el));
+      renderableContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
     }
@@ -165,10 +184,17 @@ export class RedConverter {
           }
 
           const trailingHeadings = this.takeTrailingHeadings(current);
-          if (trailingHeadings.length && hasBody(current)) {
-            pages.push(current);
-            current = makePage(false);
-            pending.unshift(...trailingHeadings, block);
+          if (trailingHeadings.length) {
+            if (hasBody(current)) {
+              pages.push(current);
+              current = makePage(false);
+              pending.unshift(...trailingHeadings, block);
+            } else {
+              trailingHeadings.forEach((heading) => current.appendChild(heading));
+              current.appendChild(block);
+              pages.push(current);
+              current = makePage(false);
+            }
             continue;
           }
         }
@@ -286,9 +312,69 @@ export class RedConverter {
 
   private static hasRenderableContent(element: HTMLElement): boolean {
     return Array.from(element.children).some((child) => {
-      if (child.matches("style, script")) return false;
-      return Boolean(child.textContent?.trim() || child.querySelector("img, table, pre, code, iframe, video, audio"));
+      return child instanceof HTMLElement && this.isRenderableElement(child);
     });
+  }
+
+  private static isRenderableElement(el: HTMLElement): boolean {
+    if (el.matches("style, script")) return false;
+    if (this.isManualPageBreak(el)) return true;
+    if (el.classList.contains("mermaidTooltip")) return false;
+    if (el.getAttribute("aria-hidden") === "true" && !el.textContent?.trim()) return false;
+    if (el.matches(".mermaid > style, .mermaid style")) return false;
+    return Boolean(el.textContent?.trim() || el.querySelector("img, table, pre, code, iframe, video, audio, svg"));
+  }
+
+  private static collectMermaidCodeBlocks(element: HTMLElement): Array<{ container: HTMLElement; source: string }> {
+    const blocks: Array<{ container: HTMLElement; source: string }> = [];
+    const codeBlocks = Array.from(element.querySelectorAll<HTMLElement>(
+      "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
+    ));
+    codeBlocks.forEach((code) => {
+      const pre = code.parentElement;
+      if (!pre || pre.querySelector("svg")) return;
+      const source = this.normalizeMermaidSource(code.textContent || "");
+      if (!source) return;
+      blocks.push({ container: pre, source });
+    });
+
+    return blocks;
+  }
+
+  private static normalizeMermaidSource(source: string): string {
+    return source
+      .replace(/^\s*```\s*mermaid\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .replace(/^\s*mermaid\s*\n/i, "")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/\u00A0/g, " ")
+      .trim();
+  }
+
+  private static async waitForNativeMermaid(element: HTMLElement): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 700) {
+      const rawBlocks = element.querySelectorAll("pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code");
+      if (!rawBlocks.length) return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+
+  private static async renderMermaidBlock(mermaid: any, container: HTMLElement, source: string): Promise<void> {
+    if (typeof mermaid?.render !== "function") return;
+    try {
+      if (typeof mermaid?.parse === "function") await mermaid.parse(source);
+      const id = `red-mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const result = await mermaid.render(id, source);
+      const svg = typeof result === "string" ? result : result?.svg;
+      if (!svg || /Syntax error in text/i.test(svg)) return;
+      container.className = "mermaid red-mermaid";
+      container.removeAttribute("style");
+      container.innerHTML = svg;
+      if (typeof result?.bindFunctions === "function") result.bindFunctions(container);
+    } catch (error) {
+      console.error("Mermaid 代码块渲染失败:", error);
+    }
   }
 
   private static async waitForImages(element: HTMLElement): Promise<void> {
@@ -301,6 +387,51 @@ export class RedConverter {
         img.addEventListener("error", () => resolve(), { once: true });
       });
     }));
+  }
+
+  private static async waitForMermaid(element: HTMLElement): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 1500) {
+      const mermaidBlocks = Array.from(element.querySelectorAll<HTMLElement>(".mermaid"));
+      if (!mermaidBlocks.length || mermaidBlocks.every((block) => block.querySelector("svg") || block.querySelector(".mermaid-error"))) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+    }
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+  }
+
+  private static prepareMermaidBlocks(previewEl: HTMLElement, contentContainer: HTMLElement): void {
+    const contentHeight = Math.max(1, contentContainer.clientHeight);
+    const pageInnerWidth = Math.max(1, contentContainer.clientWidth - 4);
+    previewEl.querySelectorAll<HTMLElement>(".mermaid").forEach((block) => {
+      block.classList.add("red-mermaid");
+      const svg = block.querySelector<SVGSVGElement>("svg");
+      if (!svg) return;
+
+      const width = Math.max(svg.viewBox.baseVal.width || svg.getBoundingClientRect().width || svg.clientWidth, 1);
+      const height = Math.max(svg.viewBox.baseVal.height || svg.getBoundingClientRect().height || svg.clientHeight, 1);
+      if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+      const headingReserve = this.previousContentIsHeading(block) ? 84 : 0;
+      const availableHeight = Math.max(120, contentHeight - 36 - headingReserve);
+      const availableWidth = Math.max(120, pageInnerWidth - 36);
+      const scale = Math.min(1, availableWidth / width, availableHeight / height);
+      block.style.setProperty("--red-mermaid-scale", String(scale));
+      block.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
+      block.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
+      if (scale < 1) block.classList.add("red-mermaid-scaled");
+      svg.style.width = "var(--red-mermaid-width)";
+      svg.style.height = "var(--red-mermaid-height)";
+      svg.style.maxWidth = "100%";
+      svg.style.display = "block";
+    });
+  }
+
+  private static previousContentIsHeading(block: HTMLElement): boolean {
+    let previous = block.previousElementSibling;
+    while (previous instanceof HTMLElement && !this.isRenderableElement(previous)) {
+      previous = previous.previousElementSibling;
+    }
+    return previous instanceof HTMLElement && this.isHeadingBlock(previous);
   }
 
   private static processElements(container: HTMLElement): void {

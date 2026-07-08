@@ -110,6 +110,7 @@ export class ThemeManager {
         el.parentElement.classList.add("red-image-container");
       }
     });
+    element.querySelectorAll<HTMLElement>(".red-mermaid, .mermaid").forEach((el) => this.hardenMermaidContrast(el));
   }
 
   private applyInlineStyle(el: HTMLElement | null, style?: string): void {
@@ -171,6 +172,52 @@ export class ThemeManager {
       code.style.color = color;
       code.style.backgroundColor = "transparent";
       code.style.textShadow = "none";
+    });
+  }
+
+  private hardenMermaidContrast(container: HTMLElement): void {
+    const textColor = "#1f2937";
+    const edgeColor = "#475569";
+    const nodeFill = "#eef2ff";
+    const nodeStroke = "#8b5cf6";
+    const labelBackground = "#f8fafc";
+
+    container.style.setProperty("color", textColor, "important");
+    container.style.setProperty("background-color", labelBackground, "important");
+    container.style.setProperty("text-shadow", "none", "important");
+
+    container.querySelectorAll<HTMLElement>("foreignObject, foreignObject *, .label, .label *, .nodeLabel, .nodeLabel *, .edgeLabel, .edgeLabel *").forEach((el) => {
+      el.style.setProperty("color", textColor, "important");
+      el.style.setProperty("text-shadow", "none", "important");
+      el.style.setProperty("-webkit-text-fill-color", textColor, "important");
+    });
+
+    container.querySelectorAll<SVGElement>("text, tspan").forEach((el) => {
+      el.setAttribute("fill", textColor);
+      el.style.setProperty("fill", textColor, "important");
+      el.style.setProperty("color", textColor, "important");
+      el.style.setProperty("text-shadow", "none", "important");
+    });
+
+    container.querySelectorAll<SVGElement>(".edgePath path, .flowchart-link, marker path").forEach((el) => {
+      el.setAttribute("stroke", edgeColor);
+      el.style.setProperty("stroke", edgeColor, "important");
+      if (el.tagName.toLowerCase() === "path" && el.closest("marker")) {
+        el.setAttribute("fill", edgeColor);
+        el.style.setProperty("fill", edgeColor, "important");
+      }
+    });
+
+    container.querySelectorAll<SVGElement>(".node rect, .node circle, .node ellipse, .node polygon").forEach((el) => {
+      el.setAttribute("fill", nodeFill);
+      el.setAttribute("stroke", nodeStroke);
+      el.style.setProperty("fill", nodeFill, "important");
+      el.style.setProperty("stroke", nodeStroke, "important");
+    });
+
+    container.querySelectorAll<SVGElement>(".edgeLabel rect, .labelBkg, .label-container").forEach((el) => {
+      el.setAttribute("fill", labelBackground);
+      el.style.setProperty("fill", labelBackground, "important");
     });
   }
 }

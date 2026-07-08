@@ -2735,9 +2735,10 @@ __export(main_exports, {
   default: () => YanqiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/converter.ts
+var import_obsidian = require("obsidian");
 var RedConverter = class {
   static initialize(app, plugin) {
     this.app = app;
@@ -2747,6 +2748,20 @@ var RedConverter = class {
     if (element.querySelectorAll(".red-content-section").length > 0)
       return true;
     return this.hasRenderableContent(element);
+  }
+  static async renderMermaidCodeBlocks(element) {
+    await this.waitForNativeMermaid(element);
+    const blocks = this.collectMermaidCodeBlocks(element);
+    if (!blocks.length)
+      return;
+    try {
+      const mermaid = await (0, import_obsidian.loadMermaid)();
+      for (const { container, source } of blocks) {
+        await this.renderMermaidBlock(mermaid, container, source);
+      }
+    } catch (error) {
+      console.error("Mermaid \u6E32\u67D3\u5931\u8D25:", error);
+    }
   }
   static formatContent(element) {
     const sourceChildren = Array.from(element.children);
@@ -2795,15 +2810,18 @@ var RedConverter = class {
     if (!contentContainer)
       return;
     await this.waitForImages(previewEl);
+    await this.waitForMermaid(previewEl);
+    this.prepareMermaidBlocks(previewEl, contentContainer);
     const sections = Array.from(contentContainer.querySelectorAll(":scope > .red-content-section"));
     if (!sections.length)
       return;
     const nextSections = [];
     sections.forEach((section) => nextSections.push(...this.splitSectionByHeight(section, contentContainer)));
-    if (!nextSections.length)
+    const visibleSections = nextSections.filter((section) => this.hasRenderableContent(section));
+    if (!visibleSections.length)
       return;
     contentContainer.empty();
-    nextSections.forEach((section, index) => {
+    visibleSections.forEach((section, index) => {
       section.dataset.index = String(index);
       section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
       section.classList.toggle("red-section-active", index === 0);
@@ -2813,9 +2831,10 @@ var RedConverter = class {
   static createSectionsFromParts(content, index, isFirstCard) {
     var _a;
     const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
+    const renderableContent = content.filter((el) => this.isRenderableElement(el));
     const pages = [[]];
     let currentPage = 0;
-    content.forEach((el) => {
+    renderableContent.forEach((el) => {
       if (this.isManualPageBreak(el)) {
         currentPage++;
         pages[currentPage] = [];
@@ -2823,13 +2842,13 @@ var RedConverter = class {
         pages[currentPage].push(el);
       }
     });
-    if (pages.length === 1 && !content.some((el) => this.isManualPageBreak(el))) {
+    if (pages.length === 1 && !renderableContent.some((el) => this.isManualPageBreak(el))) {
       const section = document.createElement("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
       if (isFirstCard)
         section.classList.add("red-cover", (settings == null ? void 0 : settings.coverStyle) || "cover-classic");
-      content.forEach((el) => section.appendChild(el));
+      renderableContent.forEach((el) => section.appendChild(el));
       this.processElements(section);
       return section;
     }
@@ -2891,10 +2910,17 @@ var RedConverter = class {
             continue;
           }
           const trailingHeadings = this.takeTrailingHeadings(current);
-          if (trailingHeadings.length && hasBody(current)) {
-            pages.push(current);
-            current = makePage(false);
-            pending.unshift(...trailingHeadings, block);
+          if (trailingHeadings.length) {
+            if (hasBody(current)) {
+              pages.push(current);
+              current = makePage(false);
+              pending.unshift(...trailingHeadings, block);
+            } else {
+              trailingHeadings.forEach((heading) => current.appendChild(heading));
+              current.appendChild(block);
+              pages.push(current);
+              current = makePage(false);
+            }
             continue;
           }
         }
@@ -3003,11 +3029,70 @@ var RedConverter = class {
   }
   static hasRenderableContent(element) {
     return Array.from(element.children).some((child) => {
-      var _a;
-      if (child.matches("style, script"))
-        return false;
-      return Boolean(((_a = child.textContent) == null ? void 0 : _a.trim()) || child.querySelector("img, table, pre, code, iframe, video, audio"));
+      return child instanceof HTMLElement && this.isRenderableElement(child);
     });
+  }
+  static isRenderableElement(el) {
+    var _a, _b;
+    if (el.matches("style, script"))
+      return false;
+    if (this.isManualPageBreak(el))
+      return true;
+    if (el.classList.contains("mermaidTooltip"))
+      return false;
+    if (el.getAttribute("aria-hidden") === "true" && !((_a = el.textContent) == null ? void 0 : _a.trim()))
+      return false;
+    if (el.matches(".mermaid > style, .mermaid style"))
+      return false;
+    return Boolean(((_b = el.textContent) == null ? void 0 : _b.trim()) || el.querySelector("img, table, pre, code, iframe, video, audio, svg"));
+  }
+  static collectMermaidCodeBlocks(element) {
+    const blocks = [];
+    const codeBlocks = Array.from(element.querySelectorAll(
+      "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
+    ));
+    codeBlocks.forEach((code) => {
+      const pre = code.parentElement;
+      if (!pre || pre.querySelector("svg"))
+        return;
+      const source = this.normalizeMermaidSource(code.textContent || "");
+      if (!source)
+        return;
+      blocks.push({ container: pre, source });
+    });
+    return blocks;
+  }
+  static normalizeMermaidSource(source) {
+    return source.replace(/^\s*```\s*mermaid\s*/i, "").replace(/\s*```\s*$/i, "").replace(/^\s*mermaid\s*\n/i, "").replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\u00A0/g, " ").trim();
+  }
+  static async waitForNativeMermaid(element) {
+    const started = Date.now();
+    while (Date.now() - started < 700) {
+      const rawBlocks = element.querySelectorAll("pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code");
+      if (!rawBlocks.length)
+        return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+  static async renderMermaidBlock(mermaid, container, source) {
+    if (typeof (mermaid == null ? void 0 : mermaid.render) !== "function")
+      return;
+    try {
+      if (typeof (mermaid == null ? void 0 : mermaid.parse) === "function")
+        await mermaid.parse(source);
+      const id = `red-mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const result = await mermaid.render(id, source);
+      const svg = typeof result === "string" ? result : result == null ? void 0 : result.svg;
+      if (!svg || /Syntax error in text/i.test(svg))
+        return;
+      container.className = "mermaid red-mermaid";
+      container.removeAttribute("style");
+      container.innerHTML = svg;
+      if (typeof (result == null ? void 0 : result.bindFunctions) === "function")
+        result.bindFunctions(container);
+    } catch (error) {
+      console.error("Mermaid \u4EE3\u7801\u5757\u6E32\u67D3\u5931\u8D25:", error);
+    }
   }
   static async waitForImages(element) {
     const images = Array.from(element.querySelectorAll("img"));
@@ -3021,6 +3106,50 @@ var RedConverter = class {
         img.addEventListener("error", () => resolve(), { once: true });
       });
     }));
+  }
+  static async waitForMermaid(element) {
+    const started = Date.now();
+    while (Date.now() - started < 1500) {
+      const mermaidBlocks = Array.from(element.querySelectorAll(".mermaid"));
+      if (!mermaidBlocks.length || mermaidBlocks.every((block) => block.querySelector("svg") || block.querySelector(".mermaid-error")))
+        break;
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+    }
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+  }
+  static prepareMermaidBlocks(previewEl, contentContainer) {
+    const contentHeight = Math.max(1, contentContainer.clientHeight);
+    const pageInnerWidth = Math.max(1, contentContainer.clientWidth - 4);
+    previewEl.querySelectorAll(".mermaid").forEach((block) => {
+      block.classList.add("red-mermaid");
+      const svg = block.querySelector("svg");
+      if (!svg)
+        return;
+      const width = Math.max(svg.viewBox.baseVal.width || svg.getBoundingClientRect().width || svg.clientWidth, 1);
+      const height = Math.max(svg.viewBox.baseVal.height || svg.getBoundingClientRect().height || svg.clientHeight, 1);
+      if (!svg.getAttribute("viewBox"))
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const headingReserve = this.previousContentIsHeading(block) ? 84 : 0;
+      const availableHeight = Math.max(120, contentHeight - 36 - headingReserve);
+      const availableWidth = Math.max(120, pageInnerWidth - 36);
+      const scale = Math.min(1, availableWidth / width, availableHeight / height);
+      block.style.setProperty("--red-mermaid-scale", String(scale));
+      block.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
+      block.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
+      if (scale < 1)
+        block.classList.add("red-mermaid-scaled");
+      svg.style.width = "var(--red-mermaid-width)";
+      svg.style.height = "var(--red-mermaid-height)";
+      svg.style.maxWidth = "100%";
+      svg.style.display = "block";
+    });
+  }
+  static previousContentIsHeading(block) {
+    let previous = block.previousElementSibling;
+    while (previous instanceof HTMLElement && !this.isRenderableElement(previous)) {
+      previous = previous.previousElementSibling;
+    }
+    return previous instanceof HTMLElement && this.isHeadingBlock(previous);
   }
   static processElements(container) {
     container.querySelectorAll("strong, em").forEach((el) => el.classList.add("red-emphasis"));
@@ -3087,8 +3216,8 @@ RedConverter.overflowTolerance = 2;
 var MARKDOWN2CARD_ICON = "file-image";
 
 // src/settings/SettingTab.ts
-var import_obsidian = require("obsidian");
-var ConfirmModal = class extends import_obsidian.Modal {
+var import_obsidian2 = require("obsidian");
+var ConfirmModal = class extends import_obsidian2.Modal {
   constructor(app, title, message, onConfirm) {
     super(app);
     this.message = message;
@@ -3111,7 +3240,7 @@ var ConfirmModal = class extends import_obsidian.Modal {
       await this.onConfirm();
   }
 };
-var CreateFontModal = class extends import_obsidian.Modal {
+var CreateFontModal = class extends import_obsidian2.Modal {
   constructor(app, onSubmit, existingFont) {
     super(app);
     this.onSubmit = onSubmit;
@@ -3121,9 +3250,9 @@ var CreateFontModal = class extends import_obsidian.Modal {
     this.contentEl.empty();
     this.contentEl.addClass("red-font-modal");
     this.contentEl.createEl("h3", { text: this.font.label ? "\u7F16\u8F91\u5B57\u4F53" : "\u6DFB\u52A0\u5B57\u4F53" });
-    new import_obsidian.Setting(this.contentEl).setName("\u5B57\u4F53\u540D\u79F0").setDesc("\u663E\u793A\u5728\u4E0B\u62C9\u83DC\u5355\u4E2D\u7684\u540D\u79F0").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
-    new import_obsidian.Setting(this.contentEl).setName("\u5B57\u4F53\u503C").setDesc("CSS font-family \u7684\u503C").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
-    new import_obsidian.Setting(this.contentEl).addButton((button) => button.setButtonText("\u786E\u5B9A").setCta().onClick(async () => {
+    new import_obsidian2.Setting(this.contentEl).setName("\u5B57\u4F53\u540D\u79F0").setDesc("\u663E\u793A\u5728\u4E0B\u62C9\u83DC\u5355\u4E2D\u7684\u540D\u79F0").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
+    new import_obsidian2.Setting(this.contentEl).setName("\u5B57\u4F53\u503C").setDesc("CSS font-family \u7684\u503C").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
+    new import_obsidian2.Setting(this.contentEl).addButton((button) => button.setButtonText("\u786E\u5B9A").setCta().onClick(async () => {
       if (!this.font.label || !this.font.value)
         return;
       await this.onSubmit(this.font);
@@ -3131,7 +3260,7 @@ var CreateFontModal = class extends import_obsidian.Modal {
     })).addButton((button) => button.setButtonText("\u53D6\u6D88").onClick(() => this.close()));
   }
 };
-var ThemePreviewModal = class extends import_obsidian.Modal {
+var ThemePreviewModal = class extends import_obsidian2.Modal {
   constructor(app, plugin, theme) {
     super(app);
     this.plugin = plugin;
@@ -3167,7 +3296,7 @@ var ThemePreviewModal = class extends import_obsidian.Modal {
     this.plugin.themeManager.applyTheme(container, this.theme);
   }
 };
-var CreateThemeModal = class extends import_obsidian.Modal {
+var CreateThemeModal = class extends import_obsidian2.Modal {
   constructor(app, plugin, onSubmit, existingTheme) {
     super(app);
     this.plugin = plugin;
@@ -3189,14 +3318,14 @@ var CreateThemeModal = class extends import_obsidian.Modal {
     this.contentEl.empty();
     this.contentEl.addClass("red-theme-modal");
     this.contentEl.createEl("h2", { text: this.existingTheme ? "\u7F16\u8F91\u4E3B\u9898" : "\u65B0\u5EFA\u4E3B\u9898" });
-    new import_obsidian.Setting(this.contentEl).setName("\u4E3B\u9898\u540D\u79F0").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
-    new import_obsidian.Setting(this.contentEl).setName("\u4E3B\u9898\u63CF\u8FF0").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
-    new import_obsidian.Setting(this.contentEl).setName("\u6837\u5F0F JSON").setDesc("\u4E0E\u5185\u7F6E\u4E3B\u9898 styles \u7ED3\u6784\u4E00\u81F4").addTextArea((area) => {
+    new import_obsidian2.Setting(this.contentEl).setName("\u4E3B\u9898\u540D\u79F0").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
+    new import_obsidian2.Setting(this.contentEl).setName("\u4E3B\u9898\u63CF\u8FF0").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
+    new import_obsidian2.Setting(this.contentEl).setName("\u6837\u5F0F JSON").setDesc("\u4E0E\u5185\u7F6E\u4E3B\u9898 styles \u7ED3\u6784\u4E00\u81F4").addTextArea((area) => {
       area.setValue(this.raw).onChange((value) => this.raw = value);
       area.inputEl.addClass("custom-css-input");
       area.inputEl.rows = 18;
     });
-    new import_obsidian.Setting(this.contentEl).addButton((button) => button.setButtonText("\u9884\u89C8").onClick(() => {
+    new import_obsidian2.Setting(this.contentEl).addButton((button) => button.setButtonText("\u9884\u89C8").onClick(() => {
       const theme = this.buildTheme();
       if (theme)
         new ThemePreviewModal(this.app, this.plugin, theme).open();
@@ -3226,7 +3355,7 @@ var CreateThemeModal = class extends import_obsidian.Modal {
     }
   }
 };
-var RedSettingTab = class extends import_obsidian.PluginSettingTab {
+var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -3244,26 +3373,26 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
     const section = containerEl.createDiv("settings-section");
     const header = section.createDiv("settings-section-header");
     const toggle = header.createSpan("settings-section-toggle");
-    (0, import_obsidian.setIcon)(toggle, "chevron-right");
+    (0, import_obsidian2.setIcon)(toggle, "chevron-right");
     header.createEl("h4", { text: title });
     const content = section.createDiv("settings-section-content");
     render(content);
     header.addEventListener("click", () => {
       const expanded = !section.hasClass("is-expanded");
       section.toggleClass("is-expanded", expanded);
-      (0, import_obsidian.setIcon)(toggle, expanded ? "chevron-down" : "chevron-right");
+      (0, import_obsidian2.setIcon)(toggle, expanded ? "chevron-down" : "chevron-right");
       expanded ? this.expandedSections.add(title) : this.expandedSections.delete(title);
     });
     if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(title)) {
       section.addClass("is-expanded");
-      (0, import_obsidian.setIcon)(toggle, "chevron-down");
+      (0, import_obsidian2.setIcon)(toggle, "chevron-down");
       this.expandedSections.add(title);
     }
   }
   renderBasicSettings(containerEl) {
     containerEl.createEl("h4", { text: "\u5B57\u4F53\u7BA1\u7406" });
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
-      const setting = new import_obsidian.Setting(containerEl).setName(font.label).setDesc(font.value);
+      const setting = new import_obsidian2.Setting(containerEl).setName(font.label).setDesc(font.value);
       if (!font.isPreset) {
         setting.addExtraButton((button) => button.setIcon("pencil").setTooltip("\u7F16\u8F91").onClick(() => {
           new CreateFontModal(this.app, async (updated) => {
@@ -3278,7 +3407,7 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
         }));
       }
     });
-    new import_obsidian.Setting(containerEl).addButton((button) => button.setButtonText("+ \u6DFB\u52A0\u5B57\u4F53").setCta().onClick(() => {
+    new import_obsidian2.Setting(containerEl).addButton((button) => button.setButtonText("+ \u6DFB\u52A0\u5B57\u4F53").setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
         this.display();
@@ -3287,18 +3416,18 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
   }
   renderThemeSettings(containerEl) {
     const settings = this.plugin.settingsManager.getSettings();
-    new import_obsidian.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u65F6\u95F4").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
-    new import_obsidian.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u9875\u811A").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
+    new import_obsidian2.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u65F6\u95F4").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
+    new import_obsidian2.Setting(containerEl).setName("\u662F\u5426\u663E\u793A\u9875\u811A").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
     containerEl.createEl("h4", { text: "\u4E3B\u9898\u663E\u793A" });
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
-      new import_obsidian.Setting(containerEl).setName(theme.name).setDesc(theme.description || (theme.isPreset ? "\u5185\u7F6E\u4E3B\u9898" : "\u81EA\u5B9A\u4E49\u4E3B\u9898")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName(theme.name).setDesc(theme.description || (theme.isPreset ? "\u5185\u7F6E\u4E3B\u9898" : "\u81EA\u5B9A\u4E49\u4E3B\u9898")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
         await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
         this.display();
       })).addExtraButton((button) => button.setIcon("eye").setTooltip("\u9884\u89C8").onClick(() => new ThemePreviewModal(this.app, this.plugin, theme).open()));
     });
     containerEl.createEl("h4", { text: "\u81EA\u5B9A\u4E49\u4E3B\u9898" });
     this.plugin.settingsManager.getAllThemes().filter((theme) => !theme.isPreset).forEach((theme) => {
-      new import_obsidian.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip("\u7F16\u8F91").onClick(() => {
+      new import_obsidian2.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip("\u7F16\u8F91").onClick(() => {
         new CreateThemeModal(this.app, this.plugin, async (updated) => {
           await this.plugin.settingsManager.updateTheme(theme.id, updated);
           this.display();
@@ -3310,7 +3439,7 @@ var RedSettingTab = class extends import_obsidian.PluginSettingTab {
         }).open();
       }));
     });
-    new import_obsidian.Setting(containerEl).addButton((button) => button.setButtonText("+ \u65B0\u5EFA\u4E3B\u9898").setCta().onClick(() => {
+    new import_obsidian2.Setting(containerEl).addButton((button) => button.setButtonText("+ \u65B0\u5EFA\u4E3B\u9898").setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
         this.display();
@@ -4426,6 +4555,7 @@ var ThemeManager = class {
         el.parentElement.classList.add("red-image-container");
       }
     });
+    element.querySelectorAll(".red-mermaid, .mermaid").forEach((el) => this.hardenMermaidContrast(el));
   }
   applyInlineStyle(el, style) {
     if (!el || !style)
@@ -4491,13 +4621,52 @@ var ThemeManager = class {
       code.style.textShadow = "none";
     });
   }
+  hardenMermaidContrast(container) {
+    const textColor = "#1f2937";
+    const edgeColor = "#475569";
+    const nodeFill = "#eef2ff";
+    const nodeStroke = "#8b5cf6";
+    const labelBackground = "#f8fafc";
+    container.style.setProperty("color", textColor, "important");
+    container.style.setProperty("background-color", labelBackground, "important");
+    container.style.setProperty("text-shadow", "none", "important");
+    container.querySelectorAll("foreignObject, foreignObject *, .label, .label *, .nodeLabel, .nodeLabel *, .edgeLabel, .edgeLabel *").forEach((el) => {
+      el.style.setProperty("color", textColor, "important");
+      el.style.setProperty("text-shadow", "none", "important");
+      el.style.setProperty("-webkit-text-fill-color", textColor, "important");
+    });
+    container.querySelectorAll("text, tspan").forEach((el) => {
+      el.setAttribute("fill", textColor);
+      el.style.setProperty("fill", textColor, "important");
+      el.style.setProperty("color", textColor, "important");
+      el.style.setProperty("text-shadow", "none", "important");
+    });
+    container.querySelectorAll(".edgePath path, .flowchart-link, marker path").forEach((el) => {
+      el.setAttribute("stroke", edgeColor);
+      el.style.setProperty("stroke", edgeColor, "important");
+      if (el.tagName.toLowerCase() === "path" && el.closest("marker")) {
+        el.setAttribute("fill", edgeColor);
+        el.style.setProperty("fill", edgeColor, "important");
+      }
+    });
+    container.querySelectorAll(".node rect, .node circle, .node ellipse, .node polygon").forEach((el) => {
+      el.setAttribute("fill", nodeFill);
+      el.setAttribute("stroke", nodeStroke);
+      el.style.setProperty("fill", nodeFill, "important");
+      el.style.setProperty("stroke", nodeStroke, "important");
+    });
+    container.querySelectorAll(".edgeLabel rect, .labelBkg, .label-container").forEach((el) => {
+      el.setAttribute("fill", labelBackground);
+      el.style.setProperty("fill", labelBackground, "important");
+    });
+  }
 };
 
 // src/view.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/backgroundManager.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/assets/backgrounds.ts
 var builtinBackgrounds = [
@@ -4524,7 +4693,7 @@ var BackgroundManager = class {
     element.style.backgroundRepeat = "";
   }
 };
-var BackgroundSettingModal = class extends import_obsidian2.Modal {
+var BackgroundSettingModal = class extends import_obsidian3.Modal {
   constructor(app, onSubmit, targetPreviewEl, backgroundManager, initialSettings) {
     super(app);
     this.onSubmit = onSubmit;
@@ -4569,14 +4738,14 @@ var BackgroundSettingModal = class extends import_obsidian2.Modal {
       this.initDrag();
     }
     const controls = container.createEl("div", { cls: "red-background-controls" });
-    new import_obsidian2.Setting(controls).addButton((button) => button.setButtonText("\u9009\u62E9\u56FE\u7247").onClick(() => this.handleImageUpload())).addButton((button) => button.setButtonText("\u6E05\u9664\u56FE\u7247").onClick(() => this.handleClearImage()));
-    new import_obsidian2.Setting(controls).setName("\u7F29\u653E").addSlider((slider) => {
+    new import_obsidian3.Setting(controls).addButton((button) => button.setButtonText("\u9009\u62E9\u56FE\u7247").onClick(() => this.handleImageUpload())).addButton((button) => button.setButtonText("\u6E05\u9664\u56FE\u7247").onClick(() => this.handleClearImage()));
+    new import_obsidian3.Setting(controls).setName("\u7F29\u653E").addSlider((slider) => {
       slider.setLimits(0.1, 2, 0.01).setValue(this.scale).onChange((value) => {
         this.scale = value;
         this.applyPreview();
       });
     });
-    new import_obsidian2.Setting(controls).addButton((button) => button.setButtonText("\u786E\u8BA4").setCta().onClick(async () => {
+    new import_obsidian3.Setting(controls).addButton((button) => button.setButtonText("\u786E\u8BA4").setCta().onClick(async () => {
       await this.onSubmit(this.getSettings());
       this.close();
     })).addButton((button) => button.setButtonText("\u53D6\u6D88").onClick(() => this.close()));
@@ -5601,7 +5770,7 @@ var ClipboardManager = class {
 };
 
 // src/imgTemplates/index.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var VERIFIED_ICON = `<svg viewBox="0 0 22 22"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"></path></g></svg>`;
 var DefaultTemplate = class {
   constructor(settingsManager, onSettingsUpdate) {
@@ -5680,7 +5849,7 @@ var DefaultTemplate = class {
         await this.settingsManager.updateSettings({ userAvatar: String(((_a2 = event.target) == null ? void 0 : _a2.result) || "") });
         await this.onSettingsUpdate();
       };
-      reader.onerror = () => new import_obsidian3.Notice("\u5934\u50CF\u66F4\u65B0\u5931\u8D25");
+      reader.onerror = () => new import_obsidian4.Notice("\u5934\u50CF\u66F4\u65B0\u5931\u8D25");
       reader.readAsDataURL(file);
     });
     input.click();
@@ -6001,7 +6170,7 @@ var ImgTemplateManager = class {
 
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
-var RedView = class extends import_obsidian4.ItemView {
+var RedView = class extends import_obsidian5.ItemView {
   constructor(leaf, themeManager, settingsManager) {
     super(leaf);
     this.themeManager = themeManager;
@@ -6071,7 +6240,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   initializeLockButton(parent) {
     this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": "\u5173\u95ED\u5B9E\u65F6\u9884\u89C8\u72B6\u6001" } });
-    (0, import_obsidian4.setIcon)(this.lockButton, "lock");
+    (0, import_obsidian5.setIcon)(this.lockButton, "lock");
     this.lockButton.addEventListener("click", () => this.togglePreviewLock());
   }
   initializeFontSizeControls(parent) {
@@ -6151,7 +6320,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   initializeHelpButton(parent) {
     const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": "\u4F7F\u7528\u6307\u5357" } });
-    (0, import_obsidian4.setIcon)(help, "help");
+    (0, import_obsidian5.setIcon)(help, "help");
     parent.createEl("div", {
       cls: "red-help-tooltip",
       text: "\u4F7F\u7528\u6307\u5357\uFF1A\n1. \u5185\u5BB9\u4F1A\u6309\u5361\u7247\u9AD8\u5EA6\u81EA\u52A8\u5206\u9875\uFF0C\u907F\u514D\u957F\u5185\u5BB9\u88AB\u622A\u65AD\n2. \u4F7F\u7528 --- \u53EF\u624B\u52A8\u5F3A\u5236\u6362\u9875\n3. \u6A21\u677F=\u9AA8\u67B6\uFF0C\u4E3B\u9898=\u914D\u8272\uFF0C\u5C01\u9762=\u9996\u9875\u7B2C1\u9875\u6392\u7248\n4. \u70B9\u5934\u50CF/\u6635\u79F0/\u9875\u811A\u6587\u5B57\u53EF\u76F4\u63A5\u4FEE\u6539"
@@ -6159,7 +6328,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   initializeBackgroundButton(parent) {
     const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": "\u8BBE\u7F6E\u80CC\u666F\u56FE\u7247" } });
-    (0, import_obsidian4.setIcon)(button, "image");
+    (0, import_obsidian5.setIcon)(button, "image");
     button.addEventListener("click", () => {
       new BackgroundSettingModal(this.app, async (backgroundSettings) => {
         await this.settingsManager.updateSettings({ backgroundSettings });
@@ -6171,7 +6340,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   initializeFooterToggleButton(parent) {
     this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
-    (0, import_obsidian4.setIcon)(this.footerToggleButton, "panel-bottom");
+    (0, import_obsidian5.setIcon)(this.footerToggleButton, "panel-bottom");
     this.updateFooterToggleButtonState();
     this.footerToggleButton.addEventListener("click", async () => {
       const showFooter = this.settingsManager.getSettings().showFooter === false;
@@ -6217,7 +6386,7 @@ var RedView = class extends import_obsidian4.ItemView {
         copyButton.disabled = true;
         try {
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
-          new import_obsidian4.Notice(ok ? "\u56FE\u7247\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F" : "\u590D\u5236\u5931\u8D25");
+          new import_obsidian5.Notice(ok ? "\u56FE\u7247\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F" : "\u590D\u5236\u5931\u8D25");
         } finally {
           window.setTimeout(() => {
             copyButton.disabled = false;
@@ -6256,7 +6425,8 @@ var RedView = class extends import_obsidian4.ItemView {
       return;
     this.previewEl.empty();
     const content = await this.app.vault.cachedRead(this.currentFile);
-    await import_obsidian4.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
+    await import_obsidian5.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
+    await RedConverter.renderMermaidCodeBlocks(this.previewEl);
     RedConverter.formatContent(this.previewEl);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
@@ -6305,7 +6475,7 @@ var RedView = class extends import_obsidian4.ItemView {
     }
     this.updateControlsState(true);
     this.isPreviewLocked = false;
-    (0, import_obsidian4.setIcon)(this.lockButton, "unlock");
+    (0, import_obsidian5.setIcon)(this.lockButton, "unlock");
     await this.updatePreview();
   }
   async onFileModify(file) {
@@ -6317,7 +6487,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   async togglePreviewLock() {
     this.isPreviewLocked = !this.isPreviewLocked;
-    (0, import_obsidian4.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
+    (0, import_obsidian5.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
     this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? "\u5F00\u542F\u5B9E\u65F6\u9884\u89C8\u72B6\u6001" : "\u5173\u95ED\u5B9E\u65F6\u9884\u89C8\u72B6\u6001");
     if (!this.isPreviewLocked)
       await this.updatePreview();
@@ -6345,15 +6515,15 @@ var RedView = class extends import_obsidian4.ItemView {
     var _a;
     const preview = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-image-preview");
     if (!preview) {
-      new import_obsidian4.Notice("\u8BF7\u5148\u751F\u6210\u9884\u89C8");
+      new import_obsidian5.Notice("\u8BF7\u5148\u751F\u6210\u9884\u89C8");
       return;
     }
     const sections = Array.from(preview.querySelectorAll(".red-content-section"));
     if (!sections.length) {
-      new import_obsidian4.Notice("\u6CA1\u6709\u53EF\u9884\u89C8\u7684\u9875\u9762");
+      new import_obsidian5.Notice("\u6CA1\u6709\u53EF\u9884\u89C8\u7684\u9875\u9762");
       return;
     }
-    const modal = new import_obsidian4.Modal(this.app);
+    const modal = new import_obsidian5.Modal(this.app);
     modal.modalEl.addClass("red-overview-modal");
     modal.titleEl.setText(`\u5168\u89C8 \xB7 \u5168\u90E8 ${sections.length} \u9875`);
     const grid = modal.contentEl.createEl("div", { cls: "red-overview-grid" });
@@ -6728,7 +6898,7 @@ var RedView = class extends import_obsidian4.ItemView {
   }
   syncPreviewFromEditor() {
     var _a, _b;
-    const active = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
+    const active = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
     if (!active || active.file !== this.currentFile || !active.editor)
       return;
     const focused = document.activeElement;
@@ -6787,7 +6957,7 @@ var RedView = class extends import_obsidian4.ItemView {
 };
 
 // src/main.ts
-var YanqiPlugin = class extends import_obsidian5.Plugin {
+var YanqiPlugin = class extends import_obsidian6.Plugin {
   async onload() {
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
@@ -6813,7 +6983,7 @@ var YanqiPlugin = class extends import_obsidian5.Plugin {
     }
     const rightLeaf = this.app.workspace.getRightLeaf(false);
     if (!rightLeaf) {
-      new import_obsidian5.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
+      new import_obsidian6.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
       return;
     }
     await rightLeaf.setViewState({ type: VIEW_TYPE_RED, active: true });

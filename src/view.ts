@@ -272,6 +272,7 @@ export class RedView extends ItemView {
     this.previewEl.empty();
     const content = await this.app.vault.cachedRead(this.currentFile);
     await MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
+    await RedConverter.renderMermaidCodeBlocks(this.previewEl);
     RedConverter.formatContent(this.previewEl);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {

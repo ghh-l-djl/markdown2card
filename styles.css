@@ -1115,11 +1115,13 @@
   display: block;
   margin: 1.2em auto;
   padding: 14px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 12px;
   background: #f8fafc !important;
   color: #1f2937 !important;
   border: 1px solid rgba(148, 163, 184, 0.35);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .red-content-section .red-mermaid svg,
@@ -1128,16 +1130,45 @@
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+  overflow: visible;
+}
+
+.red-content-section .red-mermaid.red-mermaid-scaled,
+.red-content-section .mermaid.red-mermaid-scaled {
+  width: calc(var(--red-mermaid-width, 100%) + 28px);
+  max-width: 100%;
+}
+
+.red-content-section .red-mermaid.red-mermaid-scaled svg,
+.red-content-section .mermaid.red-mermaid-scaled svg {
+  width: var(--red-mermaid-width, auto) !important;
+  height: var(--red-mermaid-height, auto) !important;
 }
 
 .red-content-section .red-mermaid text,
+.red-content-section .red-mermaid tspan,
 .red-content-section .red-mermaid .label,
 .red-content-section .red-mermaid .label span,
+.red-content-section .red-mermaid .nodeLabel,
+.red-content-section .red-mermaid .nodeLabel *,
+.red-content-section .red-mermaid .edgeLabel,
+.red-content-section .red-mermaid .edgeLabel *,
+.red-content-section .red-mermaid foreignObject,
+.red-content-section .red-mermaid foreignObject *,
 .red-content-section .mermaid text,
+.red-content-section .mermaid tspan,
 .red-content-section .mermaid .label,
-.red-content-section .mermaid .label span {
+.red-content-section .mermaid .label span,
+.red-content-section .mermaid .nodeLabel,
+.red-content-section .mermaid .nodeLabel *,
+.red-content-section .mermaid .edgeLabel,
+.red-content-section .mermaid .edgeLabel *,
+.red-content-section .mermaid foreignObject,
+.red-content-section .mermaid foreignObject * {
   color: #1f2937 !important;
   fill: #1f2937 !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  text-shadow: none !important;
 }
 
 .red-content-section .red-mermaid .node rect,
@@ -1157,6 +1188,15 @@
 .red-content-section .mermaid .edgePath path,
 .red-content-section .mermaid .flowchart-link {
   stroke: #475569 !important;
+}
+
+.red-content-section .red-mermaid .edgeLabel rect,
+.red-content-section .red-mermaid .labelBkg,
+.red-content-section .red-mermaid .label-container,
+.red-content-section .mermaid .edgeLabel rect,
+.red-content-section .mermaid .labelBkg,
+.red-content-section .mermaid .label-container {
+  fill: #f8fafc !important;
 }
 
 .red-preview-footer {
