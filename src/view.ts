@@ -9,6 +9,7 @@ import { ImgTemplateManager } from "./imgTemplates";
 import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
+import { AiManager } from "./aiManager";
 
 export const VIEW_TYPE_RED = "note-to-red";
 
@@ -999,7 +1000,21 @@ export class RedView extends ItemView {
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
     const publishPath = this.getPublishPath(sourceFile);
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
-    const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
+    const settings = this.settingsManager.getSettings();
+
+    let body = this.stripFrontMatter(sourceContent);
+
+    if (settings.enableAiSummary) {
+      new Notice("正在调用 Gemini 重写小红书营销文案...");
+      try {
+        body = await AiManager.rewriteContent(body, settings);
+        new Notice("AI 营销文案生成成功！");
+      } catch (error) {
+        new Notice("生成失败，将使用文章原文作为正文导出。");
+      }
+    }
+
+    const publishContent = this.buildPublishMarkdownWithBody(body, sourceFile.path, absoluteAssetPath);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
 
     if (existingPublishFile instanceof TFile) {
@@ -1028,8 +1043,7 @@ export class RedView extends ItemView {
     return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
 
-  private buildPublishMarkdown(sourceContent: string, sourcePath: string, absoluteAssetPath: string): string {
-    const body = this.stripFrontMatter(sourceContent);
+  private buildPublishMarkdownWithBody(body: string, sourcePath: string, absoluteAssetPath: string): string {
     return [
       "---",
       "content_role: publish_package",
