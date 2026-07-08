@@ -16,23 +16,28 @@ export class RedConverter {
     return this.hasRenderableContent(element);
   }
 
-  static async renderMermaidCodeBlocks(element: HTMLElement): Promise<void> {
+  static async renderMermaidCodeBlocks(element: HTMLElement, markdownSource = ""): Promise<void> {
+    const fallbackSources = this.extractMermaidSources(markdownSource);
     await this.waitForNativeMermaid(element);
-    const blocks = this.collectMermaidCodeBlocks(element);
-    if (!blocks.length) return;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const blocks = this.collectMermaidCodeBlocks(element, fallbackSources);
+      if (!blocks.length) return;
 
-    try {
-      const mermaid = await loadMermaid();
-      for (const { container, source } of blocks) {
-        await this.renderMermaidBlock(mermaid, container, source);
+      try {
+        const mermaid = await loadMermaid();
+        for (const { container, source } of blocks) {
+          await this.renderMermaidBlock(mermaid, container, source);
+        }
+        if (!this.collectMermaidCodeBlocks(element, fallbackSources).length) return;
+      } catch (error) {
+        if (attempt === 2) console.error("Mermaid 渲染失败:", error);
       }
-    } catch (error) {
-      console.error("Mermaid 渲染失败:", error);
+      await new Promise((resolve) => window.setTimeout(resolve, 180 * (attempt + 1)));
     }
   }
 
   static formatContent(element: HTMLElement): void {
-    const sourceChildren = Array.from(element.children) as HTMLElement[];
+    const sourceChildren = this.getRenderableSourceChildren(element);
     if (!this.hasRenderableContent(element)) {
       element.empty();
       element.createEl("div", {
@@ -78,11 +83,34 @@ export class RedConverter {
     element.dispatchEvent(new CustomEvent("copy-button-added", { detail: { copyButton }, bubbles: true }));
   }
 
+  private static getRenderableSourceChildren(element: HTMLElement): HTMLElement[] {
+    const children = Array.from(element.children) as HTMLElement[];
+    if (children.length === 1 && this.isMarkdownPreviewWrapper(children[0])) {
+      return this.flattenMarkdownPreviewWrappers(children[0]);
+    }
+    return children.flatMap((child) => this.isMarkdownPreviewWrapper(child) ? this.flattenMarkdownPreviewWrappers(child) : [child]);
+  }
+
+  private static flattenMarkdownPreviewWrappers(element: HTMLElement): HTMLElement[] {
+    const children = Array.from(element.children) as HTMLElement[];
+    if (!children.length) return [element];
+    return children.flatMap((child) => this.isMarkdownPreviewWrapper(child) ? this.flattenMarkdownPreviewWrappers(child) : [child]);
+  }
+
+  private static isMarkdownPreviewWrapper(element: HTMLElement): boolean {
+    return element.classList.contains("markdown-preview-sizer")
+      || element.classList.contains("markdown-preview-section")
+      || element.classList.contains("mod-header")
+      || element.classList.contains("mod-footer");
+  }
+
   static async autoPaginate(previewEl: HTMLElement): Promise<void> {
     const contentContainer = previewEl.querySelector<HTMLElement>(".red-content-container");
     if (!contentContainer) return;
+    await this.waitForLayoutBox(contentContainer);
     await this.waitForImages(previewEl);
     await this.waitForMermaid(previewEl);
+    await this.waitForLayoutBox(contentContainer);
     this.prepareMermaidBlocks(previewEl, contentContainer);
     const sections = Array.from(contentContainer.querySelectorAll<HTMLElement>(":scope > .red-content-section"));
     if (!sections.length) return;
@@ -239,6 +267,15 @@ export class RedConverter {
     return probe;
   }
 
+  private static async waitForLayoutBox(element: HTMLElement): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 20 && rect.height > 20 && element.clientWidth > 20 && element.clientHeight > 20) return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+
   private static isOverflowing(el: HTMLElement): boolean {
     return el.scrollHeight > el.clientHeight + this.overflowTolerance;
   }
@@ -325,20 +362,32 @@ export class RedConverter {
     return Boolean(el.textContent?.trim() || el.querySelector("img, table, pre, code, iframe, video, audio, svg"));
   }
 
-  private static collectMermaidCodeBlocks(element: HTMLElement): Array<{ container: HTMLElement; source: string }> {
+  private static collectMermaidCodeBlocks(element: HTMLElement, fallbackSources: string[] = []): Array<{ container: HTMLElement; source: string }> {
     const blocks: Array<{ container: HTMLElement; source: string }> = [];
     const codeBlocks = Array.from(element.querySelectorAll<HTMLElement>(
       "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
     ));
-    codeBlocks.forEach((code) => {
+    codeBlocks.forEach((code, index) => {
       const pre = code.parentElement;
       if (!pre || pre.querySelector("svg")) return;
-      const source = this.normalizeMermaidSource(code.textContent || "");
+      const domSource = this.normalizeMermaidSource(code.textContent || "");
+      const source = domSource || fallbackSources[index] || "";
       if (!source) return;
       blocks.push({ container: pre, source });
     });
 
     return blocks;
+  }
+
+  private static extractMermaidSources(markdown: string): string[] {
+    const sources: string[] = [];
+    const fence = /(^|\n)(`{3,}|~{3,})[ \t]*mermaid[^\n]*\n([\s\S]*?)(?:\n\2[ \t]*(?=\n|$))/gi;
+    let match: RegExpExecArray | null;
+    while ((match = fence.exec(markdown)) !== null) {
+      const source = this.normalizeMermaidSource(match[3] || "");
+      if (source) sources.push(source);
+    }
+    return sources;
   }
 
   private static normalizeMermaidSource(source: string): string {

@@ -2749,22 +2749,29 @@ var RedConverter = class {
       return true;
     return this.hasRenderableContent(element);
   }
-  static async renderMermaidCodeBlocks(element) {
+  static async renderMermaidCodeBlocks(element, markdownSource = "") {
+    const fallbackSources = this.extractMermaidSources(markdownSource);
     await this.waitForNativeMermaid(element);
-    const blocks = this.collectMermaidCodeBlocks(element);
-    if (!blocks.length)
-      return;
-    try {
-      const mermaid = await (0, import_obsidian.loadMermaid)();
-      for (const { container, source } of blocks) {
-        await this.renderMermaidBlock(mermaid, container, source);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const blocks = this.collectMermaidCodeBlocks(element, fallbackSources);
+      if (!blocks.length)
+        return;
+      try {
+        const mermaid = await (0, import_obsidian.loadMermaid)();
+        for (const { container, source } of blocks) {
+          await this.renderMermaidBlock(mermaid, container, source);
+        }
+        if (!this.collectMermaidCodeBlocks(element, fallbackSources).length)
+          return;
+      } catch (error) {
+        if (attempt === 2)
+          console.error("Mermaid \u6E32\u67D3\u5931\u8D25:", error);
       }
-    } catch (error) {
-      console.error("Mermaid \u6E32\u67D3\u5931\u8D25:", error);
+      await new Promise((resolve) => window.setTimeout(resolve, 180 * (attempt + 1)));
     }
   }
   static formatContent(element) {
-    const sourceChildren = Array.from(element.children);
+    const sourceChildren = this.getRenderableSourceChildren(element);
     if (!this.hasRenderableContent(element)) {
       element.empty();
       element.createEl("div", {
@@ -2805,12 +2812,30 @@ var RedConverter = class {
     element.appendChild(previewContainer);
     element.dispatchEvent(new CustomEvent("copy-button-added", { detail: { copyButton }, bubbles: true }));
   }
+  static getRenderableSourceChildren(element) {
+    const children = Array.from(element.children);
+    if (children.length === 1 && this.isMarkdownPreviewWrapper(children[0])) {
+      return this.flattenMarkdownPreviewWrappers(children[0]);
+    }
+    return children.flatMap((child) => this.isMarkdownPreviewWrapper(child) ? this.flattenMarkdownPreviewWrappers(child) : [child]);
+  }
+  static flattenMarkdownPreviewWrappers(element) {
+    const children = Array.from(element.children);
+    if (!children.length)
+      return [element];
+    return children.flatMap((child) => this.isMarkdownPreviewWrapper(child) ? this.flattenMarkdownPreviewWrappers(child) : [child]);
+  }
+  static isMarkdownPreviewWrapper(element) {
+    return element.classList.contains("markdown-preview-sizer") || element.classList.contains("markdown-preview-section") || element.classList.contains("mod-header") || element.classList.contains("mod-footer");
+  }
   static async autoPaginate(previewEl) {
     const contentContainer = previewEl.querySelector(".red-content-container");
     if (!contentContainer)
       return;
+    await this.waitForLayoutBox(contentContainer);
     await this.waitForImages(previewEl);
     await this.waitForMermaid(previewEl);
+    await this.waitForLayoutBox(contentContainer);
     this.prepareMermaidBlocks(previewEl, contentContainer);
     const sections = Array.from(contentContainer.querySelectorAll(":scope > .red-content-section"));
     if (!sections.length)
@@ -2960,6 +2985,15 @@ var RedConverter = class {
     contentContainer.appendChild(probe);
     return probe;
   }
+  static async waitForLayoutBox(element) {
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 20 && rect.height > 20 && element.clientWidth > 20 && element.clientHeight > 20)
+        return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
   static isOverflowing(el) {
     return el.scrollHeight > el.clientHeight + this.overflowTolerance;
   }
@@ -3046,21 +3080,33 @@ var RedConverter = class {
       return false;
     return Boolean(((_b = el.textContent) == null ? void 0 : _b.trim()) || el.querySelector("img, table, pre, code, iframe, video, audio, svg"));
   }
-  static collectMermaidCodeBlocks(element) {
+  static collectMermaidCodeBlocks(element, fallbackSources = []) {
     const blocks = [];
     const codeBlocks = Array.from(element.querySelectorAll(
       "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
     ));
-    codeBlocks.forEach((code) => {
+    codeBlocks.forEach((code, index) => {
       const pre = code.parentElement;
       if (!pre || pre.querySelector("svg"))
         return;
-      const source = this.normalizeMermaidSource(code.textContent || "");
+      const domSource = this.normalizeMermaidSource(code.textContent || "");
+      const source = domSource || fallbackSources[index] || "";
       if (!source)
         return;
       blocks.push({ container: pre, source });
     });
     return blocks;
+  }
+  static extractMermaidSources(markdown) {
+    const sources = [];
+    const fence = /(^|\n)(`{3,}|~{3,})[ \t]*mermaid[^\n]*\n([\s\S]*?)(?:\n\2[ \t]*(?=\n|$))/gi;
+    let match;
+    while ((match = fence.exec(markdown)) !== null) {
+      const source = this.normalizeMermaidSource(match[3] || "");
+      if (source)
+        sources.push(source);
+    }
+    return sources;
   }
   static normalizeMermaidSource(source) {
     return source.replace(/^\s*```\s*mermaid\s*/i, "").replace(/\s*```\s*$/i, "").replace(/^\s*mermaid\s*\n/i, "").replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\u00A0/g, " ").trim();
@@ -6511,6 +6557,7 @@ var RedView = class extends import_obsidian5.ItemView {
     this.currentImageIndex = 0;
     this.backgroundManager = new BackgroundManager();
     this.syncInitialized = false;
+    this.previewRenderId = 0;
     this.imgTemplateManager = new ImgTemplateManager(settingsManager, this.updatePreview.bind(this), themeManager);
   }
   getViewType() {
@@ -6530,6 +6577,7 @@ var RedView = class extends import_obsidian5.ItemView {
     this.initializePreviewArea(container);
     this.initializeBottomBar(container);
     this.initializeEventListeners();
+    await this.waitForWorkspaceLayout();
     await this.onFileOpen(this.app.workspace.getActiveFile());
   }
   async initializeToolbar(container) {
@@ -6748,13 +6796,20 @@ var RedView = class extends import_obsidian5.ItemView {
       timer = window.setTimeout(() => this.syncPreviewFromEditor(), 180);
     });
   }
-  async updatePreview() {
+  async updatePreview(options = {}) {
     if (!this.currentFile)
       return;
+    const renderId = ++this.previewRenderId;
     this.previewEl.empty();
     const content = await this.app.vault.cachedRead(this.currentFile);
+    if (renderId !== this.previewRenderId)
+      return;
     await import_obsidian5.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
-    await RedConverter.renderMermaidCodeBlocks(this.previewEl);
+    if (renderId !== this.previewRenderId)
+      return;
+    await RedConverter.renderMermaidCodeBlocks(this.previewEl, content);
+    if (renderId !== this.previewRenderId)
+      return;
     RedConverter.formatContent(this.previewEl);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
@@ -6762,7 +6817,11 @@ var RedView = class extends import_obsidian5.ItemView {
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
       await this.waitForPreviewLayout();
+      if (renderId !== this.previewRenderId)
+        return;
       await RedConverter.autoPaginate(this.previewEl);
+      if (renderId !== this.previewRenderId)
+        return;
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
       this.setupImageZoom();
@@ -6776,12 +6835,68 @@ var RedView = class extends import_obsidian5.ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+    if (valid && !options.settleRetry)
+      this.scheduleSettledRetry(renderId);
   }
   async waitForPreviewLayout() {
+    await this.waitForWorkspaceLayout();
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     const fonts = document.fonts;
     if (fonts == null ? void 0 : fonts.ready)
       await fonts.ready.catch(() => void 0);
+    await this.waitForPreviewStyles();
+    await this.waitForContentBox();
+  }
+  async waitForWorkspaceLayout() {
+    await new Promise((resolve) => this.app.workspace.onLayoutReady(resolve));
+  }
+  async waitForContentBox() {
+    var _a;
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const contentContainer = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-content-container");
+      if (!contentContainer)
+        return;
+      const rect = contentContainer.getBoundingClientRect();
+      if (rect.width > 20 && rect.height > 20 && contentContainer.clientWidth > 20 && contentContainer.clientHeight > 20)
+        return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+  async waitForPreviewStyles() {
+    var _a, _b;
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const imagePreview = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-image-preview");
+      const contentContainer = (_b = this.previewEl) == null ? void 0 : _b.querySelector(".red-content-container");
+      if (!imagePreview || !contentContainer)
+        return;
+      const imageStyles = getComputedStyle(imagePreview);
+      const contentStyles = getComputedStyle(contentContainer);
+      if (imageStyles.display === "flex" && contentStyles.position === "relative")
+        return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+  scheduleSettledRetry(renderId) {
+    window.setTimeout(async () => {
+      if (renderId !== this.previewRenderId || !this.currentFile)
+        return;
+      const issue = this.detectSettledRenderIssue();
+      if (issue.needsRerender)
+        await this.updatePreview({ settleRetry: true });
+    }, 900);
+  }
+  detectSettledRenderIssue() {
+    const rawMermaidCount = this.previewEl.querySelectorAll(
+      "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
+    ).length;
+    const sections = Array.from(this.previewEl.querySelectorAll(".red-content-section"));
+    const active = sections.find((section) => section.classList.contains("red-section-active")) || sections[0];
+    const activeOverflow = Boolean(active && active.scrollHeight > active.clientHeight + 2);
+    const needsRerender = rawMermaidCount > 0 || sections.length === 1 && activeOverflow;
+    const reason = rawMermaidCount > 0 ? "raw-mermaid" : sections.length === 1 && activeOverflow ? "single-page-overflow" : "none";
+    return { needsRerender, reason, rawMermaidCount, sectionCount: sections.length, activeOverflow };
   }
   syncFooterLayout() {
     var _a;
@@ -7416,7 +7531,7 @@ var RedView = class extends import_obsidian5.ItemView {
     const sourceFile = this.currentFile;
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
     const publishPath = this.getPublishPath(sourceFile);
-    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.app.vault.adapter.getFullPath(assetPath);
+    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
     if (existingPublishFile instanceof import_obsidian5.TFile) {
@@ -7434,6 +7549,10 @@ var RedView = class extends import_obsidian5.ItemView {
         current.push(publishPath);
       frontmatter.derived_to = current;
     });
+  }
+  getAdapterFullPath(path) {
+    const adapter = this.app.vault.adapter;
+    return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
   buildPublishMarkdown(sourceContent, sourcePath, absoluteAssetPath) {
     const body = this.stripFrontMatter(sourceContent);

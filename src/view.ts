@@ -158,6 +158,7 @@ export class RedView extends ItemView {
   imgTemplateManager: ImgTemplateManager;
   backgroundManager = new BackgroundManager();
   private syncInitialized = false;
+  private previewRenderId = 0;
 
   constructor(leaf: WorkspaceLeaf, private themeManager: ThemeManager, private settingsManager: SettingsManager) {
     super(leaf);
@@ -176,6 +177,7 @@ export class RedView extends ItemView {
     this.initializePreviewArea(container);
     this.initializeBottomBar(container);
     this.initializeEventListeners();
+    await this.waitForWorkspaceLayout();
     await this.onFileOpen(this.app.workspace.getActiveFile());
   }
 
@@ -393,12 +395,16 @@ export class RedView extends ItemView {
     });
   }
 
-  async updatePreview(): Promise<void> {
+  async updatePreview(options: { settleRetry?: boolean } = {}): Promise<void> {
     if (!this.currentFile) return;
+    const renderId = ++this.previewRenderId;
     this.previewEl.empty();
     const content = await this.app.vault.cachedRead(this.currentFile);
+    if (renderId !== this.previewRenderId) return;
     await MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
-    await RedConverter.renderMermaidCodeBlocks(this.previewEl);
+    if (renderId !== this.previewRenderId) return;
+    await RedConverter.renderMermaidCodeBlocks(this.previewEl, content);
+    if (renderId !== this.previewRenderId) return;
     RedConverter.formatContent(this.previewEl);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
@@ -406,7 +412,9 @@ export class RedView extends ItemView {
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
       await this.waitForPreviewLayout();
+      if (renderId !== this.previewRenderId) return;
       await RedConverter.autoPaginate(this.previewEl);
+      if (renderId !== this.previewRenderId) return;
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
       this.setupImageZoom();
@@ -419,12 +427,64 @@ export class RedView extends ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+    if (valid && !options.settleRetry) this.scheduleSettledRetry(renderId);
   }
 
   private async waitForPreviewLayout(): Promise<void> {
+    await this.waitForWorkspaceLayout();
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
     if (fonts?.ready) await fonts.ready.catch(() => undefined);
+    await this.waitForPreviewStyles();
+    await this.waitForContentBox();
+  }
+
+  private async waitForWorkspaceLayout(): Promise<void> {
+    await new Promise<void>((resolve) => this.app.workspace.onLayoutReady(resolve));
+  }
+
+  private async waitForContentBox(): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const contentContainer = this.previewEl?.querySelector<HTMLElement>(".red-content-container");
+      if (!contentContainer) return;
+      const rect = contentContainer.getBoundingClientRect();
+      if (rect.width > 20 && rect.height > 20 && contentContainer.clientWidth > 20 && contentContainer.clientHeight > 20) return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+
+  private async waitForPreviewStyles(): Promise<void> {
+    const started = Date.now();
+    while (Date.now() - started < 1200) {
+      const imagePreview = this.previewEl?.querySelector<HTMLElement>(".red-image-preview");
+      const contentContainer = this.previewEl?.querySelector<HTMLElement>(".red-content-container");
+      if (!imagePreview || !contentContainer) return;
+      const imageStyles = getComputedStyle(imagePreview);
+      const contentStyles = getComputedStyle(contentContainer);
+      if (imageStyles.display === "flex" && contentStyles.position === "relative") return;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    }
+  }
+
+  private scheduleSettledRetry(renderId: number): void {
+    window.setTimeout(async () => {
+      if (renderId !== this.previewRenderId || !this.currentFile) return;
+      const issue = this.detectSettledRenderIssue();
+      if (issue.needsRerender) await this.updatePreview({ settleRetry: true });
+    }, 900);
+  }
+
+  private detectSettledRenderIssue(): { needsRerender: boolean; reason: string; rawMermaidCount: number; sectionCount: number; activeOverflow: boolean } {
+    const rawMermaidCount = this.previewEl.querySelectorAll(
+      "pre > code.language-mermaid, pre > code[class*='language-mermaid'], pre.language-mermaid > code"
+    ).length;
+    const sections = Array.from(this.previewEl.querySelectorAll<HTMLElement>(".red-content-section"));
+    const active = sections.find((section) => section.classList.contains("red-section-active")) || sections[0];
+    const activeOverflow = Boolean(active && active.scrollHeight > active.clientHeight + 2);
+    const needsRerender = rawMermaidCount > 0 || (sections.length === 1 && activeOverflow);
+    const reason = rawMermaidCount > 0 ? "raw-mermaid" : sections.length === 1 && activeOverflow ? "single-page-overflow" : "none";
+    return { needsRerender, reason, rawMermaidCount, sectionCount: sections.length, activeOverflow };
   }
 
   private syncFooterLayout(): void {
@@ -938,7 +998,7 @@ export class RedView extends ItemView {
     const sourceFile = this.currentFile;
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
     const publishPath = this.getPublishPath(sourceFile);
-    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.app.vault.adapter.getFullPath(assetPath);
+    const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
 
@@ -961,6 +1021,11 @@ export class RedView extends ItemView {
       if (!current.includes(publishPath)) current.push(publishPath);
       frontmatter.derived_to = current;
     });
+  }
+
+  private getAdapterFullPath(path: string): string {
+    const adapter = this.app.vault.adapter as typeof this.app.vault.adapter & { getFullPath?: (path: string) => string };
+    return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
 
   private buildPublishMarkdown(sourceContent: string, sourcePath: string, absoluteAssetPath: string): string {
