@@ -33,7 +33,9 @@ Obsidian 当前文件
   -> RedConverter.renderMermaidCodeBlocks
   -> RedConverter.formatContent
   -> ImgTemplateManager.applyTemplate
+  -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
+  -> RedView.waitForPreviewLayout
   -> RedConverter.autoPaginate
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout

@@ -1,4 +1,4 @@
-import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
+import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
@@ -231,8 +231,9 @@ export class RedView extends ItemView {
   }
 
   initializeCopyButtonListener(): void {
-    const handler = async (event: CustomEvent) => {
-      const { copyButton } = event.detail || {};
+    const handler: EventListener = async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { copyButton } = customEvent.detail || {};
       if (!copyButton) return;
       copyButton.addEventListener("click", async () => {
         copyButton.disabled = true;
@@ -244,8 +245,8 @@ export class RedView extends ItemView {
         }
       });
     };
-    this.containerEl.addEventListener("copy-button-added", handler as EventListener);
-    this.register(() => this.containerEl.removeEventListener("copy-button-added", handler as EventListener));
+    this.containerEl.addEventListener("copy-button-added", handler);
+    this.register(() => this.containerEl.removeEventListener("copy-button-added", handler));
   }
 
   initializeSync(): void {
@@ -277,7 +278,9 @@ export class RedView extends ItemView {
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
+      this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
+      await this.waitForPreviewLayout();
       await RedConverter.autoPaginate(this.previewEl);
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
@@ -291,6 +294,12 @@ export class RedView extends ItemView {
     }
     this.updateControlsState(valid);
     this.updateNavigationState();
+  }
+
+  private async waitForPreviewLayout(): Promise<void> {
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+    if (fonts?.ready) await fonts.ready.catch(() => undefined);
   }
 
   private syncFooterLayout(): void {
@@ -324,7 +333,7 @@ export class RedView extends ItemView {
     await this.updatePreview();
   }
 
-  async onFileModify(file: TFile): Promise<void> {
+  async onFileModify(file: TAbstractFile): Promise<void> {
     if (file !== this.currentFile || this.isPreviewLocked) return;
     if (this.updateTimer) window.clearTimeout(this.updateTimer);
     this.updateTimer = window.setTimeout(() => this.updatePreview(), 500);
@@ -547,7 +556,10 @@ export class RedView extends ItemView {
   }
 
   onSelectChange(container: HTMLElement, callback: (value: string) => void | Promise<void>): void {
-    container.querySelector(".red-select")?.addEventListener("change", (event: CustomEvent) => callback(event.detail.value));
+    container.querySelector(".red-select")?.addEventListener("change", (event: Event) => {
+      const customEvent = event as CustomEvent<{ value: string }>;
+      return callback(customEvent.detail.value);
+    });
   }
 
   getThemeOptions(): CustomSelectOption[] {
