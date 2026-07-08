@@ -62,7 +62,10 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     simsun: "Songti",
     simhei: "Heiti",
     kaiti: "Kaiti",
-    yahei: "Microsoft YaHei"
+    yahei: "Microsoft YaHei",
+    aiRewriting: "Calling Gemini to rewrite Xiaohongshu marketing copy...",
+    aiRewriteSuccess: "AI marketing copy generated successfully!",
+    aiRewriteFailed: "AI rewriting failed. Exporting using original text."
   },
   zh: {
     templateLabel: "骨架模板",
@@ -109,7 +112,10 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     simsun: "宋体",
     simhei: "黑体",
     kaiti: "楷体",
-    yahei: "雅黑"
+    yahei: "雅黑",
+    aiRewriting: "正在调用 Gemini 重写小红书营销文案...",
+    aiRewriteSuccess: "AI 营销文案生成成功！",
+    aiRewriteFailed: "AI 重写失败，将使用文章原文作为正文导出。"
   }
 };
 
@@ -1005,12 +1011,12 @@ export class RedView extends ItemView {
     let body = this.stripFrontMatter(sourceContent);
 
     if (settings.enableAiSummary) {
-      new Notice("正在调用 Gemini 重写小红书营销文案...");
+      new Notice(this.t("aiRewriting"));
       try {
         body = await AiManager.rewriteContent(body, settings);
-        new Notice("AI 营销文案生成成功！");
+        new Notice(this.t("aiRewriteSuccess"));
       } catch (error) {
-        new Notice("生成失败，将使用文章原文作为正文导出。");
+        new Notice(this.t("aiRewriteFailed"));
       }
     }
 
