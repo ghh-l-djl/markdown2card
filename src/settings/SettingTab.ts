@@ -284,11 +284,26 @@ export class RedSettingTab extends PluginSettingTab {
             ? "输入您的 Gemini API 密钥 (从 Google AI Studio 获取)"
             : "Enter your Gemini API key (obtained from Google AI Studio)"
           )
+          .addText((text) => {
+            text.inputEl.type = "password";
+            text.setPlaceholder("AIzaSy...")
+              .setValue(settings.geminiApiKey)
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+              });
+          });
+
+        new Setting(containerEl)
+          .setName(isZh ? "Gemini API 地址" : "API Proxy / Base URL")
+          .setDesc(isZh 
+            ? "自定义 Gemini API 的基础请求地址或反代地址"
+            : "Custom Gemini API base URL or proxy endpoint URL"
+          )
           .addText((text) => text
-            .setPlaceholder("AIzaSy...")
-            .setValue(settings.geminiApiKey)
+            .setPlaceholder("https://generativelanguage.googleapis.com")
+            .setValue(settings.geminiApiUrl || "")
             .onChange((value) => {
-              this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+              this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
             }));
 
         new Setting(containerEl)

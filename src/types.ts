@@ -72,6 +72,7 @@ export interface YanqiSettings {
   uiLanguage: "en" | "zh";
   enableAiSummary: boolean;
   geminiApiKey: string;
+  geminiApiUrl: string;
   geminiModel: string;
   aiPromptTemplate: string;
 }

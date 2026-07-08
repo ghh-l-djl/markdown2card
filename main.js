@@ -2735,7 +2735,7 @@ __export(main_exports, {
   default: () => YanqiPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/converter.ts
 var import_obsidian = require("obsidian");
@@ -3475,7 +3475,45 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
     const settings = this.plugin.settingsManager.getSettings();
     new import_obsidian2.Setting(containerEl).setName("Export path").setDesc("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.").addText((text) => text.setPlaceholder("markdown2card-exports").setValue(settings.exportPath).onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
     new import_obsidian2.Setting(containerEl).setName("Export format").setDesc("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.").addDropdown((dropdown) => dropdown.addOption("zip", "Zip archive").addOption("png-folder", "PNG folder").setValue(settings.exportFormat).onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value })));
-    new import_obsidian2.Setting(containerEl).setName("Post-export actions").setDesc("After export, mark the source note as source material, create a publish-ready note, and link the exported assets.").addToggle((toggle) => toggle.setValue(settings.enablePostExportActions).onChange((value) => this.plugin.settingsManager.updateSettings({ enablePostExportActions: value })));
+    const isZh = settings.uiLanguage === "zh";
+    new import_obsidian2.Setting(containerEl).setName(isZh ? "\u542F\u7528\u5BFC\u51FA\u540E\u7F6E\u64CD\u4F5C" : "Post-export actions").setDesc(
+      isZh ? "\u5BFC\u51FA\u540E\u81EA\u52A8\u5728\u6E90\u6587\u4EF6\u540C\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A\u53D1\u5E03\u7248MD\u6587\u4EF6" : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
+    ).addToggle((toggle) => toggle.setValue(settings.enablePostExportActions).onChange((value) => {
+      this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
+      this.display();
+    }));
+    if (settings.enablePostExportActions) {
+      containerEl.createEl("h3", { text: isZh ? "AI \u603B\u7ED3\u4E0E\u91CD\u5199\u8BBE\u7F6E" : "AI Summary & Rewrite Settings" });
+      new import_obsidian2.Setting(containerEl).setName(isZh ? "\u542F\u7528 AI \u667A\u80FD\u91CD\u5199" : "Enable AI Rewrite").setDesc(
+        isZh ? "\u4F7F\u7528 Gemini \u81EA\u52A8\u5C06\u5BFC\u51FA\u6587\u4EF6\u7684\u6B63\u6587\u91CD\u5199\u4E3A\u5C0F\u7EA2\u4E66\u7B49\u8425\u9500\u98CE\u683C\u6587\u6848" : "Use Gemini to automatically rewrite the exported note body into marketing copy like Xiaohongshu style"
+      ).addToggle((toggle) => toggle.setValue(settings.enableAiSummary).onChange((value) => {
+        this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
+        this.display();
+      }));
+      if (settings.enableAiSummary) {
+        new import_obsidian2.Setting(containerEl).setName("Gemini API Key").setDesc(
+          isZh ? "\u8F93\u5165\u60A8\u7684 Gemini API \u5BC6\u94A5 (\u4ECE Google AI Studio \u83B7\u53D6)" : "Enter your Gemini API key (obtained from Google AI Studio)"
+        ).addText((text) => {
+          text.inputEl.type = "password";
+          text.setPlaceholder("AIzaSy...").setValue(settings.geminiApiKey).onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+          });
+        });
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini API \u5730\u5740" : "API Proxy / Base URL").setDesc(
+          isZh ? "\u81EA\u5B9A\u4E49 Gemini API \u7684\u57FA\u7840\u8BF7\u6C42\u5730\u5740\u6216\u53CD\u4EE3\u5730\u5740" : "Custom Gemini API base URL or proxy endpoint URL"
+        ).addText((text) => text.setPlaceholder("https://generativelanguage.googleapis.com").setValue(settings.geminiApiUrl || "").onChange((value) => {
+          this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
+        }));
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini \u6A21\u578B" : "Gemini Model").setDesc(isZh ? "\u9009\u62E9\u91CD\u5199\u4F7F\u7528\u7684 Gemini \u6A21\u578B" : "Select the Gemini model to use for rewriting").addDropdown((dropdown) => dropdown.addOption("gemini-1.5-flash", isZh ? "Gemini 1.5 Flash (\u5FEB\u901F/\u7ECF\u6D4E)" : "Gemini 1.5 Flash (Fast/Eco)").addOption("gemini-1.5-pro", isZh ? "Gemini 1.5 Pro (\u9AD8\u8D28\u91CF/\u9AD8\u63A8\u7406\u80FD\u529B)" : "Gemini 1.5 Pro (High Quality/High Reasoning)").setValue(settings.geminiModel).onChange((value) => {
+          this.plugin.settingsManager.updateSettings({ geminiModel: value });
+        }));
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u63D0\u793A\u8BCD\u6A21\u677F (Prompt)" : "AI Prompt Template").setDesc(
+          isZh ? "\u81EA\u5B9A\u4E49\u91CD\u5199\u63D0\u793A\u8BCD\u3002\u4F7F\u7528 ${content} \u4EE3\u8868\u6587\u7AE0\u539F\u6587\u3002" : "Customize the rewrite prompt. Use ${content} to represent the source article text."
+        ).addTextArea((textArea) => textArea.setPlaceholder(isZh ? "\u8F93\u5165 AI Prompt..." : "Enter AI Prompt...").setValue(settings.aiPromptTemplate).onChange((value) => {
+          this.plugin.settingsManager.updateSettings({ aiPromptTemplate: value });
+        }));
+      }
+    }
   }
   renderThemeSettings(containerEl) {
     containerEl.createEl("h4", { text: "Visible themes" });
@@ -4360,7 +4398,22 @@ var DEFAULT_SETTINGS = {
   exportPath: "markdown2card-exports",
   exportFormat: "zip",
   enablePostExportActions: false,
-  uiLanguage: "en"
+  uiLanguage: "en",
+  enableAiSummary: false,
+  geminiApiKey: "",
+  geminiApiUrl: "https://generativelanguage.googleapis.com",
+  geminiModel: "gemini-1.5-flash",
+  aiPromptTemplate: `\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u7684\u5C0F\u7EA2\u4E66\u7206\u6B3E\u6587\u6848\u4E13\u5BB6\u3002\u8BF7\u9605\u8BFB\u4EE5\u4E0B\u6587\u7AE0\u6B63\u6587\uFF0C\u5E76\u5C06\u5176\u91CD\u5199\u4E3A\u4E00\u7BC7\u7B26\u5408\u5C0F\u7EA2\u4E66\u98CE\u683C\u7684\u5438\u5F15\u4EBA\u7684\u7206\u6B3E\u7B14\u8BB0\u6B63\u6587\u3002
+
+\u8981\u6C42\uFF1A
+1. \u5438\u5F15\u4EBA\u7684\u6807\u9898\uFF1A\u8BBE\u8BA1\u4E00\u4E2A\u5E26\u6709\u60C5\u7EEA\u4EF7\u503C\u3001\u5438\u5F15\u773C\u7403\u7684\u7206\u6B3E\u6807\u9898\u3002
+2. \u7ED3\u6784\u6E05\u6670\uFF1A\u4F7F\u7528\u6BB5\u843D\u3001\u5C0F\u6807\u9898\u6216 Emoji \u8868\u60C5\u8FDB\u884C\u5408\u7406\u6392\u7248\uFF0C\u8BA9\u6587\u5B57\u6709\u547C\u5438\u611F\u3002
+3. \u8BED\u6C14\u751F\u52A8\uFF1A\u4F7F\u7528\u6D3B\u6CFC\u3001\u5145\u6EE1\u5E72\u8D27\u3001\u771F\u8BDA\u5206\u4EAB\u7684\u8BED\u6C14\uFF0C\u5584\u7528\u5C0F\u7EA2\u4E66\u5E38\u7528\u8BED\uFF0C\u5982\u201C\u59D0\u59B9\u4EEC\u201D\u3001\u201C\u5E72\u8D27\u9884\u8B66\u201D\u3001\u201C\u7EDD\u7EDD\u5B50\u201D\u7B49\uFF0C\u4F46\u8981\u81EA\u7136\u3002
+4. \u5305\u542B Tag\uFF1A\u5728\u7ED3\u5C3E\u52A0\u4E0A 3-5 \u4E2A\u9AD8\u70ED\u5EA6\u7684\u5C0F\u7EA2\u4E66\u76F8\u5173\u8BDD\u9898\u6807\u7B7E\uFF08\u5982 #\u5E72\u8D27\u5206\u4EAB #\u5B66\u4E60\u6253\u5361 \u7B49\uFF09\u3002
+5. \u5B57\u6570\u63A7\u5236\uFF1A\u5B57\u6570\u5728 400-800 \u5B57\u5DE6\u53F3\uFF0C\u4FDD\u6301\u7CBE\u70BC\u3002
+
+\u4EE5\u4E0B\u662F\u6587\u7AE0\u539F\u6587\uFF1A
+\${content}`
 };
 var SettingsManager = class extends import_events.EventEmitter {
   constructor(plugin) {
@@ -4783,7 +4836,7 @@ var ThemeManager = class {
 // src/view.ts
 var import_promises = require("fs/promises");
 var import_path = require("path");
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/backgroundManager.ts
 var import_obsidian3 = require("obsidian");
@@ -6421,6 +6474,56 @@ var ImgTemplateManager = class {
   }
 };
 
+// src/aiManager.ts
+var import_obsidian5 = require("obsidian");
+var AiManager = class {
+  static async rewriteContent(content, settings) {
+    var _a, _b, _c, _d, _e;
+    const { geminiApiKey, geminiModel, aiPromptTemplate } = settings;
+    const isZh = settings.uiLanguage === "zh";
+    if (!geminiApiKey) {
+      throw new Error(isZh ? "\u8BF7\u5728\u63D2\u4EF6\u8BBE\u7F6E\u4E2D\u914D\u7F6E Gemini API Key" : "Please configure Gemini API Key in plugin settings");
+    }
+    const prompt = aiPromptTemplate.replaceAll("${content}", content);
+    let baseUrl = (settings.geminiApiUrl || "https://generativelanguage.googleapis.com").trim();
+    baseUrl = baseUrl.replace(/\/+$/, "");
+    const url = `${baseUrl}/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
+    try {
+      const response = await (0, import_obsidian5.requestUrl)({
+        url,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
+      });
+      if (response.status !== 200) {
+        throw new Error(`Gemini API returned status ${response.status}: ${response.text}`);
+      }
+      const json = response.json;
+      const generatedText = (_e = (_d = (_c = (_b = (_a = json == null ? void 0 : json.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text;
+      if (!generatedText) {
+        throw new Error("Gemini API returned an empty response structure");
+      }
+      return generatedText.trim();
+    } catch (error) {
+      console.error("Gemini request failed:", error);
+      const errMsg = error.status !== void 0 || error.text !== void 0 ? `Status ${error.status}: ${error.text || error.message || ""}` : error.message || String(error);
+      throw new Error(errMsg);
+    }
+  }
+};
+
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
 var UI_TEXT = {
@@ -6469,7 +6572,10 @@ var UI_TEXT = {
     simsun: "Songti",
     simhei: "Heiti",
     kaiti: "Kaiti",
-    yahei: "Microsoft YaHei"
+    yahei: "Microsoft YaHei",
+    aiRewriting: "Calling Gemini to rewrite Xiaohongshu marketing copy...",
+    aiRewriteSuccess: "AI marketing copy generated successfully!",
+    aiRewriteFailed: "AI rewriting failed. Exporting using original text."
   },
   zh: {
     templateLabel: "\u9AA8\u67B6\u6A21\u677F",
@@ -6516,7 +6622,10 @@ var UI_TEXT = {
     simsun: "\u5B8B\u4F53",
     simhei: "\u9ED1\u4F53",
     kaiti: "\u6977\u4F53",
-    yahei: "\u96C5\u9ED1"
+    yahei: "\u96C5\u9ED1",
+    aiRewriting: "\u6B63\u5728\u8C03\u7528 Gemini \u91CD\u5199\u5C0F\u7EA2\u4E66\u8425\u9500\u6587\u6848...",
+    aiRewriteSuccess: "AI \u8425\u9500\u6587\u6848\u751F\u6210\u6210\u529F\uFF01",
+    aiRewriteFailed: "AI \u91CD\u5199\u5931\u8D25\uFF0C\u5C06\u4F7F\u7528\u6587\u7AE0\u539F\u6587\u4F5C\u4E3A\u6B63\u6587\u5BFC\u51FA\u3002"
   }
 };
 var TEMPLATE_LABEL_KEYS = {
@@ -6546,7 +6655,7 @@ var EN_THEME_LABELS = {
   minimal: "Minimal theme",
   sakura: "Sakura"
 };
-var RedView = class extends import_obsidian5.ItemView {
+var RedView = class extends import_obsidian6.ItemView {
   constructor(leaf, themeManager, settingsManager) {
     super(leaf);
     this.themeManager = themeManager;
@@ -6613,7 +6722,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeLockButton(parent) {
     this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
-    (0, import_obsidian5.setIcon)(this.lockButton, "lock");
+    (0, import_obsidian6.setIcon)(this.lockButton, "lock");
     this.lockButton.addEventListener("click", () => this.togglePreviewLock());
   }
   initializeFontSizeControls(parent) {
@@ -6692,7 +6801,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeHelpButton(parent) {
     const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": this.t("guide") } });
-    (0, import_obsidian5.setIcon)(help, "help");
+    (0, import_obsidian6.setIcon)(help, "help");
     parent.createEl("div", {
       cls: "red-help-tooltip",
       text: this.t("guideText")
@@ -6700,7 +6809,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeBackgroundButton(parent) {
     const button = parent.createEl("button", { cls: "red-background-button", attr: { "aria-label": this.t("background") } });
-    (0, import_obsidian5.setIcon)(button, "image");
+    (0, import_obsidian6.setIcon)(button, "image");
     button.addEventListener("click", () => {
       new BackgroundSettingModal(this.app, async (backgroundSettings) => {
         await this.settingsManager.updateSettings({ backgroundSettings });
@@ -6712,7 +6821,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   initializeFooterToggleButton(parent) {
     this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
-    (0, import_obsidian5.setIcon)(this.footerToggleButton, "panel-bottom");
+    (0, import_obsidian6.setIcon)(this.footerToggleButton, "panel-bottom");
     this.updateFooterToggleButtonState();
     this.footerToggleButton.addEventListener("click", async () => {
       const showFooter = this.settingsManager.getSettings().showFooter === false;
@@ -6762,7 +6871,7 @@ var RedView = class extends import_obsidian5.ItemView {
         copyButton.disabled = true;
         try {
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
-          new import_obsidian5.Notice(ok ? this.t("copied") : this.t("copyFailed"));
+          new import_obsidian6.Notice(ok ? this.t("copied") : this.t("copyFailed"));
         } finally {
           window.setTimeout(() => {
             copyButton.disabled = false;
@@ -6804,7 +6913,7 @@ var RedView = class extends import_obsidian5.ItemView {
     const content = await this.app.vault.cachedRead(this.currentFile);
     if (renderId !== this.previewRenderId)
       return;
-    await import_obsidian5.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
+    await import_obsidian6.MarkdownRenderer.render(this.app, content, this.previewEl, this.currentFile.path, this);
     if (renderId !== this.previewRenderId)
       return;
     await RedConverter.renderMermaidCodeBlocks(this.previewEl, content);
@@ -6926,7 +7035,7 @@ var RedView = class extends import_obsidian5.ItemView {
     }
     this.updateControlsState(true);
     this.isPreviewLocked = false;
-    (0, import_obsidian5.setIcon)(this.lockButton, "unlock");
+    (0, import_obsidian6.setIcon)(this.lockButton, "unlock");
     await this.updatePreview();
   }
   async onFileModify(file) {
@@ -6938,7 +7047,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   async togglePreviewLock() {
     this.isPreviewLocked = !this.isPreviewLocked;
-    (0, import_obsidian5.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
+    (0, import_obsidian6.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
     this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
     if (!this.isPreviewLocked)
       await this.updatePreview();
@@ -6966,15 +7075,15 @@ var RedView = class extends import_obsidian5.ItemView {
     var _a;
     const preview = (_a = this.previewEl) == null ? void 0 : _a.querySelector(".red-image-preview");
     if (!preview) {
-      new import_obsidian5.Notice(this.t("previewFirst"));
+      new import_obsidian6.Notice(this.t("previewFirst"));
       return;
     }
     const sections = Array.from(preview.querySelectorAll(".red-content-section"));
     if (!sections.length) {
-      new import_obsidian5.Notice(this.t("noPages"));
+      new import_obsidian6.Notice(this.t("noPages"));
       return;
     }
-    const modal = new import_obsidian5.Modal(this.app);
+    const modal = new import_obsidian6.Modal(this.app);
     modal.modalEl.addClass("red-overview-modal");
     modal.titleEl.setText(this.t("overviewTitle").replace("{count}", String(sections.length)));
     const grid = modal.contentEl.createEl("div", { cls: "red-overview-grid" });
@@ -7432,7 +7541,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   syncPreviewFromEditor() {
     var _a, _b;
-    const active = this.app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView);
+    const active = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
     if (!active || active.file !== this.currentFile || !active.editor)
       return;
     const focused = document.activeElement;
@@ -7480,13 +7589,13 @@ var RedView = class extends import_obsidian5.ItemView {
     if (settings.enablePostExportActions) {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
-    new import_obsidian5.Notice(`Exported to ${assetPath}`);
+    new import_obsidian6.Notice(`Exported to ${assetPath}`);
   }
   resolveExportRoot(rawPath) {
     const value = rawPath.trim() || "markdown2card-exports";
     const isAbsolute = this.isAbsoluteExportPath(value);
     return {
-      path: isAbsolute ? (0, import_path.normalize)(value) : (0, import_obsidian5.normalizePath)(value),
+      path: isAbsolute ? (0, import_path.normalize)(value) : (0, import_obsidian6.normalizePath)(value),
       isAbsolute
     };
   }
@@ -7494,7 +7603,7 @@ var RedView = class extends import_obsidian5.ItemView {
     return import_path.posix.isAbsolute(path) || import_path.win32.isAbsolute(path);
   }
   joinExportPath(root, child) {
-    return root.isAbsolute ? (0, import_path.join)(root.path, child) : (0, import_obsidian5.normalizePath)(`${root.path}/${child}`);
+    return root.isAbsolute ? (0, import_path.join)(root.path, child) : (0, import_obsidian6.normalizePath)(`${root.path}/${child}`);
   }
   async writeExportBlob(path, blob, isAbsolute) {
     const arrayBuffer = await blob.arrayBuffer();
@@ -7513,7 +7622,7 @@ var RedView = class extends import_obsidian5.ItemView {
     await this.ensureFolder(path);
   }
   async ensureFolder(path) {
-    const normalized = (0, import_obsidian5.normalizePath)(path);
+    const normalized = (0, import_obsidian6.normalizePath)(path);
     if (!normalized || normalized === "/")
       return;
     const parts = normalized.split("/").filter(Boolean);
@@ -7532,9 +7641,20 @@ var RedView = class extends import_obsidian5.ItemView {
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
     const publishPath = this.getPublishPath(sourceFile);
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
-    const publishContent = this.buildPublishMarkdown(sourceContent, sourceFile.path, absoluteAssetPath);
+    const settings = this.settingsManager.getSettings();
+    let body = this.stripFrontMatter(sourceContent);
+    if (settings.enableAiSummary && body.trim()) {
+      new import_obsidian6.Notice(this.t("aiRewriting"));
+      try {
+        body = await AiManager.rewriteContent(body, settings);
+        new import_obsidian6.Notice(this.t("aiRewriteSuccess"));
+      } catch (error) {
+        new import_obsidian6.Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);
+      }
+    }
+    const publishContent = this.buildPublishMarkdownWithBody(body, sourceFile.path, absoluteAssetPath);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
-    if (existingPublishFile instanceof import_obsidian5.TFile) {
+    if (existingPublishFile instanceof import_obsidian6.TFile) {
       await this.app.vault.modify(existingPublishFile, publishContent);
     } else {
       await this.ensureFolder(this.dirname(publishPath));
@@ -7554,8 +7674,7 @@ var RedView = class extends import_obsidian5.ItemView {
     const adapter = this.app.vault.adapter;
     return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
-  buildPublishMarkdown(sourceContent, sourcePath, absoluteAssetPath) {
-    const body = this.stripFrontMatter(sourceContent);
+  buildPublishMarkdownWithBody(body, sourcePath, absoluteAssetPath) {
     return [
       "---",
       "content_role: publish_package",
@@ -7578,7 +7697,7 @@ var RedView = class extends import_obsidian5.ItemView {
   }
   getPublishPath(file) {
     const folder = this.dirname(file.path);
-    return (0, import_obsidian5.normalizePath)(folder ? `${folder}/${file.basename}_\u53D1\u5E03\u7248.md` : `${file.basename}_\u53D1\u5E03\u7248.md`);
+    return (0, import_obsidian6.normalizePath)(folder ? `${folder}/${file.basename}_\u53D1\u5E03\u7248.md` : `${file.basename}_\u53D1\u5E03\u7248.md`);
   }
   dirname(path) {
     const index = path.lastIndexOf("/");
@@ -7626,7 +7745,7 @@ var RedView = class extends import_obsidian5.ItemView {
 };
 
 // src/main.ts
-var YanqiPlugin = class extends import_obsidian6.Plugin {
+var YanqiPlugin = class extends import_obsidian7.Plugin {
   async onload() {
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
@@ -7652,7 +7771,7 @@ var YanqiPlugin = class extends import_obsidian6.Plugin {
     }
     const rightLeaf = this.app.workspace.getRightLeaf(false);
     if (!rightLeaf) {
-      new import_obsidian6.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
+      new import_obsidian7.Notice("\u65E0\u6CD5\u521B\u5EFA\u89C6\u56FE\u9762\u677F");
       return;
     }
     await rightLeaf.setViewState({ type: VIEW_TYPE_RED, active: true });

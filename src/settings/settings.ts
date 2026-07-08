@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   uiLanguage: "en",
   enableAiSummary: false,
   geminiApiKey: "",
+  geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-1.5-flash",
   aiPromptTemplate: `你是一个资深的小红书爆款文案专家。请阅读以下文章正文，并将其重写为一篇符合小红书风格的吸引人的爆款笔记正文。
 

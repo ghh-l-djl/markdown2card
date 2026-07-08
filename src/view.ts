@@ -1010,13 +1010,13 @@ export class RedView extends ItemView {
 
     let body = this.stripFrontMatter(sourceContent);
 
-    if (settings.enableAiSummary) {
+    if (settings.enableAiSummary && body.trim()) {
       new Notice(this.t("aiRewriting"));
       try {
         body = await AiManager.rewriteContent(body, settings);
         new Notice(this.t("aiRewriteSuccess"));
-      } catch (error) {
-        new Notice(this.t("aiRewriteFailed"));
+      } catch (error: any) {
+        new Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);
       }
     }
 
