@@ -220,7 +220,7 @@ export class RedConverter {
           return !this.isOverflowing(probe);
         };
         
-        if (!fitsGroup(current, group)) {
+        if (!fitsGroup(current, group) && fitsGroup(makePage(false), group)) {
           pages.push(current);
           current = makePage(false);
         }
@@ -359,7 +359,7 @@ export class RedConverter {
   }
 
   private static isPageBreakMarker(el: HTMLElement): boolean {
-    return el.classList.contains("red-page-break") || el.tagName === "HR";
+    return el.classList.contains("red-page-break") || this.isManualPageBreak(el);
   }
 
   private static measureLineMetrics(block: HTMLElement, probe: HTMLElement): { lineHeight: number; paddingHeight: number } {
@@ -496,7 +496,7 @@ export class RedConverter {
 
   private static findPrecedingTextBlock(arr: HTMLElement[], startIdx: number): number {
     for (let j = startIdx; j >= 0; j--) {
-      if (this.isMermaidBlock(arr[j]) || this.isPageBreakMarker(arr[j])) {
+      if (this.isMermaidBlock(arr[j]) || this.isPageBreakMarker(arr[j]) || this.isHeadingBlock(arr[j])) {
         break;
       }
       if (this.isSplittableTextBlock(arr[j])) {
@@ -526,24 +526,29 @@ export class RedConverter {
         if (preTextIdx !== -1) {
           const precedingText = blocks[preTextIdx];
           const lines = this.countTextLines(precedingText, probe);
-          if (lines > 1) {
+          if (lines === 2) {
+            const pageBreak = document.createElement("div");
+            pageBreak.className = "red-page-break";
+            blocks.splice(preTextIdx, 0, pageBreak);
+            i += 1;
+          } else if (lines > 2) {
             const [prefix, suffix] = this.splitTextBlockToLastNLines(precedingText, 2, probe);
             const pageBreak = document.createElement("div");
             pageBreak.className = "red-page-break";
             blocks.splice(preTextIdx, 1, prefix, pageBreak, suffix);
             i += 2;
           }
-        } else {
-          const succTextIdx = this.findSucceedingTextBlock(blocks, i + 1);
-          if (succTextIdx !== -1) {
-            const succeedingText = blocks[succTextIdx];
-            const lines = this.countTextLines(succeedingText, probe);
-            if (lines > 2) {
-              const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
-              const pageBreak = document.createElement("div");
-              pageBreak.className = "red-page-break";
-              blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
-            }
+        }
+        
+        const succTextIdx = this.findSucceedingTextBlock(blocks, i + 1);
+        if (succTextIdx !== -1) {
+          const succeedingText = blocks[succTextIdx];
+          const lines = this.countTextLines(succeedingText, probe);
+          if (lines > 2) {
+            const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
+            const pageBreak = document.createElement("div");
+            pageBreak.className = "red-page-break";
+            blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
           }
         }
       }
