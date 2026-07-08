@@ -9,7 +9,7 @@ It renders the active Markdown note as exportable social-card images.
 - Converts Markdown into fixed-ratio image cards with live preview.
 - Automatically paginates long content by the actual rendered card height, so content is not silently clipped.
 - Supports manual page breaks with `---`.
-- Renders Mermaid diagrams into card-safe SVG blocks, including dark-theme contrast fixes and auto scaling for tall diagrams.
+- Renders Mermaid diagrams into card-safe SVG blocks, including dark-theme contrast fixes, auto scaling for oversized diagrams, and appended original-size Mermaid exports when a diagram would exceed the card.
 - Provides multiple image templates, including default, notes, Xiaohongshu, Weibo, WeChat, magazine, quote, terminal, GitHub, and signature styles.
 - Supports theme switching, cover styles, custom fonts, background images, footer visibility, image crop/zoom, table scaling, current-page export, all-pages ZIP export, and clipboard copy.
 
@@ -31,4 +31,5 @@ layout expected by Obsidian community plugins.
 
 There is currently no automated test script. For UI changes, run `npm run build`
 and manually verify preview generation, auto pagination, Mermaid rendering,
-template switching, theme switching, export, and copy behavior in an Obsidian vault.
+template switching, theme switching, export, appended oversized Mermaid exports,
+and copy behavior in an Obsidian vault.
