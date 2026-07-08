@@ -192,9 +192,41 @@ export class RedConverter {
       return !this.isOverflowing(probe);
     };
 
+    // Preprocess blocks to apply Mermaid pagination rules
     const pending = body.map((el) => el.cloneNode(true) as HTMLElement);
+    this.preprocessMermaidBlocks(pending, probe);
+
     while (pending.length) {
-      const block = pending.shift()!;
+      const block = pending[0];
+
+      // Handle page break marker
+      if (this.isPageBreakMarker(block)) {
+        pending.shift();
+        if (hasBody(current)) {
+          pages.push(current);
+          current = makePage(false);
+        }
+        continue;
+      }
+
+      // Handle keep-together group
+      const group = this.getKeepTogetherGroup(pending, probe);
+      if (group && group.length > 1 && hasBody(current)) {
+        const fitsGroup = (page: HTMLElement, elements: HTMLElement[]): boolean => {
+          probe.replaceChildren(
+            ...Array.from(page.children).map((child) => child.cloneNode(true)),
+            ...elements.map((el) => el.cloneNode(true))
+          );
+          return !this.isOverflowing(probe);
+        };
+        
+        if (!fitsGroup(current, group)) {
+          pages.push(current);
+          current = makePage(false);
+        }
+      }
+
+      pending.shift();
       if (fits(current, block)) {
         current.appendChild(block);
         continue;

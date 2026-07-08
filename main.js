@@ -2918,8 +2918,32 @@ var RedConverter = class {
       return !this.isOverflowing(probe);
     };
     const pending = body.map((el) => el.cloneNode(true));
+    this.preprocessMermaidBlocks(pending, probe);
     while (pending.length) {
-      const block = pending.shift();
+      const block = pending[0];
+      if (this.isPageBreakMarker(block)) {
+        pending.shift();
+        if (hasBody(current)) {
+          pages.push(current);
+          current = makePage(false);
+        }
+        continue;
+      }
+      const group = this.getKeepTogetherGroup(pending, probe);
+      if (group && group.length > 1 && hasBody(current)) {
+        const fitsGroup = (page, elements) => {
+          probe.replaceChildren(
+            ...Array.from(page.children).map((child) => child.cloneNode(true)),
+            ...elements.map((el) => el.cloneNode(true))
+          );
+          return !this.isOverflowing(probe);
+        };
+        if (!fitsGroup(current, group)) {
+          pages.push(current);
+          current = makePage(false);
+        }
+      }
+      pending.shift();
       if (fits(current, block)) {
         current.appendChild(block);
         continue;
