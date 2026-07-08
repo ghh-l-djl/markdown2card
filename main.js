@@ -3435,6 +3435,10 @@ var RedConverter = class {
   static prepareMermaidBlocks(previewEl, contentContainer) {
     const contentHeight = Math.max(1, contentContainer.clientHeight);
     const pageInnerWidth = Math.max(1, contentContainer.clientWidth - 4);
+    const tempProbe = this.createMeasureSection(
+      contentContainer.querySelector(".red-content-section") || contentContainer,
+      contentContainer
+    );
     previewEl.querySelectorAll(".mermaid").forEach((block) => {
       block.classList.add("red-mermaid");
       const svg = block.querySelector("svg");
@@ -3444,8 +3448,54 @@ var RedConverter = class {
       const height = Math.max(svg.viewBox.baseVal.height || svg.getBoundingClientRect().height || svg.clientHeight, 1);
       if (!svg.getAttribute("viewBox"))
         svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      const headingReserve = this.previousContentIsHeading(block) ? 84 : 0;
-      const availableHeight = Math.max(120, contentHeight - 36 - headingReserve);
+      let precedingText = null;
+      let precedingHeadingsCount = 0;
+      let prev = block.previousElementSibling;
+      while (prev instanceof HTMLElement) {
+        if (prev.classList.contains("mermaid") || prev.tagName === "HR") {
+          break;
+        }
+        if (this.isHeadingBlock(prev)) {
+          precedingHeadingsCount++;
+        } else if (this.isSplittableTextBlock(prev)) {
+          precedingText = prev;
+          break;
+        }
+        prev = prev.previousElementSibling;
+      }
+      let reserveHeight = 0;
+      if (precedingText) {
+        const lines = this.countTextLines(precedingText, tempProbe);
+        if (lines === 1) {
+          reserveHeight = 28 + (precedingHeadingsCount > 0 ? 84 : 0);
+        } else {
+          reserveHeight = 56;
+        }
+      } else if (precedingHeadingsCount > 0) {
+        const headingsToKeep = Math.min(2, precedingHeadingsCount);
+        reserveHeight = headingsToKeep * 60;
+      } else {
+        let succeedingText = null;
+        let next = block.nextElementSibling;
+        while (next instanceof HTMLElement) {
+          if (next.classList.contains("mermaid") || next.tagName === "HR" || this.isHeadingBlock(next)) {
+            break;
+          }
+          if (this.isSplittableTextBlock(next)) {
+            succeedingText = next;
+            break;
+          }
+          next = next.nextElementSibling;
+        }
+        if (succeedingText) {
+          const lines = this.countTextLines(succeedingText, tempProbe);
+          if (lines > 0) {
+            const linesToKeep = Math.min(2, lines);
+            reserveHeight = linesToKeep * 28;
+          }
+        }
+      }
+      const availableHeight = Math.max(120, contentHeight - 48 - reserveHeight);
       const availableWidth = Math.max(120, pageInnerWidth - 36);
       const scale = Math.min(1, availableWidth / width, availableHeight / height);
       block.dataset.redMermaidOriginalWidth = String(Math.ceil(width));
@@ -3460,6 +3510,7 @@ var RedConverter = class {
       svg.style.maxWidth = "100%";
       svg.style.display = "block";
     });
+    tempProbe.remove();
   }
   static previousContentIsHeading(block) {
     let previous = block.previousElementSibling;
