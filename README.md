@@ -11,7 +11,11 @@ It renders the active Markdown note as exportable social-card images.
 - Supports manual page breaks with `---`.
 - Renders Mermaid diagrams into card-safe SVG blocks, including dark-theme contrast fixes, auto scaling for oversized diagrams, and appended original-size Mermaid exports when a diagram would exceed the card.
 - Provides multiple image templates, including default, notes, Xiaohongshu, Weibo, WeChat, magazine, quote, terminal, GitHub, and signature styles.
-- Supports theme switching, cover styles, custom fonts, background images, footer visibility, image crop/zoom, table scaling, current-page export, all-pages ZIP export, and clipboard copy.
+- Supports theme switching, cover styles, custom fonts, background images, footer visibility, image crop/zoom, table scaling, current-page export, all-pages export, and clipboard copy.
+- Lets users choose the preview UI language, defaulting to English with a Chinese option.
+- Writes exports to a configurable destination. Relative paths are written inside the vault; absolute macOS/Linux or Windows paths are written to the file system.
+- Supports ZIP archive output or a PNG folder named after the current Markdown file.
+- Can optionally run post-export actions that mark the source note as source material, create a publish-ready Markdown note, and link the exported assets.
 
 ## Template Notes
 
@@ -31,5 +35,6 @@ layout expected by Obsidian community plugins.
 
 There is currently no automated test script. For UI changes, run `npm run build`
 and manually verify preview generation, auto pagination, Mermaid rendering,
-template switching, theme switching, export, appended oversized Mermaid exports,
-and copy behavior in an Obsidian vault.
+template switching, theme switching, language switching, export path handling,
+ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,
+appended oversized Mermaid exports, and copy behavior in an Obsidian vault.
