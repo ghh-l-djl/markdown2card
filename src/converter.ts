@@ -322,6 +322,264 @@ export class RedConverter {
     return Boolean(block.textContent?.trim());
   }
 
+  private static isMermaidBlock(el: HTMLElement): boolean {
+    return el.classList.contains("mermaid") || el.classList.contains("red-mermaid");
+  }
+
+  private static isPageBreakMarker(el: HTMLElement): boolean {
+    return el.classList.contains("red-page-break") || el.tagName === "HR";
+  }
+
+  private static measureLineMetrics(block: HTMLElement, probe: HTMLElement): { lineHeight: number; paddingHeight: number } {
+    const clone1 = block.cloneNode(true) as HTMLElement;
+    clone1.innerHTML = "A";
+    probe.replaceChildren(clone1);
+    const h1 = clone1.clientHeight;
+
+    const clone2 = block.cloneNode(true) as HTMLElement;
+    clone2.innerHTML = "A<br>A";
+    probe.replaceChildren(clone2);
+    const h2 = clone2.clientHeight;
+
+    const lineHeight = h2 - h1;
+    const paddingHeight = h1 - lineHeight;
+    
+    if (isNaN(lineHeight) || lineHeight <= 0) {
+      return { lineHeight: 20, paddingHeight: 0 };
+    }
+    return { lineHeight, paddingHeight };
+  }
+
+  private static countTextLines(block: HTMLElement, probe: HTMLElement): number {
+    if (!block.textContent?.trim()) return 0;
+    const { lineHeight, paddingHeight } = this.measureLineMetrics(block, probe);
+    
+    const clone = block.cloneNode(true) as HTMLElement;
+    probe.replaceChildren(clone);
+    const hFull = clone.clientHeight;
+    
+    const lines = Math.round((hFull - paddingHeight) / lineHeight);
+    return Math.max(1, lines);
+  }
+
+  private static splitTextBlockToLastNLines(block: HTMLElement, n: number, probe: HTMLElement): [HTMLElement, HTMLElement] {
+    const text = (block.textContent || "").replace(/\s+/g, " ").trim();
+    const { lineHeight, paddingHeight } = this.measureLineMetrics(block, probe);
+
+    let low = 0;
+    let high = text.length;
+    let bestSplitIdx = text.length;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const suffixText = text.slice(mid).trim();
+      
+      const suffixClone = block.cloneNode(true) as HTMLElement;
+      suffixClone.textContent = suffixText;
+      probe.replaceChildren(suffixClone);
+      
+      const hFull = suffixClone.clientHeight;
+      const lines = Math.round((hFull - paddingHeight) / lineHeight);
+      
+      if (lines <= n) {
+        bestSplitIdx = mid;
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    }
+
+    let splitIdx = bestSplitIdx;
+    if (splitIdx > 0 && splitIdx < text.length) {
+      const leftSpace = text.lastIndexOf(" ", splitIdx);
+      const rightSpace = text.indexOf(" ", splitIdx);
+      if (leftSpace !== -1 && (splitIdx - leftSpace < 10 || rightSpace === -1)) {
+        splitIdx = leftSpace + 1;
+      } else if (rightSpace !== -1) {
+        splitIdx = rightSpace + 1;
+      }
+    }
+
+    const prefixText = text.slice(0, splitIdx).trim();
+    const suffixText = text.slice(splitIdx).trim();
+
+    const prefixBlock = block.cloneNode(true) as HTMLElement;
+    prefixBlock.textContent = prefixText;
+    
+    const suffixBlock = block.cloneNode(true) as HTMLElement;
+    suffixBlock.textContent = suffixText;
+
+    return [prefixBlock, suffixBlock];
+  }
+
+  private static splitTextBlockToFirstNLines(block: HTMLElement, n: number, probe: HTMLElement): [HTMLElement, HTMLElement] {
+    const text = (block.textContent || "").replace(/\s+/g, " ").trim();
+    const { lineHeight, paddingHeight } = this.measureLineMetrics(block, probe);
+
+    let low = 0;
+    let high = text.length;
+    let bestSplitIdx = 0;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const prefixText = text.slice(0, mid).trim();
+      
+      const prefixClone = block.cloneNode(true) as HTMLElement;
+      prefixClone.textContent = prefixText;
+      probe.replaceChildren(prefixClone);
+      
+      const hFull = prefixClone.clientHeight;
+      const lines = Math.round((hFull - paddingHeight) / lineHeight);
+      
+      if (lines <= n) {
+        bestSplitIdx = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    let splitIdx = bestSplitIdx;
+    if (splitIdx > 0 && splitIdx < text.length) {
+      const leftSpace = text.lastIndexOf(" ", splitIdx);
+      const rightSpace = text.indexOf(" ", splitIdx);
+      if (leftSpace !== -1 && (splitIdx - leftSpace < 10 || rightSpace === -1)) {
+        splitIdx = leftSpace + 1;
+      } else if (rightSpace !== -1) {
+        splitIdx = rightSpace + 1;
+      }
+    }
+
+    const prefixText = text.slice(0, splitIdx).trim();
+    const suffixText = text.slice(splitIdx).trim();
+
+    const prefixBlock = block.cloneNode(true) as HTMLElement;
+    prefixBlock.textContent = prefixText;
+    
+    const suffixBlock = block.cloneNode(true) as HTMLElement;
+    suffixBlock.textContent = suffixText;
+
+    return [prefixBlock, suffixBlock];
+  }
+
+  private static findPrecedingTextBlock(arr: HTMLElement[], startIdx: number): number {
+    for (let j = startIdx; j >= 0; j--) {
+      if (this.isMermaidBlock(arr[j]) || this.isPageBreakMarker(arr[j])) {
+        break;
+      }
+      if (this.isSplittableTextBlock(arr[j])) {
+        return j;
+      }
+    }
+    return -1;
+  }
+
+  private static findSucceedingTextBlock(arr: HTMLElement[], startIdx: number): number {
+    for (let j = startIdx; j < arr.length; j++) {
+      if (this.isMermaidBlock(arr[j]) || this.isPageBreakMarker(arr[j]) || this.isHeadingBlock(arr[j])) {
+        break;
+      }
+      if (this.isSplittableTextBlock(arr[j])) {
+        return j;
+      }
+    }
+    return -1;
+  }
+
+  private static preprocessMermaidBlocks(blocks: HTMLElement[], probe: HTMLElement): void {
+    let i = blocks.length - 1;
+    while (i >= 0) {
+      if (this.isMermaidBlock(blocks[i])) {
+        const preTextIdx = this.findPrecedingTextBlock(blocks, i - 1);
+        if (preTextIdx !== -1) {
+          const precedingText = blocks[preTextIdx];
+          const lines = this.countTextLines(precedingText, probe);
+          if (lines > 1) {
+            const [prefix, suffix] = this.splitTextBlockToLastNLines(precedingText, 2, probe);
+            const pageBreak = document.createElement("div");
+            pageBreak.className = "red-page-break";
+            blocks.splice(preTextIdx, 1, prefix, pageBreak, suffix);
+            i += 2;
+          }
+        } else {
+          const succTextIdx = this.findSucceedingTextBlock(blocks, i + 1);
+          if (succTextIdx !== -1) {
+            const succeedingText = blocks[succTextIdx];
+            const lines = this.countTextLines(succeedingText, probe);
+            if (lines > 2) {
+              const [suffix, prefix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
+              const pageBreak = document.createElement("div");
+              pageBreak.className = "red-page-break";
+              blocks.splice(succTextIdx, 1, suffix, pageBreak, prefix);
+            }
+          }
+        }
+      }
+      i--;
+    }
+  }
+
+  private static getKeepTogetherGroup(pending: HTMLElement[], probe: HTMLElement): HTMLElement[] | null {
+    if (pending.length === 0) return null;
+
+    if (this.isMermaidBlock(pending[0])) {
+      if (pending.length > 1 && this.isSplittableTextBlock(pending[1])) {
+        const lines = this.countTextLines(pending[1], probe);
+        if (lines <= 2) {
+          return [pending[0], pending[1]];
+        }
+      }
+      return null;
+    }
+
+    let mermaidIdx = -1;
+    for (let i = 0; i < pending.length; i++) {
+      if (this.isMermaidBlock(pending[i])) {
+        mermaidIdx = i;
+        break;
+      }
+      if (this.isPageBreakMarker(pending[i])) {
+        break;
+      }
+    }
+
+    if (mermaidIdx === -1) return null;
+
+    let textBlockCount = 0;
+    let headingsCount = 0;
+    let hasOneLineText = false;
+    
+    for (let i = 0; i < mermaidIdx; i++) {
+      const el = pending[i];
+      if (this.isHeadingBlock(el)) {
+        headingsCount++;
+        continue;
+      }
+      if (this.isSplittableTextBlock(el)) {
+        const lines = this.countTextLines(el, probe);
+        if (lines === 1) {
+          textBlockCount++;
+          hasOneLineText = true;
+          if (textBlockCount > 1) return null;
+          continue;
+        }
+      }
+      return null;
+    }
+
+    if (hasOneLineText) {
+      if (headingsCount > 1) {
+        return pending.slice(mermaidIdx - 2, mermaidIdx + 1);
+      }
+    } else {
+      if (headingsCount > 2) {
+        return pending.slice(mermaidIdx - 2, mermaidIdx + 1);
+      }
+    }
+
+    return pending.slice(0, mermaidIdx + 1);
+  }
+
   private static endsWithHeading(page: HTMLElement): boolean {
     const last = page.lastElementChild;
     return last instanceof HTMLElement && this.isHeadingBlock(last);
