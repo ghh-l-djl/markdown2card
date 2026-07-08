@@ -70,10 +70,6 @@ export interface YanqiSettings {
   exportFormat: "zip" | "png-folder";
   enablePostExportActions: boolean;
   uiLanguage: "en" | "zh";
-  aiCliPath: string;
-  aiCliArgs: string;
-  aiSummaryPrompt: string;
-  aiOutputFolder: string;
 }
 
 export interface FontOption {

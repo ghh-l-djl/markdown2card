@@ -159,7 +159,6 @@ export class RedSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "markdown2card Settings" });
     this.renderCommunitySettings(containerEl);
     this.createSection(containerEl, "General", (el) => this.renderBasicSettings(el));
-    this.createSection(containerEl, "AI", (el) => this.renderAiSettings(el));
     this.createSection(containerEl, "Export", (el) => this.renderExportSettings(el));
     this.createSection(containerEl, "Themes", (el) => this.renderThemeSettings(el));
   }
@@ -253,42 +252,6 @@ export class RedSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(settings.enablePostExportActions)
         .onChange((value) => this.plugin.settingsManager.updateSettings({ enablePostExportActions: value })));
-  }
-
-  private renderAiSettings(containerEl: HTMLElement): void {
-    const settings = this.plugin.settingsManager.getSettings();
-    new Setting(containerEl)
-      .setName("AI CLI path")
-      .setDesc("Defaults to agy. If Obsidian cannot find the command, enter the full path.")
-      .addText((text) => text
-        .setPlaceholder("agy")
-        .setValue(settings.aiCliPath)
-        .onChange((value) => this.plugin.settingsManager.updateSettings({ aiCliPath: value.trim() || "agy" })));
-
-    new Setting(containerEl)
-      .setName("AI CLI arguments")
-      .setDesc("The prompt is appended to the end of these arguments. The default is for agy --print.")
-      .addText((text) => text
-        .setPlaceholder("--print")
-        .setValue(settings.aiCliArgs)
-        .onChange((value) => this.plugin.settingsManager.updateSettings({ aiCliArgs: value })));
-
-    new Setting(containerEl)
-      .setName("Summary output folder")
-      .setDesc("Vault-relative folder for generated summary drafts.")
-      .addText((text) => text
-        .setPlaceholder("AI Summaries")
-        .setValue(settings.aiOutputFolder)
-        .onChange((value) => this.plugin.settingsManager.updateSettings({ aiOutputFolder: value.trim() || "AI Summaries" })));
-
-    new Setting(containerEl)
-      .setName("Summary prompt")
-      .setDesc("Supports {{title}}, {{path}}, and {{content}} placeholders.")
-      .addTextArea((area) => {
-        area.setValue(settings.aiSummaryPrompt).onChange((value) => this.plugin.settingsManager.updateSettings({ aiSummaryPrompt: value }));
-        area.inputEl.rows = 12;
-        area.inputEl.addClass("custom-css-input");
-      });
   }
 
   private renderThemeSettings(containerEl: HTMLElement): void {

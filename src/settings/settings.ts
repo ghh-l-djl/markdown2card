@@ -43,21 +43,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   exportPath: "markdown2card-exports",
   exportFormat: "zip",
   enablePostExportActions: false,
-  uiLanguage: "en",
-  aiCliPath: "agy",
-  aiCliArgs: "--print",
-  aiSummaryPrompt: `请把下面这篇 Obsidian 笔记总结成适合生成知识卡片的 Markdown。
-
-要求：
-1. 保留原文最重要的观点和事实
-2. 输出一个醒目的标题
-3. 使用 3-6 个小节
-4. 语言简洁，适合直接生成卡片
-5. 不要编造原文没有的信息
-
-笔记内容：
-{{content}}`,
-  aiOutputFolder: "AI Summaries"
+  uiLanguage: "en"
 };
 
 export class SettingsManager extends EventEmitter {
