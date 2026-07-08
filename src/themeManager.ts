@@ -36,21 +36,21 @@ export class ThemeManager {
 
     const header = element.querySelector<HTMLElement>(".red-preview-header");
     if (header && styles.header) {
-      header.querySelectorAll<HTMLElement>(".red-user-avatar").forEach((el) => this.applyInlineStyle(el, styles.header.avatar?.container));
-      header.querySelectorAll<HTMLElement>(".red-avatar-placeholder").forEach((el) => this.applyInlineStyle(el, styles.header.avatar?.placeholder));
-      header.querySelectorAll<HTMLElement>(".red-user-avatar img").forEach((el) => this.applyInlineStyle(el, styles.header.avatar?.image));
-      header.querySelectorAll<HTMLElement>(".red-user-name-container").forEach((el) => this.applyInlineStyle(el, styles.header.nameContainer));
-      header.querySelectorAll<HTMLElement>(".red-user-name").forEach((el) => this.applyInlineStyle(el, styles.header.userName));
-      header.querySelectorAll<HTMLElement>(".red-user-id").forEach((el) => this.applyInlineStyle(el, styles.header.userId));
-      header.querySelectorAll<HTMLElement>(".red-post-time, .red-header-more").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
-      header.querySelectorAll<HTMLElement>(".red-verified-icon").forEach((el) => this.applyInlineStyle(el, styles.header.verifiedIcon));
+      header.querySelectorAll<HTMLElement>(".red-user-avatar").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.avatar?.container));
+      header.querySelectorAll<HTMLElement>(".red-avatar-placeholder").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.avatar?.placeholder));
+      header.querySelectorAll<HTMLElement>(".red-user-avatar img").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.avatar?.image));
+      header.querySelectorAll<HTMLElement>(".red-user-name-container").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.nameContainer));
+      header.querySelectorAll<HTMLElement>(".red-user-name").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.userName));
+      header.querySelectorAll<HTMLElement>(".red-user-id").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.userId));
+      header.querySelectorAll<HTMLElement>(".red-post-time, .red-header-more").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.postTime));
+      header.querySelectorAll<HTMLElement>(".red-verified-icon").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.verifiedIcon));
     }
 
     const footer = element.querySelector<HTMLElement>(".red-preview-footer");
     if (footer && styles.footer) {
-      this.applyInlineStyle(footer, styles.footer.container);
-      footer.querySelectorAll<HTMLElement>(".red-footer-text").forEach((el) => this.applyInlineStyle(el, styles.footer.text));
-      footer.querySelectorAll<HTMLElement>(".red-footer-separator").forEach((el) => this.applyInlineStyle(el, styles.footer.separator));
+      this.resetAndApplyInlineStyle(footer, styles.footer.container);
+      footer.querySelectorAll<HTMLElement>(".red-footer-text").forEach((el) => this.resetAndApplyInlineStyle(el, styles.footer.text));
+      footer.querySelectorAll<HTMLElement>(".red-footer-separator").forEach((el) => this.resetAndApplyInlineStyle(el, styles.footer.separator));
     }
 
     ["h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
@@ -115,11 +115,55 @@ export class ThemeManager {
 
   private applyInlineStyle(el: HTMLElement | null, style?: string): void {
     if (!el || !style) return;
-    style.split(";").forEach((property) => {
+    this.getInlineDeclarations(style).forEach((property) => {
       const [key, ...rest] = property.split(":");
       const value = rest.join(":").trim();
-      if (key?.trim() && value) el.style.setProperty(key.trim(), value);
+      const propertyName = key?.trim();
+      if (propertyName && value && this.isInlinePropertyName(propertyName)) {
+        el.style.setProperty(propertyName, value);
+      }
     });
+  }
+
+  private resetAndApplyInlineStyle(el: HTMLElement | null, style?: string): void {
+    if (!el) return;
+    el.removeAttribute("style");
+    this.applyInlineStyle(el, style);
+  }
+
+  private getInlineDeclarations(style: string): string[] {
+    const declarations: string[] = [];
+    let current = "";
+    let blockDepth = 0;
+
+    for (const char of style) {
+      if (char === "{") {
+        current = "";
+        blockDepth += 1;
+        continue;
+      }
+      if (char === "}") {
+        blockDepth = Math.max(0, blockDepth - 1);
+        current = "";
+        continue;
+      }
+      if (blockDepth > 0) continue;
+      if (char === ";") {
+        const declaration = current.trim();
+        if (declaration) declarations.push(declaration);
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+
+    const declaration = current.trim();
+    if (declaration) declarations.push(declaration);
+    return declarations;
+  }
+
+  private isInlinePropertyName(propertyName: string): boolean {
+    return /^--[\w-]+$/.test(propertyName) || /^-?[a-zA-Z][\w-]*$/.test(propertyName);
   }
 
   private parseCssColor(color?: string): number[] | null {

@@ -3675,19 +3675,19 @@ var cyber_default = {
       userInfo: "display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 10px 14px; line-height: normal;",
       userLeft: "display: flex; align-items: center; gap: 14px;",
       avatar: {
-        container: "width: 44px; height: 44px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative; background: linear-gradient(45deg, #ff00ff, #00ffff); box-shadow: 0 0 15px rgba(255, 0, 255, 0.3); transition: all 0.3s ease; &::before { content: ''; position: absolute; inset: 1px; background: #ffffff; border-radius: 11px; z-index: 1; } &::after { content: ''; position: absolute; inset: -2px; background: linear-gradient(45deg, #ff00ff, #00ffff, #05ffa1); border-radius: 14px; z-index: -1; opacity: 0.5; } &:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(255, 0, 255, 0.4); &::after { opacity: 0.8; } }",
+        container: "width: 44px; height: 44px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative; background: linear-gradient(45deg, #ff00ff, #00ffff); box-shadow: 0 0 15px rgba(255, 0, 255, 0.3); transition: all 0.3s ease;",
         placeholder: "width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(255, 0, 255, 0.1), rgba(0, 255, 255, 0.1)); color: #ff00ff; font-size: 18px; text-shadow: 0 0 10px rgba(255, 0, 255, 0.5); position: relative; z-index: 2;",
-        image: "width: 100%; height: 100%; object-fit: cover; transition: all 0.3s ease; filter: saturate(1.2) contrast(1.1); position: relative; z-index: 2; &:hover { transform: scale(1.05); filter: saturate(1.4) contrast(1.15); }"
+        image: "width: 100%; height: 100%; object-fit: cover; transition: all 0.3s ease; filter: saturate(1.2) contrast(1.1); position: relative; z-index: 2;"
       },
       nameContainer: "display: flex; align-items: center; gap: 8px;",
-      userName: "font-size: 16px; font-weight: 600; color: #ff00ff; cursor: pointer; transition: all 0.2s ease; text-shadow: 0 0 10px rgba(255, 0, 255, 0.3); &:hover { color: #ff2a6d; }",
-      userId: "font-size: 14px; color: #00ffff; cursor: pointer; transition: all 0.2s ease; &:hover { color: #05ffa1; }",
-      postTime: "font-size: 14px; color: #00ffff; cursor: pointer; transition: all 0.2s ease; &:hover { color: #05ffa1; }",
+      userName: "font-size: 16px; font-weight: 600; color: #ff00ff; cursor: pointer; transition: all 0.2s ease; text-shadow: 0 0 10px rgba(255, 0, 255, 0.3);",
+      userId: "font-size: 14px; color: #00ffff; cursor: pointer; transition: all 0.2s ease;",
+      postTime: "font-size: 14px; color: #00ffff; cursor: pointer; transition: all 0.2s ease;",
       verifiedIcon: "width: 20px; height: 20px; margin-left: -5px; fill: #1DA1F2;"
     },
     footer: {
       container: "margin-top: 20px; padding: 14px 18px; position: absolute; bottom: 5px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 16px; border-top: 1px solid rgba(0, 255, 255, 0.2); backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.9);",
-      text: "color: #00ffff; font-size: 13px; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; line-height: 1; display: inline-flex; align-items: center; vertical-align: middle; &:hover { color: #05ffa1; transform: translateY(-1px); }",
+      text: "color: #00ffff; font-size: 13px; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; line-height: 1; display: inline-flex; align-items: center; vertical-align: middle;",
       separator: "color: rgba(255, 0, 255, 0.5); font-size: 13px; line-height: 1; display: inline-flex; align-items: center;"
     },
     title: {
@@ -4438,27 +4438,27 @@ var ThemeManager = class {
     if (header && styles.header) {
       header.querySelectorAll(".red-user-avatar").forEach((el) => {
         var _a;
-        return this.applyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.container);
+        return this.resetAndApplyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.container);
       });
       header.querySelectorAll(".red-avatar-placeholder").forEach((el) => {
         var _a;
-        return this.applyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.placeholder);
+        return this.resetAndApplyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.placeholder);
       });
       header.querySelectorAll(".red-user-avatar img").forEach((el) => {
         var _a;
-        return this.applyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.image);
+        return this.resetAndApplyInlineStyle(el, (_a = styles.header.avatar) == null ? void 0 : _a.image);
       });
-      header.querySelectorAll(".red-user-name-container").forEach((el) => this.applyInlineStyle(el, styles.header.nameContainer));
-      header.querySelectorAll(".red-user-name").forEach((el) => this.applyInlineStyle(el, styles.header.userName));
-      header.querySelectorAll(".red-user-id").forEach((el) => this.applyInlineStyle(el, styles.header.userId));
-      header.querySelectorAll(".red-post-time, .red-header-more").forEach((el) => this.applyInlineStyle(el, styles.header.postTime));
-      header.querySelectorAll(".red-verified-icon").forEach((el) => this.applyInlineStyle(el, styles.header.verifiedIcon));
+      header.querySelectorAll(".red-user-name-container").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.nameContainer));
+      header.querySelectorAll(".red-user-name").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.userName));
+      header.querySelectorAll(".red-user-id").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.userId));
+      header.querySelectorAll(".red-post-time, .red-header-more").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.postTime));
+      header.querySelectorAll(".red-verified-icon").forEach((el) => this.resetAndApplyInlineStyle(el, styles.header.verifiedIcon));
     }
     const footer = element.querySelector(".red-preview-footer");
     if (footer && styles.footer) {
-      this.applyInlineStyle(footer, styles.footer.container);
-      footer.querySelectorAll(".red-footer-text").forEach((el) => this.applyInlineStyle(el, styles.footer.text));
-      footer.querySelectorAll(".red-footer-separator").forEach((el) => this.applyInlineStyle(el, styles.footer.separator));
+      this.resetAndApplyInlineStyle(footer, styles.footer.container);
+      footer.querySelectorAll(".red-footer-text").forEach((el) => this.resetAndApplyInlineStyle(el, styles.footer.text));
+      footer.querySelectorAll(".red-footer-separator").forEach((el) => this.resetAndApplyInlineStyle(el, styles.footer.separator));
     }
     ["h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
       element.querySelectorAll(tag).forEach((el) => {
@@ -4560,12 +4560,54 @@ var ThemeManager = class {
   applyInlineStyle(el, style) {
     if (!el || !style)
       return;
-    style.split(";").forEach((property) => {
+    this.getInlineDeclarations(style).forEach((property) => {
       const [key, ...rest] = property.split(":");
       const value = rest.join(":").trim();
-      if ((key == null ? void 0 : key.trim()) && value)
-        el.style.setProperty(key.trim(), value);
+      const propertyName = key == null ? void 0 : key.trim();
+      if (propertyName && value && this.isInlinePropertyName(propertyName)) {
+        el.style.setProperty(propertyName, value);
+      }
     });
+  }
+  resetAndApplyInlineStyle(el, style) {
+    if (!el)
+      return;
+    el.removeAttribute("style");
+    this.applyInlineStyle(el, style);
+  }
+  getInlineDeclarations(style) {
+    const declarations = [];
+    let current = "";
+    let blockDepth = 0;
+    for (const char of style) {
+      if (char === "{") {
+        current = "";
+        blockDepth += 1;
+        continue;
+      }
+      if (char === "}") {
+        blockDepth = Math.max(0, blockDepth - 1);
+        current = "";
+        continue;
+      }
+      if (blockDepth > 0)
+        continue;
+      if (char === ";") {
+        const declaration2 = current.trim();
+        if (declaration2)
+          declarations.push(declaration2);
+        current = "";
+        continue;
+      }
+      current += char;
+    }
+    const declaration = current.trim();
+    if (declaration)
+      declarations.push(declaration);
+    return declarations;
+  }
+  isInlinePropertyName(propertyName) {
+    return /^--[\w-]+$/.test(propertyName) || /^-?[a-zA-Z][\w-]*$/.test(propertyName);
   }
   parseCssColor(color) {
     var _a;

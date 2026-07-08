@@ -48,7 +48,7 @@ Obsidian 当前文件
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出、图片和表格交互。
 - `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，并在模板/主题生效后按 DOM 高度自动分页。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
-- `src/themeManager.ts`：把主题对象中的 CSS 字符串应用到 DOM，并修正 Mermaid 图表在深色卡片主题下的文字与线条对比度。
+- `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，并修正 Mermaid 图表在深色卡片主题下的文字与线条对比度。
 - `src/settings/settings.ts`：默认配置、主题/字体持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。
 - `src/downloadManager.ts`：单页 PNG 和全部 ZIP 导出。
