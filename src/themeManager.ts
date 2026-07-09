@@ -32,6 +32,13 @@ export class ThemeManager {
     if (!targetTheme) return;
     const styles = targetTheme.styles;
     const imagePreview = element.querySelector<HTMLElement>(".red-image-preview");
+
+    const isDark = this.isThemeDark(targetTheme);
+    if (imagePreview) {
+      imagePreview.classList.remove("theme-dark", "theme-light");
+      imagePreview.classList.add(isDark ? "theme-dark" : "theme-light");
+    }
+
     this.applyInlineStyle(imagePreview, styles.imagePreview);
 
     const header = element.querySelector<HTMLElement>(".red-preview-header");
@@ -73,7 +80,7 @@ export class ThemeManager {
     });
 
     element.querySelectorAll<HTMLElement>("p").forEach((el) => {
-      if (!el.parentElement?.closest("p") && !el.parentElement?.closest("blockquote")) {
+      if (!el.parentElement?.closest("p") && !el.parentElement?.closest("blockquote") && !el.parentElement?.closest(".callout")) {
         this.applyInlineStyle(el, `${styles.paragraph}; font-family: ${this.currentFont}; font-size: ${this.currentFontSize}px;`);
       }
     });
@@ -195,6 +202,47 @@ export class ThemeManager {
     const light = Math.max(this.luminance(a), this.luminance(b));
     const dark = Math.min(this.luminance(a), this.luminance(b));
     return (light + 0.05) / (dark + 0.05);
+  }
+
+  private isThemeDark(theme: YanqiTheme): boolean {
+    const bgStyle = theme.styles.imagePreview;
+    if (!bgStyle) return true;
+
+    // Matches 3, 6, or 8 digit hex colors
+    const hexMatch = bgStyle.match(/#([0-9a-fA-F]{3,8})/);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      } else if (hex.length === 8) {
+        hex = hex.substring(0, 6);
+      }
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance < 0.5;
+      }
+    }
+
+    // Matches rgb or rgba colors
+    const rgbMatch = bgStyle.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      const r = parseInt(rgbMatch[1], 10);
+      const g = parseInt(rgbMatch[2], 10);
+      const b = parseInt(rgbMatch[3], 10);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance < 0.5;
+      }
+    }
+
+    const lower = bgStyle.toLowerCase();
+    if (lower.includes("white") || lower.includes("#fff") || lower.includes("255,255,255")) {
+      return false;
+    }
+    return true;
   }
 
   private getReadableCodeColor(backgroundColor: string, currentColor: string): string {
