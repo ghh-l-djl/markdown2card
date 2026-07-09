@@ -1,8 +1,8 @@
-# README Screenshots Addition Implementation Plan
+# README Screenshots Addition Implementation Plan (Updated)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Preview section with screenshots and bilingual descriptions to README.md and README.zh-CN.md.
+**Goal:** Add a Preview section with 5 screenshots (including the new settings panel) and correct bilingual descriptions to README.md and README.zh-CN.md.
 
 **Architecture:** Use standard relative Markdown image links with detailed descriptive captions formatted in italic text underneath each image. Insert this section immediately after the language selector header in both files.
 
@@ -18,24 +18,25 @@
 ### Task 1: Update English README.md
 
 **Files:**
-- Modify: `README.md` (insertion after line 3)
+- Modify: `README.md` (lines 5-23)
 
 **Interfaces:**
-- Consumes: `./全览效果.png`, `./细节图.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
-- Produces: Updated `README.md` containing the "Preview" section.
+- Consumes: `./全览效果.png`, `./细节图.png`, `./操作面板.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
+- Produces: Updated `README.md` containing the updated "Preview" section.
 
-- [ ] **Step 1: Edit `README.md` to insert the Preview section**
-
-Insert the following block right below `Language: English | [简体中文](./README.zh-CN.md)`:
+- [ ] **Step 1: Replace the old Preview section in `README.md` with the new 5-image list**
 
 ```markdown
 ## Preview
 
-![Overview](./全览效果.png)
-*Overview: Live preview panel open inside Obsidian. Edit your Markdown on the left, and view the beautifully styled social cards in real-time on the right.*
+![Card Flow Overview](./全览效果.png)
+*Card Flow Overview: A multi-page grid preview of the generated cards, showing the full flow layout.*
 
-![UI Details](./细节图.png)
-*UI Details: Features a rich settings toolbar for theme switching, custom backgrounds, font options, footer visibility, and easy shortcuts to copy or export individual/all pages.*
+![Card Details](./细节图.png)
+*Card Details: A close-up view of a single card's rendering details, showcasing precise typography, margins, and background styles.*
+
+![Settings Panel](./操作面板.png)
+*Settings Panel: A feature-rich settings sidebar that allows switching themes, selecting custom background styles and fonts, adjusting footer visibility, and providing one-click copy or export actions.*
 
 ![Mermaid & Image Support](./支持mermaid和图片.png)
 *Mermaid & Image Support: Easily scales and renders embedded images and Mermaid diagrams onto the cards, including automatic scaling and appending full-size exports for oversized diagrams.*
@@ -48,31 +49,32 @@ Insert the following block right below `Language: English | [简体中文](./REA
 
 - [ ] **Step 2: Commit `README.md`**
 
-Run: `git commit -am "docs: add screenshots to English README"`
+Run: `git commit -am "docs: update English README screenshots and descriptions"`
 
 ---
 
 ### Task 2: Update Chinese README.zh-CN.md
 
 **Files:**
-- Modify: `README.zh-CN.md` (insertion after line 3)
+- Modify: `README.zh-CN.md` (lines 5-23)
 
 **Interfaces:**
-- Consumes: `./全览效果.png`, `./细节图.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
-- Produces: Updated `README.zh-CN.md` containing the "效果展示" section.
+- Consumes: `./全览效果.png`, `./细节图.png`, `./操作面板.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
+- Produces: Updated `README.zh-CN.md` containing the updated "效果展示" section.
 
-- [ ] **Step 1: Edit `README.zh-CN.md` to insert the 效果展示 section**
-
-Insert the following block right below `语言：[English](./README.md) | 简体中文`:
+- [ ] **Step 1: Replace the old 效果展示 section in `README.zh-CN.md` with the new 5-image list**
 
 ```markdown
 ## 效果展示
 
 ![全览效果](./全览效果.png)
-*全览效果：在 Obsidian 内部开启的实时预览面板，左侧编辑 Markdown，右侧实时呈现排版精致的社交卡片。*
+*全览效果：卡片生成后的多页网格预览效果，支持完整的卡片流展示。*
 
 ![细节图](./细节图.png)
-*细节图：提供丰富的参数设置与工具栏，包括主题切换、自定义背景、字体、页脚设置等，可快捷复制或导出单页/全部页面。*
+*细节图：单张卡片的渲染细节，完美还原排版、边距与背景样式。*
+
+![操作面板](./操作面板.png)
+*操作面板：功能丰富的配置工具栏，支持切换主题、设置自定义背景与字体、调整页脚显隐，并提供快捷的一键复制或导出操作。*
 
 ![支持mermaid和图片](./支持mermaid和图片.png)
 *支持 Mermaid 与图片：支持将 Markdown 中的图片与 Mermaid 图表完美缩放并渲染入卡片中，并提供超限 Mermaid 图表的原尺寸追加导出。*
@@ -85,4 +87,4 @@ Insert the following block right below `语言：[English](./README.md) | 简体
 
 - [ ] **Step 2: Commit `README.zh-CN.md`**
 
-Run: `git commit -am "docs: add screenshots to Chinese README"`
+Run: `git commit -am "docs: update Chinese README screenshots and descriptions"`

@@ -4,11 +4,14 @@ Language: English | [简体中文](./README.zh-CN.md)
 
 ## Preview
 
-![Overview](./全览效果.png)
-*Overview: Live preview panel open inside Obsidian. Edit your Markdown on the left, and view the beautifully styled social cards in real-time on the right.*
+![Card Flow Overview](./全览效果.png)
+*Card Flow Overview: A multi-page grid preview of the generated cards, showing the full flow layout.*
 
-![UI Details](./细节图.png)
-*UI Details: Features a rich settings toolbar for theme switching, custom backgrounds, font options, footer visibility, and easy shortcuts to copy or export individual/all pages.*
+![Card Details](./细节图.png)
+*Card Details: A close-up view of a single card's rendering details, showcasing precise typography, margins, and background styles.*
+
+![Settings Panel](./操作面板.png)
+*Settings Panel: A feature-rich settings sidebar that allows switching themes, selecting custom background styles and fonts, adjusting footer visibility, and providing one-click copy or export actions.*
 
 ![Mermaid & Image Support](./支持mermaid和图片.png)
 *Mermaid & Image Support: Easily scales and renders embedded images and Mermaid diagrams onto the cards, including automatic scaling and appending full-size exports for oversized diagrams.*

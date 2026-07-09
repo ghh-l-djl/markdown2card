@@ -1,10 +1,10 @@
-# Spec: README Screenshot Additions
+# Spec: README Screenshot Additions (Updated)
 
 **Date:** 2026-07-09  
 **Status:** Approved  
 
 ## Purpose
-Enhance user discovery and documentation visual appeal by adding screenshots demonstrating key capabilities (live preview, details menu, Mermaid support, auto-pagination with LaTeX) of the Obsidian plugin directly in both the English (`README.md`) and Chinese (`README.zh-CN.md`) documentation files.
+Enhance user discovery and documentation visual appeal by adding screenshots demonstrating key capabilities (card flow overview, card rendering details, settings panel, Mermaid support, auto-pagination with LaTeX) of the Obsidian plugin directly in both the English (`README.md`) and Chinese (`README.zh-CN.md`) documentation files.
 
 ## Files to Modify
 1. [README.md](file:///Users/ghh/Documents/编程/项目/obsidian-to-card/README.md)
@@ -16,6 +16,7 @@ Add a sequential vertical list of images with accompanying descriptions right be
 ### Image Files Used (Root of the repo)
 - `./全览效果.png`
 - `./细节图.png`
+- `./操作面板.png`
 - `./支持mermaid和图片.png`
 - `./代码自动分页-支持latex.png`
 
@@ -23,11 +24,14 @@ Add a sequential vertical list of images with accompanying descriptions right be
 ```markdown
 ## Preview
 
-![Overview](./全览效果.png)
-*Overview: Live preview panel open inside Obsidian. Edit your Markdown on the left, and view the beautifully styled social cards in real-time on the right.*
+![Card Flow Overview](./全览效果.png)
+*Card Flow Overview: A multi-page grid preview of the generated cards, showing the full flow layout.*
 
-![UI Details](./细节图.png)
-*UI Details: Features a rich settings toolbar for theme switching, custom backgrounds, font options, footer visibility, and easy shortcuts to copy or export individual/all pages.*
+![Card Details](./细节图.png)
+*Card Details: A close-up view of a single card's rendering details, showcasing precise typography, margins, and background styles.*
+
+![Settings Panel](./操作面板.png)
+*Settings Panel: A feature-rich settings sidebar that allows switching themes, selecting custom background styles and fonts, adjusting footer visibility, and providing one-click copy or export actions.*
 
 ![Mermaid & Image Support](./支持mermaid和图片.png)
 *Mermaid & Image Support: Easily scales and renders embedded images and Mermaid diagrams onto the cards, including automatic scaling and appending full-size exports for oversized diagrams.*
@@ -43,10 +47,13 @@ Add a sequential vertical list of images with accompanying descriptions right be
 ## 效果展示
 
 ![全览效果](./全览效果.png)
-*全览效果：在 Obsidian 内部开启的实时预览面板，左侧编辑 Markdown，右侧实时呈现排版精致的社交卡片。*
+*全览效果：卡片生成后的多页网格预览效果，支持完整的卡片流展示。*
 
 ![细节图](./细节图.png)
-*细节图：提供丰富的参数设置与工具栏，包括主题切换、自定义背景、字体、页脚设置等，可快捷复制或导出单页/全部页面。*
+*细节图：单张卡片的渲染细节，完美还原排版、边距与背景样式。*
+
+![操作面板](./操作面板.png)
+*操作面板：功能丰富的配置工具栏，支持切换主题、设置自定义背景与字体、调整页脚显隐，并提供快捷的一键复制或导出操作。*
 
 ![支持mermaid和图片](./支持mermaid和图片.png)
 *支持 Mermaid 与图片：支持将 Markdown 中的图片与 Mermaid 图表完美缩放并渲染入卡片中，并提供超限 Mermaid 图表的原尺寸追加导出。*
