@@ -1041,6 +1041,10 @@
   word-break: break-word;
 }
 
+.red-content-section > :first-child {
+  margin-top: 0 !important;
+}
+
 .red-content-section :is(h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th, a, strong, em, span) {
   max-width: 100%;
   overflow-wrap: anywhere;
