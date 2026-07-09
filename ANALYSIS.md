@@ -82,6 +82,7 @@ Obsidian 当前文件
 - **高准度宽度对齐**：通过 `window.getComputedStyle(section)` 动态获取内容卡片的实际外边距（`margin-left/right`）与边框（`border-width`），在 `contentContainer.clientWidth` 的基础上减去这些尺寸作为 `probe` 的精确宽度，从而完全对齐浏览器的折行字符断位。
 - **动态折行计算**：在 `probe` 中克隆节点，分别灌入单个字符 `"A"` 和换行字符 `"A<br>A"` 测出当前字体和字号下的 `lineHeight` 与 `paddingHeight`；之后克隆完整段落并在 `probe` 中测出 `clientHeight`，通过 `Math.round((hFull - paddingHeight) / lineHeight)` 精准求出段落在当前卡片宽度下渲染出来的**物理行数**。
 - **二分查找边界切分**：当需要将文本切分为 N 行与剩余行时（场景 3/4），在 `probe` 中利用二分法快速定位字数切分点，并对齐英文单词边界（防止截断单词）将段落物理拆分为两个独立的 `<p>` 元素，中间插入虚拟分页标记 `red-page-break`。
+- **元数据块屏蔽**：在 `isRenderableElement` 过滤器中，显式排除类名包含 `metadata-container`（Properties 属性面板）和 `frontmatter`（YAML 元数据块）的隐藏 DOM 元素，防止不可见元数据块被判定为可渲染内容而混入分页序列，从而引发错误换页、形成空白卡片。
 
 ### 3. 原子组粘合与无条件分页 (Atomic Grouping)
 在进行实际的高度分页循环时，普通的块级元素逐个追加检测容易导致 Mermaid 被拆散到下一页而前置文本留在上一页：
