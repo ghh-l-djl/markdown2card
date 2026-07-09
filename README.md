@@ -2,6 +2,22 @@
 
 Language: English | [简体中文](./README.zh-CN.md)
 
+## Preview
+
+![Overview](./全览效果.png)
+*Overview: Live preview panel open inside Obsidian. Edit your Markdown on the left, and view the beautifully styled social cards in real-time on the right.*
+
+![UI Details](./细节图.png)
+*UI Details: Features a rich settings toolbar for theme switching, custom backgrounds, font options, footer visibility, and easy shortcuts to copy or export individual/all pages.*
+
+![Mermaid & Image Support](./支持mermaid和图片.png)
+*Mermaid & Image Support: Easily scales and renders embedded images and Mermaid diagrams onto the cards, including automatic scaling and appending full-size exports for oversized diagrams.*
+
+![Auto-Pagination & LaTeX](./代码自动分页-支持latex.png)
+*Auto-Pagination, Code Blocks & LaTeX: Supports rendering and syntax highlighting for code blocks and LaTeX math formulas, with automatic physical pagination based on actual card height to prevent content clipping.*
+
+---
+
 This repository contains the source for the `markdown2card` Obsidian plugin.
 It renders the active Markdown note as exportable social-card images.
 
