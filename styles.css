@@ -2472,3 +2472,84 @@
   min-height: 1.4em;
   word-break: break-all;
 }
+
+/* ==========================================
+   Card Scoping and Form Control Adaptations
+   ========================================== */
+
+/* Scoped CSS variables based on theme luminance */
+.red-image-preview.theme-dark {
+  color: var(--text-normal, #f2f2f7) !important;
+  --text-normal: #f2f2f7;
+  --text-muted: #98989d;
+  --text-faint: #636366;
+  --background-primary: #1c1c1e;
+  --background-primary-alt: #2c2c2e;
+  --background-secondary: #2c2c2e;
+  --background-modifier-border: #2c2c2e;
+}
+
+.red-image-preview.theme-light {
+  color: var(--text-normal, #1c1c1e) !important;
+  --text-normal: #1c1c1e;
+  --text-muted: #636366;
+  --text-faint: #98989d;
+  --background-primary: #ffffff;
+  --background-primary-alt: #fffaf5;
+  --background-secondary: #f2f2f7;
+  --background-modifier-border: #f2f2f7;
+}
+
+/* Form style improvements */
+.red-image-preview form {
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.red-image-preview label {
+  color: var(--text-normal) !important;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.red-image-preview input[type="text"],
+.red-image-preview select,
+.red-image-preview textarea {
+  background-color: var(--background-primary-alt) !important;
+  color: var(--text-normal) !important;
+  border: 1px solid var(--background-modifier-border) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.red-image-preview input[type="text"]:focus,
+.red-image-preview select:focus,
+.red-image-preview textarea:focus {
+  border-color: var(--text-accent, #3b82f6) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  outline: none !important;
+}
+
+.red-image-preview button {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: opacity 0.2s ease, transform 0.1s ease !important;
+}
+
+.red-image-preview button:hover {
+  opacity: 0.9 !important;
+}
+
+.red-image-preview button:active {
+  transform: scale(0.98) !important;
+}
