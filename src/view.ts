@@ -1059,7 +1059,7 @@ export class RedView extends ItemView {
       "publish_variant: xhs_screenshot",
       "derived_from:",
       `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
-      `assets: ${this.yamlQuote(`files://${absoluteAssetPath}`)}`,
+      `assets: ${this.yamlQuote(`file://${absoluteAssetPath}`)}`,
       "---",
       body
     ].join("\n");
