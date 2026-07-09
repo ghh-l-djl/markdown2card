@@ -16,6 +16,9 @@ export class AiManager {
     baseUrl = baseUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
+    const maskedKey = geminiApiKey.length > 8 ? `${geminiApiKey.substring(0, 6)}...${geminiApiKey.substring(geminiApiKey.length - 4)}` : "invalid_key";
+    console.log(`[markdown2card] Requesting Gemini API URL: ${url.replace(geminiApiKey, maskedKey)}`);
+
     try {
       const response = await requestUrl({
         url,
