@@ -4969,6 +4969,43 @@ var templates = {
 };
 
 // src/settings/settings.ts
+var DEFAULT_PROMPT_EN = `You are an expert copywriter specializing in creating viral Xiaohongshu (RED) posts. Read the following article content and rewrite it into an engaging, viral Xiaohongshu-style post.
+
+Requirements:
+1. Catchy Title: Design an attention-grabbing, viral title with emotional value.
+2. Clear Structure: Format with paragraphs, subheadings, or emojis to make the text easy to read and breathe.
+3. Engaging Tone: Use a lively, practical, and sincere tone, adopting natural Xiaohongshu style elements.
+4. Word Count: Keep the post concise, around 400-800 words.
+5. Tags: Provide 3-5 relevant high-traffic tags (starting with #) at the very end of the output.
+6. Language: You must output the rewritten post and tags in the same language as the input content (e.g., write in Chinese if the input is Chinese, in English if the input is English).
+7. Formatting: Output as plain text only. Do not use Markdown formatting such as headers (e.g., #, ##) or bold styling (e.g., **bold**). Emojis and symbols are allowed but must not be abused.
+
+Here is the original article:
+\${content}`;
+var DEFAULT_PROMPT_ZH = `\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u7684\u5C0F\u7EA2\u4E66\u7206\u6B3E\u6587\u6848\u4E13\u5BB6\u3002\u8BF7\u9605\u8BFB\u4EE5\u4E0B\u6587\u7AE0\u6B63\u6587\uFF0C\u5E76\u5C06\u5176\u91CD\u5199\u4E3A\u4E00\u7BC7\u7B26\u5408\u5C0F\u7EA2\u4E66\u98CE\u683C\u7684\u5438\u5F15\u4EBA\u7684\u7206\u6B3E\u7B14\u8BB0\u6B63\u6587\u3002
+
+\u8981\u6C42\uFF1A
+1. \u5438\u5F15\u4EBA\u7684\u6807\u9898\uFF1A\u8BBE\u8BA1\u4E00\u4E2A\u5E26\u6709\u60C5\u7EEA\u4EF7\u503C\u3001\u5438\u5F15\u773C\u7403\u7684\u7206\u6B3E\u6807\u9898\u3002
+2. \u7ED3\u6784\u6E05\u6670\uFF1A\u4F7F\u7528\u6BB5\u843D\u3001\u5C0F\u6807\u9898\u6216 Emoji \u8868\u60C5\u8FDB\u884C\u5408\u7406\u6392\u7248\uFF0C\u8BA9\u6587\u5B57\u6709\u547C\u5438\u611F\u3002
+3. \u8BED\u6C14\u751F\u52A8\uFF1A\u4F7F\u7528\u6D3B\u6CFC\u3001\u5145\u6EE1\u5E72\u8D27\u3001\u771F\u8BDA\u5206\u4EAB\u7684\u8BED\u6C14\uFF0C\u5584\u7528\u5C0F\u7EA2\u4E66\u5E38\u7528\u8BED\u3002
+4. \u5B57\u6570\u63A7\u5236\uFF1A\u5B57\u6570\u5728 400-800 \u5B57\u5DE6\u53F3\uFF0C\u4FDD\u6301\u7CBE\u70BC\u3002
+5. \u5305\u542B Tag\uFF1A\u5728\u7ED3\u5C3E\u52A0\u4E0A 3-5 \u4E2A\u9AD8\u70ED\u5EA6\u7684\u5C0F\u7EA2\u4E66\u76F8\u5173\u8BDD\u9898\u6807\u7B7E\uFF08\u5982 #\u5E72\u8D27\u5206\u4EAB #\u5B66\u4E60\u6253\u5361 \u7B49\uFF09\u3002
+6. \u8F93\u51FA\u8BED\u8A00\uFF1A\u4F60\u5FC5\u987B\u4EE5\u4E0E\u8F93\u5165\u5185\u5BB9\u76F8\u540C\u7684\u8BED\u8A00\u8F93\u51FA\u91CD\u5199\u540E\u7684\u7B14\u8BB0\u548C\u6807\u7B7E\uFF08\u4F8B\u5982\uFF0C\u5982\u679C\u8F93\u5165\u662F\u4E2D\u6587\u5219\u7528\u4E2D\u6587\u5199\uFF0C\u5982\u679C\u8F93\u5165\u662F\u82F1\u6587\u5219\u7528\u82F1\u6587\u5199\uFF09\u3002
+7. \u6392\u7248\u683C\u5F0F\uFF1A\u4EC5\u8F93\u51FA\u7EAF\u6587\u672C\u3002\u8BF7\u52FF\u4F7F\u7528 Markdown \u683C\u5F0F\uFF08\u5982\u6807\u9898 #\u3001## \u6216\u52A0\u7C97 ** \u7B49\uFF09\u3002\u53EF\u4EE5\u4F7F\u7528\u8868\u60C5\u7B26\u53F7\u548C\u7B26\u53F7\uFF0C\u4F46\u4E0D\u53EF\u6EE5\u7528\u3002
+
+\u4EE5\u4E0B\u662F\u6587\u7AE0\u539F\u6587\uFF1A
+\${content}`;
+var LEGACY_PROMPT_ZH = `\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u7684\u5C0F\u7EA2\u4E66\u7206\u6B3E\u6587\u6848\u4E13\u5BB6\u3002\u8BF7\u9605\u8BFB\u4EE5\u4E0B\u6587\u7AE0\u6B63\u6587\uFF0C\u5E76\u5C06\u5176\u91CD\u5199\u4E3A\u4E00\u7BC7\u7B26\u5408\u5C0F\u7EA2\u4E66\u98CE\u683C\u7684\u5438\u5F15\u4EBA\u7684\u7206\u6B3E\u7B14\u8BB0\u6B63\u6587\u3002
+
+\u8981\u6C42\uFF1A
+1. \u5438\u5F15\u4EBA\u7684\u6807\u9898\uFF1A\u8BBE\u8BA1\u4E00\u4E2A\u5E26\u6709\u60C5\u7EEA\u4EF7\u503C\u3001\u5438\u5F15\u773C\u7403\u7684\u7206\u6B3E\u6807\u9898\u3002
+2. \u7ED3\u6784\u6E05\u6670\uFF1A\u4F7F\u7528\u6BB5\u843D\u3001\u5C0F\u6807\u9898\u6216 Emoji \u8868\u60C5\u8FDB\u884C\u5408\u7406\u6392\u7248\uFF0C\u8BA9\u6587\u5B57\u6709\u547C\u5438\u611F\u3002
+3. \u8BED\u6C14\u751F\u52A8\uFF1A\u4F7F\u7528\u6D3B\u6CFC\u3001\u5145\u6EE1\u5E72\u8D27\u3001\u771F\u8BDA\u5206\u4EAB\u7684\u8BED\u6C14\uFF0C\u5584\u7528\u5C0F\u7EA2\u4E66\u5E38\u7528\u8BED\uFF0C\u5982\u201C\u59D0\u59B9\u4EEC\u201D\u3001\u201C\u5E72\u8D27\u9884\u8B66\u201D\u3001\u201C\u7EDD\u7EDD\u5B50\u201D\u7B49\uFF0C\u4F46\u8981\u81EA\u7136\u3002
+4. \u5305\u542B Tag\uFF1A\u5728\u7ED3\u5C3E\u52A0\u4E0A 3-5 \u4E2A\u9AD8\u70ED\u5EA6\u7684\u5C0F\u7EA2\u4E66\u76F8\u5173\u8BDD\u9898\u6807\u7B7E\uFF08\u5982 #\u5E72\u8D27\u5206\u4EAB #\u5B66\u4E60\u6253\u5361 \u7B49\uFF09\u3002
+5. \u5B57\u6570\u63A7\u5236\uFF1A\u5B57\u6570\u5728 400-800 \u5B57\u5DE6\u53F3\uFF0C\u4FDD\u6301\u7CBE\u70BC\u3002
+
+\u4EE5\u4E0B\u662F\u6587\u7AE0\u539F\u6587\uFF1A
+\${content}`;
 var DEFAULT_SETTINGS = {
   templateId: "default",
   themeId: "default",
@@ -5014,19 +5051,7 @@ var DEFAULT_SETTINGS = {
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
-  aiPromptTemplate: `You are an expert copywriter specializing in creating viral Xiaohongshu (RED) posts. Read the following article content and rewrite it into an engaging, viral Xiaohongshu-style post.
-
-Requirements:
-1. Catchy Title: Design an attention-grabbing, viral title with emotional value.
-2. Clear Structure: Format with paragraphs, subheadings, or emojis to make the text easy to read and breathe.
-3. Engaging Tone: Use a lively, practical, and sincere tone, adopting natural Xiaohongshu style elements.
-4. Word Count: Keep the post concise, around 400-800 words.
-5. Tags: Provide 3-5 relevant high-traffic tags (starting with #) at the very end of the output.
-6. Language: You must output the rewritten post and tags in the same language as the input content (e.g., write in Chinese if the input is Chinese, in English if the input is English).
-7. Formatting: Output as plain text only. Do not use Markdown formatting such as headers (e.g., #, ##) or bold styling (e.g., **bold**). Emojis and symbols are allowed but must not be abused.
-
-Here is the original article:
-\${content}`,
+  aiPromptTemplate: DEFAULT_PROMPT_EN,
   aiRewriteThreshold: 800
 };
 var SettingsManager = class extends import_events.EventEmitter {
@@ -5049,9 +5074,15 @@ var SettingsManager = class extends import_events.EventEmitter {
     }
     if (!savedData.customThemes)
       savedData.customThemes = [];
+    const uiLang = savedData.uiLanguage || DEFAULT_SETTINGS.uiLanguage || "en";
+    let prompt = savedData.aiPromptTemplate;
+    if (!prompt || prompt === LEGACY_PROMPT_ZH || prompt === DEFAULT_PROMPT_ZH || prompt === DEFAULT_PROMPT_EN) {
+      prompt = uiLang === "zh" ? DEFAULT_PROMPT_ZH : DEFAULT_PROMPT_EN;
+    }
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...savedData,
+      aiPromptTemplate: prompt,
       backgroundSettings: {
         ...DEFAULT_SETTINGS.backgroundSettings,
         ...savedData.backgroundSettings || {}
@@ -5066,7 +5097,15 @@ var SettingsManager = class extends import_events.EventEmitter {
   }
   async updateSettings(settings) {
     const languageChanged = settings.uiLanguage && settings.uiLanguage !== this.settings.uiLanguage;
+    const oldLang = this.settings.uiLanguage;
     this.settings = { ...this.settings, ...settings };
+    if (languageChanged) {
+      const currentPrompt = this.settings.aiPromptTemplate;
+      const oldDefault = oldLang === "zh" ? DEFAULT_PROMPT_ZH : DEFAULT_PROMPT_EN;
+      if (!currentPrompt || currentPrompt === oldDefault || currentPrompt === LEGACY_PROMPT_ZH) {
+        this.settings.aiPromptTemplate = this.settings.uiLanguage === "zh" ? DEFAULT_PROMPT_ZH : DEFAULT_PROMPT_EN;
+      }
+    }
     await this.saveSettings();
     if (languageChanged)
       this.emit("language-changed");
