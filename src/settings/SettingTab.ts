@@ -320,6 +320,20 @@ export class RedSettingTab extends PluginSettingTab {
             }));
 
         new Setting(containerEl)
+          .setName(isZh ? "AI 重写字数阈值" : "AI Rewrite Character Threshold")
+          .setDesc(isZh 
+            ? "正文字数少于此阈值时将不进行重写 (单位: 字符)" 
+            : "No rewrite will be performed if the body length is less than or equal to this threshold."
+          )
+          .addText((text) => text
+            .setPlaceholder("800")
+            .setValue(String(settings.aiRewriteThreshold ?? 800))
+            .onChange(async (value) => {
+              const num = parseInt(value, 10);
+              await this.plugin.settingsManager.updateSettings({ aiRewriteThreshold: isNaN(num) ? 800 : num });
+            }));
+
+        new Setting(containerEl)
           .setName(isZh ? "AI 提示词模板 (Prompt)" : "AI Prompt Template")
           .setDesc(isZh 
             ? "自定义重写提示词。使用 ${content} 代表文章原文。"

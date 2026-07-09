@@ -1010,7 +1010,10 @@ export class RedView extends ItemView {
 
     let body = this.stripFrontMatter(sourceContent);
 
-    if (settings.enableAiSummary && body.trim()) {
+    const bodyLength = body.trim().length;
+    const threshold = settings.aiRewriteThreshold ?? 800;
+
+    if (settings.enableAiSummary && body.trim() && bodyLength > threshold) {
       new Notice(this.t("aiRewriting"));
       try {
         body = await AiManager.rewriteContent(body, settings);
@@ -1020,7 +1023,9 @@ export class RedView extends ItemView {
       }
     }
 
-    const publishContent = this.buildPublishMarkdownWithBody(body, sourceFile.path, absoluteAssetPath);
+    const { cleanText, tags } = this.extractAndRemoveTags(body);
+
+    const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
 
     if (existingPublishFile instanceof TFile) {
@@ -1049,8 +1054,8 @@ export class RedView extends ItemView {
     return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
 
-  private buildPublishMarkdownWithBody(body: string, sourcePath: string, absoluteAssetPath: string): string {
-    return [
+  private buildPublishMarkdownWithBody(body: string, sourcePath: string, absoluteAssetPath: string, tags: string[]): string {
+    const lines = [
       "---",
       "content_role: publish_package",
       "publish_status: ready",
@@ -1060,9 +1065,47 @@ export class RedView extends ItemView {
       "derived_from:",
       `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
       `assets: ${this.yamlQuote(`file://${absoluteAssetPath}`)}`,
-      "---",
-      body
-    ].join("\n");
+    ];
+
+    if (tags && tags.length > 0) {
+      lines.push("publish_social_tags:");
+      for (const tag of tags) {
+        lines.push(`  - ${this.yamlQuote(tag)}`);
+      }
+    }
+
+    lines.push("---");
+    lines.push(body);
+
+    return lines.join("\n");
+  }
+
+  private extractAndRemoveTags(text: string): { cleanText: string; tags: string[] } {
+    const tags: string[] = [];
+    const seen = new Set<string>();
+    const regex = /#([^\s#.,;:!?"'()\[\]{}+=~`|<>\\\/]+)/g;
+    
+    const cleanText = text.replace(regex, (match, tag) => {
+      const trimmedTag = tag.trim();
+      if (trimmedTag && !/^\d+$/.test(trimmedTag)) {
+        if (!seen.has(trimmedTag)) {
+          tags.push(trimmedTag);
+          seen.add(trimmedTag);
+        }
+        return "";
+      }
+      return match;
+    });
+    
+    const formattedText = cleanText
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/ ([.,;:!?])/g, "$1")
+      .split("\n")
+      .map(line => line.trimEnd())
+      .join("\n")
+      .replace(/\s+$/, "");
+
+    return { cleanText: formattedText, tags };
   }
 
   private stripFrontMatter(content: string): string {

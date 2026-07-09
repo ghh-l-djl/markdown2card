@@ -4109,6 +4109,15 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
         ).addText((text) => text.setPlaceholder("gemini-3.5-flash").setValue(settings.geminiModel).onChange((value) => {
           this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
         }));
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u91CD\u5199\u5B57\u6570\u9608\u503C" : "AI Rewrite Character Threshold").setDesc(
+          isZh ? "\u6B63\u6587\u5B57\u6570\u5C11\u4E8E\u6B64\u9608\u503C\u65F6\u5C06\u4E0D\u8FDB\u884C\u91CD\u5199 (\u5355\u4F4D: \u5B57\u7B26)" : "No rewrite will be performed if the body length is less than or equal to this threshold."
+        ).addText((text) => {
+          var _a;
+          return text.setPlaceholder("800").setValue(String((_a = settings.aiRewriteThreshold) != null ? _a : 800)).onChange(async (value) => {
+            const num = parseInt(value, 10);
+            await this.plugin.settingsManager.updateSettings({ aiRewriteThreshold: isNaN(num) ? 800 : num });
+          });
+        });
         new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u63D0\u793A\u8BCD\u6A21\u677F (Prompt)" : "AI Prompt Template").setDesc(
           isZh ? "\u81EA\u5B9A\u4E49\u91CD\u5199\u63D0\u793A\u8BCD\u3002\u4F7F\u7528 ${content} \u4EE3\u8868\u6587\u7AE0\u539F\u6587\u3002" : "Customize the rewrite prompt. Use ${content} to represent the source article text."
         ).addTextArea((textArea) => textArea.setPlaceholder(isZh ? "\u8F93\u5165 AI Prompt..." : "Enter AI Prompt...").setValue(settings.aiPromptTemplate).onChange((value) => {
@@ -5005,17 +5014,19 @@ var DEFAULT_SETTINGS = {
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
-  aiPromptTemplate: `\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u7684\u5C0F\u7EA2\u4E66\u7206\u6B3E\u6587\u6848\u4E13\u5BB6\u3002\u8BF7\u9605\u8BFB\u4EE5\u4E0B\u6587\u7AE0\u6B63\u6587\uFF0C\u5E76\u5C06\u5176\u91CD\u5199\u4E3A\u4E00\u7BC7\u7B26\u5408\u5C0F\u7EA2\u4E66\u98CE\u683C\u7684\u5438\u5F15\u4EBA\u7684\u7206\u6B3E\u7B14\u8BB0\u6B63\u6587\u3002
+  aiPromptTemplate: `You are an expert copywriter specializing in creating viral Xiaohongshu (RED) posts. Read the following article content and rewrite it into an engaging, viral Xiaohongshu-style post.
 
-\u8981\u6C42\uFF1A
-1. \u5438\u5F15\u4EBA\u7684\u6807\u9898\uFF1A\u8BBE\u8BA1\u4E00\u4E2A\u5E26\u6709\u60C5\u7EEA\u4EF7\u503C\u3001\u5438\u5F15\u773C\u7403\u7684\u7206\u6B3E\u6807\u9898\u3002
-2. \u7ED3\u6784\u6E05\u6670\uFF1A\u4F7F\u7528\u6BB5\u843D\u3001\u5C0F\u6807\u9898\u6216 Emoji \u8868\u60C5\u8FDB\u884C\u5408\u7406\u6392\u7248\uFF0C\u8BA9\u6587\u5B57\u6709\u547C\u5438\u611F\u3002
-3. \u8BED\u6C14\u751F\u52A8\uFF1A\u4F7F\u7528\u6D3B\u6CFC\u3001\u5145\u6EE1\u5E72\u8D27\u3001\u771F\u8BDA\u5206\u4EAB\u7684\u8BED\u6C14\uFF0C\u5584\u7528\u5C0F\u7EA2\u4E66\u5E38\u7528\u8BED\uFF0C\u5982\u201C\u59D0\u59B9\u4EEC\u201D\u3001\u201C\u5E72\u8D27\u9884\u8B66\u201D\u3001\u201C\u7EDD\u7EDD\u5B50\u201D\u7B49\uFF0C\u4F46\u8981\u81EA\u7136\u3002
-4. \u5305\u542B Tag\uFF1A\u5728\u7ED3\u5C3E\u52A0\u4E0A 3-5 \u4E2A\u9AD8\u70ED\u5EA6\u7684\u5C0F\u7EA2\u4E66\u76F8\u5173\u8BDD\u9898\u6807\u7B7E\uFF08\u5982 #\u5E72\u8D27\u5206\u4EAB #\u5B66\u4E60\u6253\u5361 \u7B49\uFF09\u3002
-5. \u5B57\u6570\u63A7\u5236\uFF1A\u5B57\u6570\u5728 400-800 \u5B57\u5DE6\u53F3\uFF0C\u4FDD\u6301\u7CBE\u70BC\u3002
+Requirements:
+1. Catchy Title: Design an attention-grabbing, viral title with emotional value.
+2. Clear Structure: Format with paragraphs, subheadings, or emojis to make the text easy to read and breathe.
+3. Engaging Tone: Use a lively, practical, and sincere tone, adopting natural Xiaohongshu style elements.
+4. Word Count: Keep the post concise, around 400-800 words.
+5. Tags: Provide 3-5 relevant high-traffic tags (starting with #) at the very end of the output.
+6. Language: You must output the rewritten post and tags in the same language as the input content (e.g., write in Chinese if the input is Chinese, in English if the input is English).
 
-\u4EE5\u4E0B\u662F\u6587\u7AE0\u539F\u6587\uFF1A
-\${content}`
+Here is the original article:
+\${content}`,
+  aiRewriteThreshold: 800
 };
 var SettingsManager = class extends import_events.EventEmitter {
   constructor(plugin) {
@@ -8280,6 +8291,7 @@ var RedView = class extends import_obsidian6.ItemView {
     }
   }
   async applyPostExportActions(assetPath, assetPathIsAbsolute) {
+    var _a;
     if (!this.currentFile)
       return;
     const sourceFile = this.currentFile;
@@ -8288,7 +8300,9 @@ var RedView = class extends import_obsidian6.ItemView {
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const settings = this.settingsManager.getSettings();
     let body = this.stripFrontMatter(sourceContent);
-    if (settings.enableAiSummary && body.trim()) {
+    const bodyLength = body.trim().length;
+    const threshold = (_a = settings.aiRewriteThreshold) != null ? _a : 800;
+    if (settings.enableAiSummary && body.trim() && bodyLength > threshold) {
       new import_obsidian6.Notice(this.t("aiRewriting"));
       try {
         body = await AiManager.rewriteContent(body, settings);
@@ -8297,7 +8311,8 @@ var RedView = class extends import_obsidian6.ItemView {
         new import_obsidian6.Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);
       }
     }
-    const publishContent = this.buildPublishMarkdownWithBody(body, sourceFile.path, absoluteAssetPath);
+    const { cleanText, tags } = this.extractAndRemoveTags(body);
+    const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
     if (existingPublishFile instanceof import_obsidian6.TFile) {
       await this.app.vault.modify(existingPublishFile, publishContent);
@@ -8319,8 +8334,8 @@ var RedView = class extends import_obsidian6.ItemView {
     const adapter = this.app.vault.adapter;
     return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
-  buildPublishMarkdownWithBody(body, sourcePath, absoluteAssetPath) {
-    return [
+  buildPublishMarkdownWithBody(body, sourcePath, absoluteAssetPath, tags) {
+    const lines = [
       "---",
       "content_role: publish_package",
       "publish_status: ready",
@@ -8329,10 +8344,35 @@ var RedView = class extends import_obsidian6.ItemView {
       "publish_variant: xhs_screenshot",
       "derived_from:",
       `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
-      `assets: ${this.yamlQuote(`file://${absoluteAssetPath}`)}`,
-      "---",
-      body
-    ].join("\n");
+      `assets: ${this.yamlQuote(`file://${absoluteAssetPath}`)}`
+    ];
+    if (tags && tags.length > 0) {
+      lines.push("publish_social_tags:");
+      for (const tag of tags) {
+        lines.push(`  - ${this.yamlQuote(tag)}`);
+      }
+    }
+    lines.push("---");
+    lines.push(body);
+    return lines.join("\n");
+  }
+  extractAndRemoveTags(text) {
+    const tags = [];
+    const seen = /* @__PURE__ */ new Set();
+    const regex = /#([^\s#.,;:!?"'()\[\]{}+=~`|<>\\\/]+)/g;
+    const cleanText = text.replace(regex, (match, tag) => {
+      const trimmedTag = tag.trim();
+      if (trimmedTag && !/^\d+$/.test(trimmedTag)) {
+        if (!seen.has(trimmedTag)) {
+          tags.push(trimmedTag);
+          seen.add(trimmedTag);
+        }
+        return "";
+      }
+      return match;
+    });
+    const formattedText = cleanText.replace(/[ \t]{2,}/g, " ").replace(/ ([.,;:!?])/g, "$1").split("\n").map((line) => line.trimEnd()).join("\n").replace(/\s+$/, "");
+    return { cleanText: formattedText, tags };
   }
   stripFrontMatter(content) {
     if (!content.startsWith("---"))

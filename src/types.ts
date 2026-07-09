@@ -75,6 +75,7 @@ export interface YanqiSettings {
   geminiApiUrl: string;
   geminiModel: string;
   aiPromptTemplate: string;
+  aiRewriteThreshold: number;
 }
 
 export interface FontOption {
