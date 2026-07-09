@@ -5164,6 +5164,11 @@ var ThemeManager = class {
       return;
     const styles = targetTheme.styles;
     const imagePreview = element.querySelector(".red-image-preview");
+    const isDark = this.isThemeDark(targetTheme);
+    if (imagePreview) {
+      imagePreview.classList.remove("theme-dark", "theme-light");
+      imagePreview.classList.add(isDark ? "theme-dark" : "theme-light");
+    }
     this.applyInlineStyle(imagePreview, styles.imagePreview);
     const header = element.querySelector(".red-preview-header");
     if (header && styles.header) {
@@ -5212,8 +5217,8 @@ var ThemeManager = class {
       });
     });
     element.querySelectorAll("p").forEach((el) => {
-      var _a, _b;
-      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote"))) {
+      var _a, _b, _c;
+      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote")) && !((_c = el.parentElement) == null ? void 0 : _c.closest(".callout"))) {
         this.applyInlineStyle(el, `${styles.paragraph}; font-family: ${this.currentFont}; font-size: ${this.currentFontSize}px;`);
       }
     });
@@ -5371,6 +5376,42 @@ var ThemeManager = class {
     const light = Math.max(this.luminance(a), this.luminance(b));
     const dark = Math.min(this.luminance(a), this.luminance(b));
     return (light + 0.05) / (dark + 0.05);
+  }
+  isThemeDark(theme) {
+    const bgStyle = theme.styles.imagePreview;
+    if (!bgStyle)
+      return true;
+    const hexMatch = bgStyle.match(/#([0-9a-fA-F]{3,8})/);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      } else if (hex.length === 8) {
+        hex = hex.substring(0, 6);
+      }
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance < 0.5;
+      }
+    }
+    const rgbMatch = bgStyle.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      const r = parseInt(rgbMatch[1], 10);
+      const g = parseInt(rgbMatch[2], 10);
+      const b = parseInt(rgbMatch[3], 10);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance < 0.5;
+      }
+    }
+    const lower = bgStyle.toLowerCase();
+    if (lower.includes("white") || lower.includes("#fff") || lower.includes("255,255,255")) {
+      return false;
+    }
+    return true;
   }
   getReadableCodeColor(backgroundColor, currentColor) {
     const background = this.parseCssColor(backgroundColor);
