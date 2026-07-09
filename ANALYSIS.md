@@ -19,6 +19,7 @@
 - 支持当前页和全部页导出；导出目标可配置为 vault 相对路径或系统绝对路径，输出形式可选 ZIP 压缩包或 PNG 文件夹。
 - 支持导出后续行为：更新源文件 YAML frontmatter、创建发布版 Markdown，并把导出资产以 `files://` 路径写入发布版元数据。
 - 支持超尺寸 Mermaid 原比例追加页导出、复制当前图到剪贴板。
+- 集成 AI 智能重写模块，在导出后置动作中异步调用 Gemini 模型（如 `gemini-3.5-flash`）进行内容总结，支持配置 API 代理地址、可配置提示词模板，并提供完整的错误容错（降级回退为原文）与多语言支持。
 - 支持预览界面语言切换，默认英文，可切换中文。
 - 支持图片拖拽、缩放、四角改大小，并按图片地址哈希持久化。
 - 支持表格字号缩放和拖拽缩放，并按表格文本哈希持久化。
@@ -45,7 +46,8 @@ Obsidian 当前文件
   -> setupImageZoom / setupTableResize
   -> html-to-image toBlob/toCanvas
   -> vault/文件系统写入 PNG 或 JSZip
-  -> 可选 YAML frontmatter 后处理 / ClipboardItem 写剪贴板
+  -> 可选 YAML frontmatter 后处理 & 异步调用 AiManager.rewriteContent 进行正文重写
+  -> 写入发布版文件 / ClipboardItem 写剪贴板
 ```
 
 首次启用插件时，Obsidian 的 Markdown 后处理器和右侧视图布局可能晚于插件视图创建完成。预览链路因此带有两层稳定化处理：渲染过程用 `previewRenderId` 丢弃过期异步结果；首轮完成后如果仍检测到原始 Mermaid 代码块，或单页内容实际溢出，会延迟执行一次 settle retry。`RedConverter` 也会展平 Obsidian 的 `markdown-preview-*` 包装层，避免整篇文档被当成不可拆分块，并在 Mermaid DOM 源码为空时从原始 Markdown fence 回填源码。
@@ -60,6 +62,7 @@ Obsidian 当前文件
 - `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，自动计算卡片主题亮度并动态绑定亮/暗色作用域 Class，并修正 Mermaid 图表与内置警告框在混合主题背景下的对比度与样式。
 - `src/settings/settings.ts`：默认配置、主题/字体/导出/界面语言持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。
+- `src/aiManager.ts`：AI 重写服务模块，封装调用 Gemini API 接口，负责安全凭证脱敏、代理地址拼装、以及接口异常捕获处理。
 - `src/downloadManager.ts`：把当前页或全部分页渲染为 PNG Blob，并可打包为 ZIP。
 - `src/clipboardManager.ts`：复制图片到剪贴板。
 - `src/backgroundManager.ts`：背景图样式和背景设置弹窗。
