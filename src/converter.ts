@@ -256,6 +256,17 @@ export class RedConverter {
           }
         }
 
+        if (this.isCodeBlock(block)) {
+          const splitBlocks = this.splitOversizedCodeBlock(block, current, probe);
+          if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
+            current.appendChild(splitBlocks.shift()!);
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...splitBlocks);
+            continue;
+          }
+        }
+
         if (this.endsWithHeading(current)) {
           const splitBlocks = this.splitOversizedTextBlock(block, current, probe);
           if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
@@ -280,6 +291,7 @@ export class RedConverter {
             }
             continue;
           }
+
         }
 
         pages.push(current);
@@ -290,6 +302,14 @@ export class RedConverter {
 
       if (this.isListBlock(block)) {
         const splitBlocks = this.splitOversizedListBlock(block, makePage(false), probe);
+        if (splitBlocks.length > 1) {
+          pending.unshift(...splitBlocks);
+          continue;
+        }
+      }
+
+      if (this.isCodeBlock(block)) {
+        const splitBlocks = this.splitOversizedCodeBlock(block, makePage(false), probe);
         if (splitBlocks.length > 1) {
           pending.unshift(...splitBlocks);
           continue;
@@ -403,6 +423,141 @@ export class RedConverter {
     }
 
     return [leftList, rightList];
+  }
+
+  private static isCodeBlock(block: HTMLElement): boolean {
+    return block.tagName.toLowerCase() === "pre";
+  }
+
+  private static splitOversizedCodeBlock(block: HTMLElement, emptyPage: HTMLElement, probe: HTMLElement): HTMLElement[] {
+    if (!this.isCodeBlock(block)) return [block];
+    const codeEl = block.querySelector("code");
+    if (!codeEl) return [block];
+
+    let lineDivs = Array.from(codeEl.querySelectorAll<HTMLElement>(":scope > .red-code-line"));
+    if (lineDivs.length === 0) {
+      const lines = this.splitCodeBlockIntoLines(codeEl);
+      codeEl.empty();
+      lines.forEach((line) => codeEl.appendChild(line));
+      lineDivs = lines;
+    }
+
+    if (lineDivs.length <= 1) return [block];
+
+    let low = 1;
+    let high = lineDivs.length - 1;
+    let best = 0;
+
+    const testFits = (count: number): boolean => {
+      const candidatePre = block.cloneNode(false) as HTMLElement;
+      const candidateCode = codeEl.cloneNode(false) as HTMLElement;
+      candidatePre.appendChild(candidateCode);
+      for (let i = 0; i < count; i++) {
+        candidateCode.appendChild(lineDivs[i].cloneNode(true));
+      }
+      probe.replaceChildren(
+        ...Array.from(emptyPage.children).map((child) => child.cloneNode(true)),
+        candidatePre
+      );
+      return !this.isOverflowing(probe);
+    };
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (testFits(mid)) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    if (best <= 0) return [block];
+
+    const leftPre = block.cloneNode(false) as HTMLElement;
+    const leftCode = codeEl.cloneNode(false) as HTMLElement;
+    leftPre.appendChild(leftCode);
+    for (let i = 0; i < best; i++) {
+      leftCode.appendChild(lineDivs[i].cloneNode(true));
+    }
+
+    const rightPre = block.cloneNode(false) as HTMLElement;
+    const rightCode = codeEl.cloneNode(false) as HTMLElement;
+    rightPre.appendChild(rightCode);
+    for (let i = best; i < lineDivs.length; i++) {
+      rightCode.appendChild(lineDivs[i].cloneNode(true));
+    }
+
+    rightPre.classList.add("red-pre-continued");
+    leftPre.classList.add("red-pre-split");
+
+    return [leftPre, rightPre];
+  }
+
+  private static splitCodeBlockIntoLines(codeEl: HTMLElement): HTMLElement[] {
+    const lines: HTMLElement[] = [];
+    let currentLineNodes: Node[] = [];
+    const stack: HTMLElement[] = [];
+
+    function traverse(node: Node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || "";
+        const parts = text.split(/\r?\n/);
+        for (let i = 0; i < parts.length; i++) {
+          if (i > 0) {
+            const lineContainer = document.createElement("div");
+            lineContainer.className = "red-code-line";
+            currentLineNodes.forEach(n => lineContainer.appendChild(n));
+            lines.push(lineContainer);
+            currentLineNodes = [];
+          }
+          const partText = parts[i];
+          if (partText !== "") {
+            if (stack.length === 0) {
+              currentLineNodes.push(document.createTextNode(partText));
+            } else {
+              const rootClone = stack[0].cloneNode(false) as HTMLElement;
+              let currentParent = rootClone;
+              for (let j = 1; j < stack.length; j++) {
+                const childClone = stack[j].cloneNode(false) as HTMLElement;
+                currentParent.appendChild(childClone);
+                currentParent = childClone;
+              }
+              currentParent.appendChild(document.createTextNode(partText));
+              currentLineNodes.push(rootClone);
+            }
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        if (el.tagName.toLowerCase() === "br") {
+          const lineContainer = document.createElement("div");
+          lineContainer.className = "red-code-line";
+          currentLineNodes.forEach(n => lineContainer.appendChild(n));
+          lines.push(lineContainer);
+          currentLineNodes = [];
+          return;
+        }
+        stack.push(el);
+        for (let i = 0; i < el.childNodes.length; i++) {
+          traverse(el.childNodes[i]);
+        }
+        stack.pop();
+      }
+    }
+
+    for (let i = 0; i < codeEl.childNodes.length; i++) {
+      traverse(codeEl.childNodes[i]);
+    }
+
+    if (currentLineNodes.length > 0 || lines.length === 0) {
+      const lineContainer = document.createElement("div");
+      lineContainer.className = "red-code-line";
+      currentLineNodes.forEach(n => lineContainer.appendChild(n));
+      lines.push(lineContainer);
+    }
+
+    return lines;
   }
 
   private static splitOversizedTextBlock(block: HTMLElement, emptyPage: HTMLElement, probe: HTMLElement): HTMLElement[] {
@@ -1018,15 +1173,24 @@ export class RedConverter {
       const pre = el.parentElement;
       if (!pre) return;
       pre.classList.add("red-pre");
-      if (!pre.querySelector(".red-code-dots")) {
-        const dots = document.createElement("div");
-        dots.className = "red-code-dots";
-        ["red", "yellow", "green"].forEach((color) => {
-          const dot = document.createElement("span");
-          dot.className = `red-code-dot red-code-dot-${color}`;
-          dots.appendChild(dot);
-        });
-        pre.insertBefore(dots, pre.firstChild);
+      if (pre.classList.contains("red-pre-continued")) {
+        if (!pre.querySelector(".red-code-continued-label")) {
+          const label = document.createElement("div");
+          label.className = "red-code-continued-label";
+          label.textContent = "Continued";
+          pre.insertBefore(label, pre.firstChild);
+        }
+      } else {
+        if (!pre.querySelector(".red-code-dots")) {
+          const dots = document.createElement("div");
+          dots.className = "red-code-dots";
+          ["red", "yellow", "green"].forEach((color) => {
+            const dot = document.createElement("span");
+            dot.className = `red-code-dot red-code-dot-${color}`;
+            dots.appendChild(dot);
+          });
+          pre.insertBefore(dots, pre.firstChild);
+        }
       }
       pre.querySelector(".copy-code-button")?.remove();
     });

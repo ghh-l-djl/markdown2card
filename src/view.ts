@@ -89,7 +89,7 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     copyFailed: "复制失败",
     previewFirst: "请先生成预览",
     noPages: "没有可预览的页面",
-    overviewTitle: "全览 · 全部 {count} 页",
+    overviewTitle: "全览 · 共{count} 页",
     defaultTheme: "默认主题",
     defaultTemplate: "默认模板",
     notes: "备忘录",

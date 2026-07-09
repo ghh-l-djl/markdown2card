@@ -2429,3 +2429,46 @@
   color: var(--text-muted) !important;
   opacity: 0.55;
 }
+
+/* ============================================================
+   代码块分页与折叠样式 (Code block pagination & continuation styles)
+   ============================================================ */
+.red-pre-split {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 4px !important;
+}
+
+.red-pre-continued {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-top: none !important;
+  margin-top: 0 !important;
+  padding-top: 4px !important;
+}
+
+.red-code-continued-label {
+  font-size: 10px;
+  font-family: inherit;
+  opacity: 0.5;
+  margin: 8px 0 12px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.red-code-continued-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted, #999);
+}
+
+.red-code-line {
+  min-height: 1.4em;
+  word-break: break-all;
+}

@@ -2967,6 +2967,16 @@ var RedConverter = class {
             continue;
           }
         }
+        if (this.isCodeBlock(block)) {
+          const splitBlocks2 = this.splitOversizedCodeBlock(block, current, probe);
+          if (splitBlocks2.length > 1 && fits(current, splitBlocks2[0])) {
+            current.appendChild(splitBlocks2.shift());
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...splitBlocks2);
+            continue;
+          }
+        }
         if (this.endsWithHeading(current)) {
           const splitBlocks2 = this.splitOversizedTextBlock(block, current, probe);
           if (splitBlocks2.length > 1 && fits(current, splitBlocks2[0])) {
@@ -2998,6 +3008,13 @@ var RedConverter = class {
       }
       if (this.isListBlock(block)) {
         const splitBlocks2 = this.splitOversizedListBlock(block, makePage(false), probe);
+        if (splitBlocks2.length > 1) {
+          pending.unshift(...splitBlocks2);
+          continue;
+        }
+      }
+      if (this.isCodeBlock(block)) {
+        const splitBlocks2 = this.splitOversizedCodeBlock(block, makePage(false), probe);
         if (splitBlocks2.length > 1) {
           pending.unshift(...splitBlocks2);
           continue;
@@ -3101,6 +3118,128 @@ var RedConverter = class {
       rightList.setAttribute("start", String(baseStart + best));
     }
     return [leftList, rightList];
+  }
+  static isCodeBlock(block) {
+    return block.tagName.toLowerCase() === "pre";
+  }
+  static splitOversizedCodeBlock(block, emptyPage, probe) {
+    if (!this.isCodeBlock(block))
+      return [block];
+    const codeEl = block.querySelector("code");
+    if (!codeEl)
+      return [block];
+    let lineDivs = Array.from(codeEl.querySelectorAll(":scope > .red-code-line"));
+    if (lineDivs.length === 0) {
+      const lines = this.splitCodeBlockIntoLines(codeEl);
+      codeEl.empty();
+      lines.forEach((line) => codeEl.appendChild(line));
+      lineDivs = lines;
+    }
+    if (lineDivs.length <= 1)
+      return [block];
+    let low = 1;
+    let high = lineDivs.length - 1;
+    let best = 0;
+    const testFits = (count) => {
+      const candidatePre = block.cloneNode(false);
+      const candidateCode = codeEl.cloneNode(false);
+      candidatePre.appendChild(candidateCode);
+      for (let i = 0; i < count; i++) {
+        candidateCode.appendChild(lineDivs[i].cloneNode(true));
+      }
+      probe.replaceChildren(
+        ...Array.from(emptyPage.children).map((child) => child.cloneNode(true)),
+        candidatePre
+      );
+      return !this.isOverflowing(probe);
+    };
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (testFits(mid)) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+    if (best <= 0)
+      return [block];
+    const leftPre = block.cloneNode(false);
+    const leftCode = codeEl.cloneNode(false);
+    leftPre.appendChild(leftCode);
+    for (let i = 0; i < best; i++) {
+      leftCode.appendChild(lineDivs[i].cloneNode(true));
+    }
+    const rightPre = block.cloneNode(false);
+    const rightCode = codeEl.cloneNode(false);
+    rightPre.appendChild(rightCode);
+    for (let i = best; i < lineDivs.length; i++) {
+      rightCode.appendChild(lineDivs[i].cloneNode(true));
+    }
+    rightPre.classList.add("red-pre-continued");
+    leftPre.classList.add("red-pre-split");
+    return [leftPre, rightPre];
+  }
+  static splitCodeBlockIntoLines(codeEl) {
+    const lines = [];
+    let currentLineNodes = [];
+    const stack = [];
+    function traverse(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || "";
+        const parts = text.split(/\r?\n/);
+        for (let i = 0; i < parts.length; i++) {
+          if (i > 0) {
+            const lineContainer = document.createElement("div");
+            lineContainer.className = "red-code-line";
+            currentLineNodes.forEach((n) => lineContainer.appendChild(n));
+            lines.push(lineContainer);
+            currentLineNodes = [];
+          }
+          const partText = parts[i];
+          if (partText !== "") {
+            if (stack.length === 0) {
+              currentLineNodes.push(document.createTextNode(partText));
+            } else {
+              const rootClone = stack[0].cloneNode(false);
+              let currentParent = rootClone;
+              for (let j = 1; j < stack.length; j++) {
+                const childClone = stack[j].cloneNode(false);
+                currentParent.appendChild(childClone);
+                currentParent = childClone;
+              }
+              currentParent.appendChild(document.createTextNode(partText));
+              currentLineNodes.push(rootClone);
+            }
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node;
+        if (el.tagName.toLowerCase() === "br") {
+          const lineContainer = document.createElement("div");
+          lineContainer.className = "red-code-line";
+          currentLineNodes.forEach((n) => lineContainer.appendChild(n));
+          lines.push(lineContainer);
+          currentLineNodes = [];
+          return;
+        }
+        stack.push(el);
+        for (let i = 0; i < el.childNodes.length; i++) {
+          traverse(el.childNodes[i]);
+        }
+        stack.pop();
+      }
+    }
+    for (let i = 0; i < codeEl.childNodes.length; i++) {
+      traverse(codeEl.childNodes[i]);
+    }
+    if (currentLineNodes.length > 0 || lines.length === 0) {
+      const lineContainer = document.createElement("div");
+      lineContainer.className = "red-code-line";
+      currentLineNodes.forEach((n) => lineContainer.appendChild(n));
+      lines.push(lineContainer);
+    }
+    return lines;
   }
   static splitOversizedTextBlock(block, emptyPage, probe) {
     if (!this.isSplittableTextBlock(block))
@@ -3661,15 +3800,24 @@ var RedConverter = class {
       if (!pre)
         return;
       pre.classList.add("red-pre");
-      if (!pre.querySelector(".red-code-dots")) {
-        const dots = document.createElement("div");
-        dots.className = "red-code-dots";
-        ["red", "yellow", "green"].forEach((color) => {
-          const dot = document.createElement("span");
-          dot.className = `red-code-dot red-code-dot-${color}`;
-          dots.appendChild(dot);
-        });
-        pre.insertBefore(dots, pre.firstChild);
+      if (pre.classList.contains("red-pre-continued")) {
+        if (!pre.querySelector(".red-code-continued-label")) {
+          const label = document.createElement("div");
+          label.className = "red-code-continued-label";
+          label.textContent = "Continued";
+          pre.insertBefore(label, pre.firstChild);
+        }
+      } else {
+        if (!pre.querySelector(".red-code-dots")) {
+          const dots = document.createElement("div");
+          dots.className = "red-code-dots";
+          ["red", "yellow", "green"].forEach((color) => {
+            const dot = document.createElement("span");
+            dot.className = `red-code-dot red-code-dot-${color}`;
+            dots.appendChild(dot);
+          });
+          pre.insertBefore(dots, pre.firstChild);
+        }
       }
       (_a = pre.querySelector(".copy-code-button")) == null ? void 0 : _a.remove();
     });
@@ -7043,7 +7191,7 @@ var UI_TEXT = {
     copyFailed: "\u590D\u5236\u5931\u8D25",
     previewFirst: "\u8BF7\u5148\u751F\u6210\u9884\u89C8",
     noPages: "\u6CA1\u6709\u53EF\u9884\u89C8\u7684\u9875\u9762",
-    overviewTitle: "\u5168\u89C8 \xB7 \u5168\u90E8 {count} \u9875",
+    overviewTitle: "\u5168\u89C8 \xB7 \u5171{count} \u9875",
     defaultTheme: "\u9ED8\u8BA4\u4E3B\u9898",
     defaultTemplate: "\u9ED8\u8BA4\u6A21\u677F",
     notes: "\u5907\u5FD8\u5F55",
