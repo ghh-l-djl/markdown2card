@@ -1144,6 +1144,18 @@
   max-width: 100%;
 }
 
+/* Force Mermaid diagrams to remain styled in light mode variables */
+.red-content-section .red-mermaid,
+.red-content-section .mermaid {
+  --background-primary: #ffffff !important;
+  --background-primary-alt: #f8fafc !important;
+  --background-secondary: #f3f4f6 !important;
+  --background-modifier-border: #e5e7eb !important;
+  --text-normal: #1f2937 !important;
+  --text-muted: #4b5563 !important;
+  --text-faint: #9ca3af !important;
+}
+
 .red-content-section .red-mermaid.red-mermaid-scaled svg,
 .red-content-section .mermaid.red-mermaid-scaled svg {
   width: var(--red-mermaid-width, auto) !important;
@@ -2487,6 +2499,21 @@
   --background-primary-alt: #2c2c2e;
   --background-secondary: #2c2c2e;
   --background-modifier-border: #2c2c2e;
+
+  /* Callout variable overrides for Dark Theme */
+  --callout-blend-mode: normal;
+  --callout-border-width: 4px;
+  --callout-background-opacity: 0.15;
+  --callout-bug: 235, 95, 140;
+  --callout-caution: 239, 68, 68;
+  --callout-danger: 239, 68, 68;
+  --callout-info: 0, 122, 255;
+  --callout-todo: 0, 122, 255;
+  --callout-important: 138, 92, 246;
+  --callout-tip: 16, 185, 129;
+  --callout-success: 16, 185, 129;
+  --callout-warning: 245, 158, 11;
+  --callout-quote: 152, 152, 157;
 }
 
 .red-image-preview.theme-light {
@@ -2498,6 +2525,36 @@
   --background-primary-alt: #fffaf5;
   --background-secondary: #f2f2f7;
   --background-modifier-border: #f2f2f7;
+
+  /* Callout variable overrides for Light Theme */
+  --callout-blend-mode: normal;
+  --callout-border-width: 4px;
+  --callout-background-opacity: 0.08;
+  --callout-bug: 235, 95, 140;
+  --callout-caution: 239, 68, 68;
+  --callout-danger: 239, 68, 68;
+  --callout-info: 0, 122, 255;
+  --callout-todo: 0, 122, 255;
+  --callout-important: 138, 92, 246;
+  --callout-tip: 16, 185, 129;
+  --callout-success: 16, 185, 129;
+  --callout-warning: 245, 158, 11;
+  --callout-quote: 152, 152, 157;
+}
+
+/* Explicit callout styles to force contrast and visibility inside card */
+.red-image-preview .callout {
+  background-color: rgba(var(--callout-color), var(--callout-background-opacity)) !important;
+  border-left: var(--callout-border-width) solid rgb(var(--callout-color)) !important;
+  color: var(--text-normal) !important;
+  padding: 12px 16px !important;
+  border-radius: 4px !important;
+  margin: 1em 0 !important;
+}
+
+.red-image-preview .callout-title {
+  color: rgb(var(--callout-color)) !important;
+  font-weight: 600 !important;
 }
 
 /* Form style improvements */
