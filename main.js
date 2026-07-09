@@ -3340,6 +3340,8 @@ var RedConverter = class {
     var _a, _b;
     if (el.matches("style, script"))
       return false;
+    if (el.classList.contains("metadata-container") || el.classList.contains("frontmatter"))
+      return false;
     if (this.isManualPageBreak(el))
       return true;
     if (el.classList.contains("mermaidTooltip"))

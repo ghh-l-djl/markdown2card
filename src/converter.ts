@@ -672,6 +672,7 @@ export class RedConverter {
 
   private static isRenderableElement(el: HTMLElement): boolean {
     if (el.matches("style, script")) return false;
+    if (el.classList.contains("metadata-container") || el.classList.contains("frontmatter")) return false;
     if (this.isManualPageBreak(el)) return true;
     if (el.classList.contains("mermaidTooltip")) return false;
     if (el.getAttribute("aria-hidden") === "true" && !el.textContent?.trim()) return false;
