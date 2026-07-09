@@ -37,12 +37,22 @@ It renders the active Markdown note as exportable social-card images.
 - Writes exports to a configurable destination. Relative paths are written inside the vault; absolute macOS/Linux or Windows paths are written to the file system.
 - Supports ZIP archive output or a PNG folder named after the current Markdown file.
 - Can optionally run post-export actions that mark the source note as source material, create a publish-ready Markdown note, and link the exported assets.
+- Integrates AI-powered rewriting using Google Gemini models (e.g., `gemini-3.5-flash`) to automatically summarize and transform note content into engaging social media (like Xiaohongshu) copy during post-export.
 
 ## Template Notes
 
 - Xiaohongshu template keeps the bottom interaction bar and distributes likes, favorites, and comments evenly.
 - Weibo template uses a Weibo-style header with uploadable avatar, red V badge, current time, editable saved location, and a follow button. It disables the bottom footer area.
 - Templates that remove the footer free that space for auto pagination.
+
+## AI Rewriting & Marketing Copy
+
+When post-export actions are enabled, you can toggle AI rewriting to automatically generate marketing-style copy using Google Gemini:
+- **Masked Credentials**: The Gemini API Key input field is masked (`password` field type) to prevent accidental exposure during screenshots or screen-shares.
+- **Customizable Model**: Enter any Gemini model identifier supported by your API key (default: `gemini-3.5-flash`).
+- **API Proxy Support**: Specify an optional proxy host/base URL endpoint to bypass regional connection blocks or use alternative gateways.
+- **Custom Prompt Template**: Customize the AI prompt template using the `${content}` placeholder to tailor the output structure, tone, and hashtags.
+- **Robust Fallback**: If the API call fails, a toast notification with the error is shown, and the plugin automatically falls back to the original note content, ensuring the export pipeline never breaks.
 
 ## Development
 

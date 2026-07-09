@@ -57,7 +57,7 @@ Obsidian 当前文件
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出路径解析、导出后 YAML 处理、界面语言映射、图片和表格交互。
 - `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，并在模板/主题生效后按 DOM 高度自动分页。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
-- `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，并修正 Mermaid 图表在深色卡片主题下的文字与线条对比度。
+- `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，自动计算卡片主题亮度并动态绑定亮/暗色作用域 Class，并修正 Mermaid 图表与内置警告框在混合主题背景下的对比度与样式。
 - `src/settings/settings.ts`：默认配置、主题/字体/导出/界面语言持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。
 - `src/downloadManager.ts`：把当前页或全部分页渲染为 PNG Blob，并可打包为 ZIP。
@@ -93,3 +93,31 @@ Obsidian 当前文件
 虽然 Mermaid 在初始化时会进行一次通用缩放，但在分页循环中，同页的标题和多行文本（包含其 `margin-top/bottom` 等外边距）会占用物理高度：
 - **二次缩放 (`scaleMermaidBlocksInSpecialGroups`)**：在分页切分前，针对已被识别为粘合组的 Mermaid 块，插件会将组内其余非 Mermaid 元素克隆并渲染至 `probe` 中，获取它们真实的 `clone.offsetHeight` 加上 computed style 里的段落上下外边距。
 - **高度避让**：将这个累加高度作为 `reserveHeight` 从卡片可用高度中扣除，重新计算 Mermaid 的缩放比例 `scale`。Mermaid 图像将自适应等比缩小，完美避让同卡片内多行文本与标题的物理占位，确保两部分内容在卡片上均能 100% 完整显示。
+
+## 样式隔离与对比度提升处理
+
+为了解决在 Obsidian 混合主题环境（例如宿主处于亮色模式而卡片导出为暗色模式，或反之）下，卡片内部的 Obsidian 内置组件（如警告框 Callouts）、自定义表单元素 and Mermaid 流程图出现对比度极低或样式失真的问题，插件实现了一套结合 **动态亮度检测、作用域变量隔离、以及局部变量覆盖** 的样式修复与对比度提升方案。
+
+### 1. 动态亮度检测与主题作用域绑定
+在卡片渲染并应用主题时，`ThemeManager` 会首先通过卡片的背景色计算其相对亮度（Luminance）：
+- **亮度检测算法**：通过正则解析 `imagePreview` 中的 hex（包括 3 位、6 位和 8 位带透明度的十六进制码）以及 `rgb/rgba` 颜色值，提取红（R）、绿（G）、蓝（B）通道的数值，并使用相对亮度公式 `Luminance = (0.299*R + 0.587*G + 0.114*B) / 255` 计算亮度。当亮度值小于 `0.5` 时，将主题判定为深色（Dark）主题，否则为浅色（Light）主题。
+- **作用域 Class 绑定**：判定出明暗模式后，将 `.theme-dark` 或 `.theme-light` 类名动态注入到 `.red-image-preview` 卡片容器上。这确保了 Obsidian 内部样式中依赖 `.theme-dark` 或 `.theme-light` 的特定选择器能够在卡片中正确匹配。
+
+### 2. 核心 CSS 变量作用域隔离
+为了防止卡片内部文字或组件的颜色直接继承宿主 Obsidian 软件的主题状态，在 `styles.css` 中为卡片容器重写了核心的基础文字与背景 CSS 变量：
+- **深色卡片作用域 (`.red-image-preview.theme-dark`)**：重写 `--text-normal` 为 `#f2f2f7`，`--background-primary` 为 `#1c1c1e`，`--background-primary-alt` 为 `#2c2c2e`，`--background-secondary` 为 `#2c2c2e` 等，确保在浅色 Obsidian 宿主中预览深色卡片时，文字保持高对比度的亮色。
+- **浅色卡片作用域 (`.red-image-preview.theme-light`)**：重写 `--text-normal` 为 `#1c1c1e`，`--background-primary` 为 `#ffffff`，`--background-primary-alt` 为 `#fffaf5`，`--background-secondary` 为 `#f2f2f7` 等，确保在深色 Obsidian 宿主中预览浅色卡片时，文字保持深色。
+
+### 3. 自适应警告框 (Callout) 对比度强化
+Obsidian 的 Callouts 可能会因为宿主主题不同而导致背景透明度和文字颜色在卡片中不合适。插件进行了强制样式覆盖：
+- 显式声明了完整的一套标准 Callouts RGB 颜色变量（如 `--callout-danger: 239, 68, 68` 等）以及合理的背景透明度（暗色为 `0.15`，亮色为 `0.08`）。
+- 强制设置 `.callout` 的背景色为 `rgba(var(--callout-color), var(--callout-background-opacity)) !important`，左边框为 `rgb(var(--callout-color)) !important`，且内容文字使用 `color: var(--text-normal) !important`，确保对比度稳定。
+- 同时在 `ThemeManager` 应用段落样式时，自动排除 `.callout` 内部的段落 `<p>` 元素，防止 Callout 内文的专用颜色被全局卡片正文颜色覆盖。
+
+### 4. 局部变量覆盖确保 Mermaid 稳定渲染
+由于 Mermaid 的内部生成样式具有极高优先级（使用 ID 选择器等），直接添加 `.theme-dark` 可能会激活 Obsidian 对 Mermaid 节点的黑底暗色主题渲染，在卡片硬编码的白底框中产生严重的低对比度遮挡。
+- **方案**：在 `.red-mermaid` / `.mermaid` 容器级别强行指定浅色核心变量（例如 `--background-primary: #ffffff !important`，`--text-normal: #1f2937 !important` 等）。
+- 这样，不论上层卡片应用何种明暗主题，Mermaid 内部解析变量时始终会就近拿到浅色默认值，保证流程图节点、背景和连线文字始终以高对比度、清晰的浅色图表呈现。
+
+### 5. 原生 HTML 表单美化与自适应
+卡片内嵌套的原生表单元素（`form`、`label` e.g., `input`、`select`、`button`）通过继承上面隔离出的 `--text-normal` 和 `--background-primary-alt` 自适应明暗模式。同时，在 `styles.css` 中为它们配置了统一的现代卡片交互样式（圆角、内边距、过渡动画和高对比度的聚焦边框阴影），使其外观与卡片主题高度契合。
