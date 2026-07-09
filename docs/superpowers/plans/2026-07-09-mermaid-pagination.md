@@ -35,7 +35,7 @@ We need to add the core helper methods for element analysis, line height measure
   - `preprocessMermaidBlocks(blocks: HTMLElement[], probe: HTMLElement): void`
   - `getKeepTogetherGroup(pending: HTMLElement[], probe: HTMLElement): HTMLElement[] | null`
 
-- [ ] **Step 1: Write helper implementation**
+- [x] **Step 1: Write helper implementation**
 
 Add the helper methods in `src/converter.ts` as static private methods:
 
@@ -299,7 +299,7 @@ Add the helper methods in `src/converter.ts` as static private methods:
   }
 ```
 
-- [ ] **Step 2: Build the project to verify compilation**
+- [x] **Step 2: Build the project to verify compilation**
 
 Run: `npm run build`
 Expected: Successful build with zero TypeScript compiler errors.
@@ -315,7 +315,7 @@ We will update `splitSectionByHeight` to trigger the preprocessor and check grou
 **Interfaces:**
 - Consumes: All helper methods implemented in Task 1.
 
-- [ ] **Step 1: Replace splitSectionByHeight implementation**
+- [x] **Step 1: Replace splitSectionByHeight implementation**
 
 Replace the existing implementation of `splitSectionByHeight` in `src/converter.ts` with the following:
 
@@ -436,7 +436,7 @@ Replace the existing implementation of `splitSectionByHeight` in `src/converter.
   }
 ```
 
-- [ ] **Step 2: Build the project to verify compilation**
+- [x] **Step 2: Build the project to verify compilation**
 
 Run: `npm run build`
 Expected: Successful build with zero TypeScript compiler errors.
