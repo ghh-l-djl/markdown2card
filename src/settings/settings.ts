@@ -57,6 +57,7 @@ Requirements:
 4. Word Count: Keep the post concise, around 400-800 words.
 5. Tags: Provide 3-5 relevant high-traffic tags (starting with #) at the very end of the output.
 6. Language: You must output the rewritten post and tags in the same language as the input content (e.g., write in Chinese if the input is Chinese, in English if the input is English).
+7. Formatting: Output as plain text only. Do not use Markdown formatting such as headers (e.g., #, ##) or bold styling (e.g., **bold**). Emojis and symbols are allowed but must not be abused.
 
 Here is the original article:
 \${content}`,
