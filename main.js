@@ -2940,7 +2940,7 @@ var RedConverter = class {
             );
             return !this.isOverflowing(probe);
           };
-          if (!fitsGroup(current, group) && fitsGroup(makePage(false), group)) {
+          if (!fitsGroup(current, group)) {
             pages.push(current);
             current = makePage(false);
           }
