@@ -3854,14 +3854,14 @@ RedConverter.overflowTolerance = 2;
 
 // src/icons.ts
 var MARKDOWN2CARD_ICON = "markdown2card-sidebar-icon";
-var MARKDOWN2CARD_ICON_SVG = `<path d="M52.93 17.969H26.172C21.21 17.969 17.188 21.991 17.188 26.953V73.047C17.188 78.009 21.21 82.031 26.172 82.031H57.031C61.993 82.031 66.016 78.009 66.016 73.047V31.055L52.93 17.969Z" stroke="currentColor" stroke-width="4.7" stroke-linejoin="round" fill="none" />
-<path d="M52.93 17.969V30.078C52.93 32.128 54.591 33.789 56.641 33.789H66.016" stroke="currentColor" stroke-width="4.7" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-<path d="M26.172 57.617V42.578H32.031L38.281 50.391L44.531 42.578H50.391V57.617H44.531V50.781L40.039 56.445H36.523L32.031 50.781V57.617H26.172Z" fill="currentColor" />
-<path d="M59.766 49.023H69.922" stroke="currentColor" stroke-width="3.9" stroke-linecap="round" fill="none" />
-<path d="M66.406 43.945L71.484 49.023L66.406 54.102" stroke="currentColor" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-<rect x="57.031" y="42.578" width="25.781" height="28.516" rx="5.859" stroke="currentColor" stroke-width="3.9" stroke-linejoin="round" fill="none" />
-<path d="M63.281 61.719L68.359 56.055L72.852 60.742L75.391 58.008L79.492 62.891V65.234H63.281V61.719Z" fill="currentColor" />
-<circle cx="75.391" cy="50.586" r="2.734" fill="currentColor" />`;
+var MARKDOWN2CARD_ICON_SVG = `<path d="M53.75 9H19.5C13.149 9 8 14.149 8 20.5V79.5C8 85.851 13.149 91 19.5 91H59C65.351 91 70.5 85.851 70.5 79.5V25.75L53.75 9Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="none" />
+<path d="M53.75 9V24.5C53.75 27.123 55.877 29.25 58.5 29.25H70.5" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+<path d="M19.5 59.75V40.5H27L35 50.5L43 40.5H50.5V59.75H43V51L37.25 58.25H32.75L27 51V59.75H19.5Z" fill="currentColor" />
+<path d="M62.5 48.75H75.5" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none" />
+<path d="M71 42.25L77.5 48.75L71 55.25" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+<rect x="59" y="40.5" width="33" height="36.5" rx="7.5" stroke="currentColor" stroke-width="5" stroke-linejoin="round" fill="none" />
+<path d="M67 65L73.5 57.75L79.25 63.75L82.5 60.25L87.75 66.5V69.5H67V65Z" fill="currentColor" />
+<circle cx="82.5" cy="50.75" r="3.5" fill="currentColor" />`;
 
 // src/settings/SettingTab.ts
 var import_obsidian2 = require("obsidian");
