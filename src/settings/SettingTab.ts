@@ -246,12 +246,91 @@ export class RedSettingTab extends PluginSettingTab {
         .setValue(settings.exportFormat)
         .onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value as "zip" | "png-folder" })));
 
+    const isZh = settings.uiLanguage === "zh";
+
     new Setting(containerEl)
-      .setName("Post-export actions")
-      .setDesc("After export, mark the source note as source material, create a publish-ready note, and link the exported assets.")
+      .setName(isZh ? "启用导出后置操作" : "Post-export actions")
+      .setDesc(isZh 
+        ? "导出后自动在源文件同目录下生成一个发布版MD文件"
+        : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
+      )
       .addToggle((toggle) => toggle
         .setValue(settings.enablePostExportActions)
-        .onChange((value) => this.plugin.settingsManager.updateSettings({ enablePostExportActions: value })));
+        .onChange((value) => {
+          this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
+          this.display(); // Refresh to show/hide AI settings dynamically
+        }));
+
+    if (settings.enablePostExportActions) {
+      containerEl.createEl("h3", { text: isZh ? "AI 总结与重写设置" : "AI Summary & Rewrite Settings" });
+
+      new Setting(containerEl)
+        .setName(isZh ? "启用 AI 智能重写" : "Enable AI Rewrite")
+        .setDesc(isZh 
+          ? "使用 Gemini 自动将导出文件的正文重写为小红书等营销风格文案"
+          : "Use Gemini to automatically rewrite the exported note body into marketing copy like Xiaohongshu style"
+        )
+        .addToggle((toggle) => toggle
+          .setValue(settings.enableAiSummary)
+          .onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
+            this.display();
+          }));
+
+      if (settings.enableAiSummary) {
+        new Setting(containerEl)
+          .setName("Gemini API Key")
+          .setDesc(isZh 
+            ? "输入您的 Gemini API 密钥 (从 Google AI Studio 获取)"
+            : "Enter your Gemini API key (obtained from Google AI Studio)"
+          )
+          .addText((text) => {
+            text.inputEl.type = "password";
+            text.setPlaceholder("AIzaSy...")
+              .setValue(settings.geminiApiKey)
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+              });
+          });
+
+        new Setting(containerEl)
+          .setName(isZh ? "Gemini API 地址" : "API Proxy / Base URL")
+          .setDesc(isZh 
+            ? "自定义 Gemini API 的基础请求地址或反代地址"
+            : "Custom Gemini API base URL or proxy endpoint URL"
+          )
+          .addText((text) => text
+            .setPlaceholder("https://generativelanguage.googleapis.com")
+            .setValue(settings.geminiApiUrl || "")
+            .onChange((value) => {
+              this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
+            }));
+
+        new Setting(containerEl)
+          .setName(isZh ? "Gemini 模型" : "Gemini Model")
+          .setDesc(isZh ? "选择重写使用的 Gemini 模型" : "Select the Gemini model to use for rewriting")
+          .addDropdown((dropdown) => dropdown
+            .addOption("gemini-1.5-flash", isZh ? "Gemini 1.5 Flash (快速/经济)" : "Gemini 1.5 Flash (Fast/Eco)")
+            .addOption("gemini-1.5-pro", isZh ? "Gemini 1.5 Pro (高质量/高推理能力)" : "Gemini 1.5 Pro (High Quality/High Reasoning)")
+            .setValue(settings.geminiModel)
+            .onChange((value) => {
+              this.plugin.settingsManager.updateSettings({ geminiModel: value });
+            }));
+
+        new Setting(containerEl)
+          .setName(isZh ? "AI 提示词模板 (Prompt)" : "AI Prompt Template")
+          .setDesc(isZh 
+            ? "自定义重写提示词。使用 ${content} 代表文章原文。"
+            : "Customize the rewrite prompt. Use ${content} to represent the source article text."
+          )
+          .addTextArea((textArea) => textArea
+            .setPlaceholder(isZh ? "输入 AI Prompt..." : "Enter AI Prompt...")
+            .setValue(settings.aiPromptTemplate)
+            .onChange((value) => {
+              this.plugin.settingsManager.updateSettings({ aiPromptTemplate: value });
+            }));
+      }
+    }
   }
 
   private renderThemeSettings(containerEl: HTMLElement): void {

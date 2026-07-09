@@ -43,7 +43,22 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   exportPath: "markdown2card-exports",
   exportFormat: "zip",
   enablePostExportActions: false,
-  uiLanguage: "en"
+  uiLanguage: "en",
+  enableAiSummary: false,
+  geminiApiKey: "",
+  geminiApiUrl: "https://generativelanguage.googleapis.com",
+  geminiModel: "gemini-1.5-flash",
+  aiPromptTemplate: `你是一个资深的小红书爆款文案专家。请阅读以下文章正文，并将其重写为一篇符合小红书风格的吸引人的爆款笔记正文。
+
+要求：
+1. 吸引人的标题：设计一个带有情绪价值、吸引眼球的爆款标题。
+2. 结构清晰：使用段落、小标题或 Emoji 表情进行合理排版，让文字有呼吸感。
+3. 语气生动：使用活泼、充满干货、真诚分享的语气，善用小红书常用语，如“姐妹们”、“干货预警”、“绝绝子”等，但要自然。
+4. 包含 Tag：在结尾加上 3-5 个高热度的小红书相关话题标签（如 #干货分享 #学习打卡 等）。
+5. 字数控制：字数在 400-800 字左右，保持精炼。
+
+以下是文章原文：
+\${content}`
 };
 
 export class SettingsManager extends EventEmitter {
