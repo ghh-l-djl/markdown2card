@@ -3853,7 +3853,15 @@ var RedConverter = class {
 RedConverter.overflowTolerance = 2;
 
 // src/icons.ts
-var MARKDOWN2CARD_ICON = "file-image";
+var MARKDOWN2CARD_ICON = "markdown2card-sidebar-icon";
+var MARKDOWN2CARD_ICON_SVG = `<path d="M52.93 17.969H26.172C21.21 17.969 17.188 21.991 17.188 26.953V73.047C17.188 78.009 21.21 82.031 26.172 82.031H57.031C61.993 82.031 66.016 78.009 66.016 73.047V31.055L52.93 17.969Z" stroke="currentColor" stroke-width="4.7" stroke-linejoin="round" fill="none" />
+<path d="M52.93 17.969V30.078C52.93 32.128 54.591 33.789 56.641 33.789H66.016" stroke="currentColor" stroke-width="4.7" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+<path d="M26.172 57.617V42.578H32.031L38.281 50.391L44.531 42.578H50.391V57.617H44.531V50.781L40.039 56.445H36.523L32.031 50.781V57.617H26.172Z" fill="currentColor" />
+<path d="M59.766 49.023H69.922" stroke="currentColor" stroke-width="3.9" stroke-linecap="round" fill="none" />
+<path d="M66.406 43.945L71.484 49.023L66.406 54.102" stroke="currentColor" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+<rect x="57.031" y="42.578" width="25.781" height="28.516" rx="5.859" stroke="currentColor" stroke-width="3.9" stroke-linejoin="round" fill="none" />
+<path d="M63.281 61.719L68.359 56.055L72.852 60.742L75.391 58.008L79.492 62.891V65.234H63.281V61.719Z" fill="currentColor" />
+<circle cx="75.391" cy="50.586" r="2.734" fill="currentColor" />`;
 
 // src/settings/SettingTab.ts
 var import_obsidian2 = require("obsidian");
@@ -5155,6 +5163,7 @@ var ThemeManager = class {
     const styles = targetTheme.styles;
     const imagePreview = element.querySelector(".red-image-preview");
     this.applyInlineStyle(imagePreview, styles.imagePreview);
+    this.detectAndApplyColorScheme(imagePreview, targetTheme);
     const header = element.querySelector(".red-preview-header");
     if (header && styles.header) {
       header.querySelectorAll(".red-user-avatar").forEach((el) => {
@@ -5202,8 +5211,8 @@ var ThemeManager = class {
       });
     });
     element.querySelectorAll("p").forEach((el) => {
-      var _a, _b;
-      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote"))) {
+      var _a, _b, _c;
+      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote")) && !((_c = el.parentElement) == null ? void 0 : _c.closest(".callout"))) {
         this.applyInlineStyle(el, `${styles.paragraph}; font-family: ${this.currentFont}; font-size: ${this.currentFontSize}px;`);
       }
     });
@@ -5277,6 +5286,46 @@ var ThemeManager = class {
       }
     });
     element.querySelectorAll(".red-mermaid, .mermaid").forEach((el) => this.hardenMermaidContrast(el));
+  }
+  detectAndApplyColorScheme(imagePreview, theme) {
+    if (!imagePreview)
+      return;
+    const previewStyle = theme.styles.imagePreview || "";
+    const hexMatches = previewStyle.match(/#[0-9a-fA-F]{3,8}/g);
+    let isDark = false;
+    if (hexMatches && hexMatches.length > 0) {
+      let totalLuminance = 0;
+      let count = 0;
+      for (const hex of hexMatches) {
+        const rgb = this.parseCssColor(hex);
+        if (rgb) {
+          totalLuminance += this.luminance(rgb);
+          count++;
+        }
+      }
+      if (count > 0) {
+        isDark = totalLuminance / count < 0.5;
+      }
+    } else {
+      isDark = ["default", "yueling", "starry", "cyber", "metal"].includes(theme.id);
+    }
+    if (isDark) {
+      imagePreview.classList.add("theme-dark");
+      imagePreview.classList.remove("theme-light");
+      imagePreview.style.setProperty("color-scheme", "dark");
+      const hasExplicitColor = /(^|;|\s)color\s*:/i.test(previewStyle);
+      if (!hasExplicitColor) {
+        imagePreview.style.setProperty("color", "#f2f2f7");
+      }
+    } else {
+      imagePreview.classList.add("theme-light");
+      imagePreview.classList.remove("theme-dark");
+      imagePreview.style.setProperty("color-scheme", "light");
+      const hasExplicitColor = /(^|;|\s)color\s*:/i.test(previewStyle);
+      if (!hasExplicitColor) {
+        imagePreview.style.setProperty("color", "#1c1c1e");
+      }
+    }
   }
   applyInlineStyle(el, style) {
     if (!el || !style)
@@ -5385,11 +5434,13 @@ var ThemeManager = class {
     });
   }
   hardenMermaidContrast(container) {
-    const textColor = "#1f2937";
-    const edgeColor = "#475569";
-    const nodeFill = "#eef2ff";
-    const nodeStroke = "#8b5cf6";
-    const labelBackground = "#f8fafc";
+    var _a;
+    const isDark = (_a = container.closest(".red-image-preview")) == null ? void 0 : _a.classList.contains("theme-dark");
+    const textColor = isDark ? "#f2f2f7" : "#1f2937";
+    const edgeColor = isDark ? "#808080" : "#475569";
+    const nodeFill = isDark ? "#2c2c2e" : "#eef2ff";
+    const nodeStroke = isDark ? "#0a84ff" : "#8b5cf6";
+    const labelBackground = isDark ? "#1c1c1e" : "#f8fafc";
     container.style.setProperty("color", textColor, "important");
     container.style.setProperty("background-color", labelBackground, "important");
     container.style.setProperty("text-shadow", "none", "important");
@@ -8276,7 +8327,7 @@ var RedView = class extends import_obsidian6.ItemView {
       "publish_variant: xhs_screenshot",
       "derived_from:",
       `  - ${this.yamlQuote(`[[${sourcePath}]]`)}`,
-      `assets: ${this.yamlQuote(`files://${absoluteAssetPath}`)}`,
+      `assets: ${this.yamlQuote(`file://${absoluteAssetPath}`)}`,
       "---",
       body
     ].join("\n");
@@ -8339,6 +8390,7 @@ var RedView = class extends import_obsidian6.ItemView {
 // src/main.ts
 var YanqiPlugin = class extends import_obsidian7.Plugin {
   async onload() {
+    (0, import_obsidian7.addIcon)(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
     this.themeManager = new ThemeManager(this.app, this.settingsManager);
