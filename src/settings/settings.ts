@@ -17,12 +17,12 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   userAvatar: "",
   userName: "markdown2card",
   notesTitle: "备忘录",
-  userId: "@markdown2card",
+  userId: "@hazel",
   weiboLocation: "湖北",
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  footerLeftText: "hazel",
+  footerLeftText: "follow me on xhs(5083974065)",
   footerRightText: "ai-vibe.cn",
   customFonts: [
     {

@@ -4974,12 +4974,12 @@ var DEFAULT_SETTINGS = {
   userAvatar: "",
   userName: "markdown2card",
   notesTitle: "\u5907\u5FD8\u5F55",
-  userId: "@markdown2card",
+  userId: "@hazel",
   weiboLocation: "\u6E56\u5317",
   showTime: true,
   showFooter: true,
   timeFormat: "zh-CN",
-  footerLeftText: "hazel",
+  footerLeftText: "follow me on xhs(5083974065)",
   footerRightText: "ai-vibe.cn",
   customFonts: [
     {
@@ -5165,7 +5165,6 @@ var ThemeManager = class {
     const styles = targetTheme.styles;
     const imagePreview = element.querySelector(".red-image-preview");
     this.applyInlineStyle(imagePreview, styles.imagePreview);
-    this.detectAndApplyColorScheme(imagePreview, targetTheme);
     const header = element.querySelector(".red-preview-header");
     if (header && styles.header) {
       header.querySelectorAll(".red-user-avatar").forEach((el) => {
@@ -5213,8 +5212,8 @@ var ThemeManager = class {
       });
     });
     element.querySelectorAll("p").forEach((el) => {
-      var _a, _b, _c;
-      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote")) && !((_c = el.parentElement) == null ? void 0 : _c.closest(".callout"))) {
+      var _a, _b;
+      if (!((_a = el.parentElement) == null ? void 0 : _a.closest("p")) && !((_b = el.parentElement) == null ? void 0 : _b.closest("blockquote"))) {
         this.applyInlineStyle(el, `${styles.paragraph}; font-family: ${this.currentFont}; font-size: ${this.currentFontSize}px;`);
       }
     });
@@ -5288,46 +5287,6 @@ var ThemeManager = class {
       }
     });
     element.querySelectorAll(".red-mermaid, .mermaid").forEach((el) => this.hardenMermaidContrast(el));
-  }
-  detectAndApplyColorScheme(imagePreview, theme) {
-    if (!imagePreview)
-      return;
-    const previewStyle = theme.styles.imagePreview || "";
-    const hexMatches = previewStyle.match(/#[0-9a-fA-F]{3,8}/g);
-    let isDark = false;
-    if (hexMatches && hexMatches.length > 0) {
-      let totalLuminance = 0;
-      let count = 0;
-      for (const hex of hexMatches) {
-        const rgb = this.parseCssColor(hex);
-        if (rgb) {
-          totalLuminance += this.luminance(rgb);
-          count++;
-        }
-      }
-      if (count > 0) {
-        isDark = totalLuminance / count < 0.5;
-      }
-    } else {
-      isDark = ["default", "yueling", "starry", "cyber", "metal"].includes(theme.id);
-    }
-    if (isDark) {
-      imagePreview.classList.add("theme-dark");
-      imagePreview.classList.remove("theme-light");
-      imagePreview.style.setProperty("color-scheme", "dark");
-      const hasExplicitColor = /(^|;|\s)color\s*:/i.test(previewStyle);
-      if (!hasExplicitColor) {
-        imagePreview.style.setProperty("color", "#f2f2f7");
-      }
-    } else {
-      imagePreview.classList.add("theme-light");
-      imagePreview.classList.remove("theme-dark");
-      imagePreview.style.setProperty("color-scheme", "light");
-      const hasExplicitColor = /(^|;|\s)color\s*:/i.test(previewStyle);
-      if (!hasExplicitColor) {
-        imagePreview.style.setProperty("color", "#1c1c1e");
-      }
-    }
   }
   applyInlineStyle(el, style) {
     if (!el || !style)
@@ -5436,13 +5395,11 @@ var ThemeManager = class {
     });
   }
   hardenMermaidContrast(container) {
-    var _a;
-    const isDark = (_a = container.closest(".red-image-preview")) == null ? void 0 : _a.classList.contains("theme-dark");
-    const textColor = isDark ? "#f2f2f7" : "#1f2937";
-    const edgeColor = isDark ? "#808080" : "#475569";
-    const nodeFill = isDark ? "#2c2c2e" : "#eef2ff";
-    const nodeStroke = isDark ? "#0a84ff" : "#8b5cf6";
-    const labelBackground = isDark ? "#1c1c1e" : "#f8fafc";
+    const textColor = "#1f2937";
+    const edgeColor = "#475569";
+    const nodeFill = "#eef2ff";
+    const nodeStroke = "#8b5cf6";
+    const labelBackground = "#f8fafc";
     container.style.setProperty("color", textColor, "important");
     container.style.setProperty("background-color", labelBackground, "important");
     container.style.setProperty("text-shadow", "none", "important");
@@ -6817,7 +6774,7 @@ var DefaultTemplate = class {
   }
   async handleFooterTextEdit(element, position) {
     await this.editText(element, "\u8BF7\u8F93\u5165\u9875\u811A\u6587\u672C", async (value) => {
-      await this.settingsManager.updateSettings(position === "left" ? { footerLeftText: value || "hazel" } : { footerRightText: value || "ai-vibe.cn" });
+      await this.settingsManager.updateSettings(position === "left" ? { footerLeftText: value || "follow me on xhs(5083974065)" } : { footerRightText: value || "ai-vibe.cn" });
     }, "red-footer-edit-input");
   }
   async editText(element, placeholder, save, className = "red-user-edit-input") {
