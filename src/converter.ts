@@ -880,11 +880,12 @@ export class RedConverter {
         if (group) {
           group.forEach((el) => {
             if (el !== mermaidBlock && !this.isPageBreakMarker(el)) {
-              probe.replaceChildren(el.cloneNode(true));
-              const style = window.getComputedStyle(el);
+              const clone = el.cloneNode(true) as HTMLElement;
+              probe.replaceChildren(clone);
+              const style = window.getComputedStyle(clone);
               const marginTop = parseFloat(style.marginTop) || 0;
               const marginBottom = parseFloat(style.marginBottom) || 0;
-              reserveHeight += el.offsetHeight + marginTop + marginBottom;
+              reserveHeight += clone.offsetHeight + marginTop + marginBottom;
             }
           });
         }
