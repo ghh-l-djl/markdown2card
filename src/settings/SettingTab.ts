@@ -308,13 +308,15 @@ export class RedSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
           .setName(isZh ? "Gemini 模型" : "Gemini Model")
-          .setDesc(isZh ? "选择重写使用的 Gemini 模型" : "Select the Gemini model to use for rewriting")
-          .addDropdown((dropdown) => dropdown
-            .addOption("gemini-1.5-flash", isZh ? "Gemini 1.5 Flash (快速/经济)" : "Gemini 1.5 Flash (Fast/Eco)")
-            .addOption("gemini-1.5-pro", isZh ? "Gemini 1.5 Pro (高质量/高推理能力)" : "Gemini 1.5 Pro (High Quality/High Reasoning)")
+          .setDesc(isZh 
+            ? "输入重写使用的 Gemini 模型名称 (例如: gemini-3.5-flash)" 
+            : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
+          )
+          .addText((text) => text
+            .setPlaceholder("gemini-3.5-flash")
             .setValue(settings.geminiModel)
             .onChange((value) => {
-              this.plugin.settingsManager.updateSettings({ geminiModel: value });
+              this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
             }));
 
         new Setting(containerEl)

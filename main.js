@@ -4104,8 +4104,10 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
         ).addText((text) => text.setPlaceholder("https://generativelanguage.googleapis.com").setValue(settings.geminiApiUrl || "").onChange((value) => {
           this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
         }));
-        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini \u6A21\u578B" : "Gemini Model").setDesc(isZh ? "\u9009\u62E9\u91CD\u5199\u4F7F\u7528\u7684 Gemini \u6A21\u578B" : "Select the Gemini model to use for rewriting").addDropdown((dropdown) => dropdown.addOption("gemini-1.5-flash", isZh ? "Gemini 1.5 Flash (\u5FEB\u901F/\u7ECF\u6D4E)" : "Gemini 1.5 Flash (Fast/Eco)").addOption("gemini-1.5-pro", isZh ? "Gemini 1.5 Pro (\u9AD8\u8D28\u91CF/\u9AD8\u63A8\u7406\u80FD\u529B)" : "Gemini 1.5 Pro (High Quality/High Reasoning)").setValue(settings.geminiModel).onChange((value) => {
-          this.plugin.settingsManager.updateSettings({ geminiModel: value });
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini \u6A21\u578B" : "Gemini Model").setDesc(
+          isZh ? "\u8F93\u5165\u91CD\u5199\u4F7F\u7528\u7684 Gemini \u6A21\u578B\u540D\u79F0 (\u4F8B\u5982: gemini-3.5-flash)" : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
+        ).addText((text) => text.setPlaceholder("gemini-3.5-flash").setValue(settings.geminiModel).onChange((value) => {
+          this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
         }));
         new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u63D0\u793A\u8BCD\u6A21\u677F (Prompt)" : "AI Prompt Template").setDesc(
           isZh ? "\u81EA\u5B9A\u4E49\u91CD\u5199\u63D0\u793A\u8BCD\u3002\u4F7F\u7528 ${content} \u4EE3\u8868\u6587\u7AE0\u539F\u6587\u3002" : "Customize the rewrite prompt. Use ${content} to represent the source article text."
@@ -5002,7 +5004,7 @@ var DEFAULT_SETTINGS = {
   enableAiSummary: false,
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
-  geminiModel: "gemini-1.5-flash",
+  geminiModel: "gemini-3.5-flash",
   aiPromptTemplate: `\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u7684\u5C0F\u7EA2\u4E66\u7206\u6B3E\u6587\u6848\u4E13\u5BB6\u3002\u8BF7\u9605\u8BFB\u4EE5\u4E0B\u6587\u7AE0\u6B63\u6587\uFF0C\u5E76\u5C06\u5176\u91CD\u5199\u4E3A\u4E00\u7BC7\u7B26\u5408\u5C0F\u7EA2\u4E66\u98CE\u683C\u7684\u5438\u5F15\u4EBA\u7684\u7206\u6B3E\u7B14\u8BB0\u6B63\u6587\u3002
 
 \u8981\u6C42\uFF1A
