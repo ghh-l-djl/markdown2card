@@ -975,6 +975,7 @@
 }
 .red-task-list-item {
   list-style: none;
+  margin-left: 0 !important;
 }
 .red-task-list-item input[type=checkbox] {
   margin-right: 6px;

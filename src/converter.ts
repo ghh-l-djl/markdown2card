@@ -64,7 +64,7 @@ export class RedConverter {
     const headerArea = document.createElement("div");
     headerArea.className = "red-preview-header";
     const contentArea = document.createElement("div");
-    contentArea.className = "red-preview-content";
+    contentArea.className = "red-preview-content markdown-preview-view markdown-rendered";
     const footerArea = document.createElement("div");
     footerArea.className = "red-preview-footer";
     const contentContainer = document.createElement("div");
@@ -245,6 +245,17 @@ export class RedConverter {
       }
 
       if (hasBody(current)) {
+        if (this.isListBlock(block)) {
+          const splitBlocks = this.splitOversizedListBlock(block, current, probe);
+          if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
+            current.appendChild(splitBlocks.shift()!);
+            pages.push(current);
+            current = makePage(false);
+            pending.unshift(...splitBlocks);
+            continue;
+          }
+        }
+
         if (this.endsWithHeading(current)) {
           const splitBlocks = this.splitOversizedTextBlock(block, current, probe);
           if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
@@ -275,6 +286,14 @@ export class RedConverter {
         current = makePage(false);
         pending.unshift(block);
         continue;
+      }
+
+      if (this.isListBlock(block)) {
+        const splitBlocks = this.splitOversizedListBlock(block, makePage(false), probe);
+        if (splitBlocks.length > 1) {
+          pending.unshift(...splitBlocks);
+          continue;
+        }
       }
 
       const splitBlocks = this.splitOversizedTextBlock(block, makePage(false), probe);
@@ -328,6 +347,62 @@ export class RedConverter {
 
   private static isOverflowing(el: HTMLElement): boolean {
     return el.scrollHeight > el.clientHeight + this.overflowTolerance;
+  }
+  private static isListBlock(block: HTMLElement): boolean {
+    const tag = block.tagName.toLowerCase();
+    return tag === "ul" || tag === "ol";
+  }
+
+  private static splitOversizedListBlock(block: HTMLElement, emptyPage: HTMLElement, probe: HTMLElement): HTMLElement[] {
+    if (!this.isListBlock(block)) return [block];
+    const children = Array.from(block.children) as HTMLElement[];
+    if (children.length <= 1) return [block];
+
+    let low = 1;
+    let high = children.length - 1;
+    let best = 0;
+
+    const testFits = (count: number): boolean => {
+      const candidate = block.cloneNode(false) as HTMLElement;
+      for (let i = 0; i < count; i++) {
+        candidate.appendChild(children[i].cloneNode(true));
+      }
+      probe.replaceChildren(
+        ...Array.from(emptyPage.children).map((child) => child.cloneNode(true)),
+        candidate
+      );
+      return !this.isOverflowing(probe);
+    };
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (testFits(mid)) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    if (best <= 0) return [block];
+
+    const leftList = block.cloneNode(false) as HTMLElement;
+    for (let i = 0; i < best; i++) {
+      leftList.appendChild(children[i].cloneNode(true));
+    }
+
+    const rightList = block.cloneNode(false) as HTMLElement;
+    for (let i = best; i < children.length; i++) {
+      rightList.appendChild(children[i].cloneNode(true));
+    }
+
+    if (block.tagName.toLowerCase() === "ol") {
+      const startAttr = block.getAttribute("start");
+      const baseStart = startAttr ? parseInt(startAttr, 10) : 1;
+      rightList.setAttribute("start", String(baseStart + best));
+    }
+
+    return [leftList, rightList];
   }
 
   private static splitOversizedTextBlock(block: HTMLElement, emptyPage: HTMLElement, probe: HTMLElement): HTMLElement[] {

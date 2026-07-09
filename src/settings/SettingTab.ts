@@ -71,7 +71,7 @@ class ThemePreviewModal extends Modal {
     name.createEl("div", { cls: "red-user-name", text: settings.userName });
     meta.createEl("div", { cls: "red-user-id", text: settings.userId });
     userInfo.createEl("div", { cls: "red-user-right" }).createEl("div", { cls: "red-post-time", text: "2025/4/20" });
-    const content = preview.createDiv("red-preview-content");
+    const content = preview.createDiv("red-preview-content markdown-preview-view markdown-rendered");
     content.createEl("h2", { text: "Explore markdown2card" });
     const p = content.createEl("p");
     p.appendText("Create polished");
