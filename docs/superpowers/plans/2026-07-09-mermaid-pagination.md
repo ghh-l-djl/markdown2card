@@ -1,5 +1,7 @@
 # Mermaid Pagination Optimization Implementation Plan
 
+> **Status:** Implemented. This file is a historical plan; current behavior is authoritative in `src/converter.ts`, `styles.css`, `ANALYSIS.md`, and the test suite.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Optimize the pagination around Mermaid code blocks in Obsidian cards to fit headings, short descriptions, and long descriptions according to user-specified pagination rules.

@@ -1,5 +1,7 @@
 # Code Block Pagination Implementation Plan
 
+> **Status:** Implemented. This file is a historical plan; current behavior is authoritative in `src/converter.ts`, `styles.css`, and the test suite.
+
 **Goal:** Resolve the issue of code blocks being truncated during pagination in the Obsidian to Card plugin by implementing line-level splitting of code blocks while preserving syntax highlighting.
 
 **Implementation Details:**

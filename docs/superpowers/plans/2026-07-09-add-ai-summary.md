@@ -27,7 +27,7 @@
 - Consumes: Existing `YanqiSettings` interface
 - Produces: Updated `YanqiSettings` fields: `enableAiSummary`, `geminiApiKey`, `geminiModel`, `aiPromptTemplate`
 
-- [ ] **Step 1: Modify `src/types.ts` to add AI configuration types**
+- [x] **Step 1: Modify `src/types.ts` to add AI configuration types**
 
 Add fields to the `YanqiSettings` interface:
 ```typescript
@@ -40,7 +40,7 @@ export interface YanqiSettings {
 }
 ```
 
-- [ ] **Step 2: Add defaults to `src/settings/settings.ts`**
+- [x] **Step 2: Add defaults to `src/settings/settings.ts`**
 
 Update `DEFAULT_SETTINGS` in `src/settings/settings.ts`:
 ```typescript
@@ -64,12 +64,12 @@ const DEFAULT_SETTINGS: YanqiSettings = {
 };
 ```
 
-- [ ] **Step 3: Build to verify compile success**
+- [x] **Step 3: Build to verify compile success**
 
 Run: `npm run build`
 Expected: Compile succeeds with no errors.
 
-- [ ] **Step 4: Commit settings configuration changes**
+- [x] **Step 4: Commit settings configuration changes**
 
 Run:
 ```bash
@@ -88,7 +88,7 @@ git commit -m "feat: add AI settings configuration and defaults"
 - Consumes: `YanqiSettings` types and UI elements
 - Produces: Visual fields in Obsidian Settings Tab for Gemini configuration
 
-- [ ] **Step 1: Add setting controls to `src/settings/SettingTab.ts`**
+- [x] **Step 1: Add setting controls to `src/settings/SettingTab.ts`**
 
 Locate the `display()` function. Insert the setting fields after the `enablePostExportActions` section:
 ```typescript
@@ -161,12 +161,12 @@ Locate the `display()` function. Insert the setting fields after the `enablePost
     }
 ```
 
-- [ ] **Step 2: Build project**
+- [x] **Step 2: Build project**
 
 Run: `npm run build`
 Expected: Compilation completes without errors.
 
-- [ ] **Step 3: Commit UI changes**
+- [x] **Step 3: Commit UI changes**
 
 Run:
 ```bash
@@ -185,7 +185,7 @@ git commit -m "feat: add AI configurations to settings UI"
 - Consumes: `YanqiSettings` via `this.settingsManager`
 - Produces: `AiManager` class with static/instance method `generateSummary(content: string): Promise<string>`
 
-- [ ] **Step 1: Create `src/aiManager.ts` with HTTP request logic**
+- [x] **Step 1: Create `src/aiManager.ts` with HTTP request logic**
 
 Write the AI request implementation using Obsidian's `requestUrl`:
 ```typescript
@@ -246,12 +246,12 @@ export class AiManager {
 }
 ```
 
-- [ ] **Step 2: Build project**
+- [x] **Step 2: Build project**
 
 Run: `npm run build`
 Expected: Compilation completes without errors.
 
-- [ ] **Step 3: Commit AI Manager implementation**
+- [x] **Step 3: Commit AI Manager implementation**
 
 Run:
 ```bash
@@ -270,14 +270,14 @@ git commit -m "feat: implement AiManager using Obsidian requestUrl"
 - Consumes: `AiManager.rewriteContent`
 - Produces: Asynchronous AI summarization before file writing in `applyPostExportActions`
 
-- [ ] **Step 1: Import `AiManager` in `src/view.ts`**
+- [x] **Step 1: Import `AiManager` in `src/view.ts`**
 
 Add the import line at the top of `src/view.ts`:
 ```typescript
 import { AiManager } from "./aiManager";
 ```
 
-- [ ] **Step 2: Modify `applyPostExportActions` and `buildPublishMarkdown` to handle AI summary**
+- [x] **Step 2: Modify `applyPostExportActions` and `buildPublishMarkdown` to handle AI summary**
 
 Update `applyPostExportActions` in `src/view.ts`:
 ```typescript
@@ -345,16 +345,16 @@ AndUpdate `buildPublishMarkdown` or replace it with `buildPublishMarkdownWithBod
   }
 ```
 
-- [ ] **Step 3: Clean up old `buildPublishMarkdown` if unused**
+- [x] **Step 3: Clean up old `buildPublishMarkdown` if unused**
 
 Verify no references to `buildPublishMarkdown` remain and clean it up.
 
-- [ ] **Step 4: Build project**
+- [x] **Step 4: Build project**
 
 Run: `npm run build`
 Expected: Compilation completes without errors.
 
-- [ ] **Step 5: Commit post-export integrations**
+- [x] **Step 5: Commit post-export integrations**
 
 Run:
 ```bash

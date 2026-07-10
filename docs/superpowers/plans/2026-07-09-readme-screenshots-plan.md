@@ -26,7 +26,7 @@
 - Consumes: `./全览效果.png`, `./细节图.png`, `./操作面板.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
 - Produces: Updated `README.md` containing the updated "Preview" section.
 
-- [ ] **Step 1: Replace the old Preview section in `README.md` with the new 5-image list**
+- [x] **Step 1: Replace the old Preview section in `README.md` with the new 5-image list**
 
 ```markdown
 ## Preview
@@ -49,7 +49,7 @@
 ---
 ```
 
-- [ ] **Step 2: Commit `README.md`**
+- [x] **Step 2: Commit `README.md`**
 
 Run: `git commit -am "docs: update English README screenshots and descriptions"`
 
@@ -64,7 +64,7 @@ Run: `git commit -am "docs: update English README screenshots and descriptions"`
 - Consumes: `./全览效果.png`, `./细节图.png`, `./操作面板.png`, `./支持mermaid和图片.png`, `./代码自动分页-支持latex.png`
 - Produces: Updated `README.zh-CN.md` containing the updated "效果展示" section.
 
-- [ ] **Step 1: Replace the old 效果展示 section in `README.zh-CN.md` with the new 5-image list**
+- [x] **Step 1: Replace the old 效果展示 section in `README.zh-CN.md` with the new 5-image list**
 
 ```markdown
 ## 效果展示
@@ -87,6 +87,6 @@ Run: `git commit -am "docs: update English README screenshots and descriptions"`
 ---
 ```
 
-- [ ] **Step 2: Commit `README.zh-CN.md`**
+- [x] **Step 2: Commit `README.zh-CN.md`**
 
 Run: `git commit -am "docs: update Chinese README screenshots and descriptions"`

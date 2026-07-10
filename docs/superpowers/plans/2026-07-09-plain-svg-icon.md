@@ -25,7 +25,7 @@
 **Interfaces:**
 - Produces: `icon-plain.svg` asset containing monochrome, scaled vector paths.
 
-- [ ] **Step 1: Write `icon-plain.svg`**
+- [x] **Step 1: Write `icon-plain.svg`**
 
 Create the file `/Users/ghh/Documents/编程/项目/obsidian-to-card/icon-plain.svg` with the following content:
 
@@ -42,7 +42,7 @@ Create the file `/Users/ghh/Documents/编程/项目/obsidian-to-card/icon-plain.
 </svg>
 ```
 
-- [ ] **Step 2: Commit the SVG asset**
+- [x] **Step 2: Commit the SVG asset**
 
 ```bash
 git add icon-plain.svg
@@ -61,7 +61,7 @@ git commit -m "feat: add plain/monochrome SVG icon"
 - Consumes: Raw SVG paths from Task 1.
 - Produces: `MARKDOWN2CARD_ICON` ID and registers it in Obsidian's icon library.
 
-- [ ] **Step 1: Modify `src/icons.ts`**
+- [x] **Step 1: Modify `src/icons.ts`**
 
 Update `src/icons.ts` to export the new icon name and raw SVG path content:
 
@@ -78,7 +78,7 @@ export const MARKDOWN2CARD_ICON_SVG = `<path d="M52.93 17.969H26.172C21.21 17.96
 <circle cx="75.391" cy="50.586" r="2.734" fill="currentColor" />`;
 ```
 
-- [ ] **Step 2: Modify `src/main.ts`**
+- [x] **Step 2: Modify `src/main.ts`**
 
 Import `addIcon` and `MARKDOWN2CARD_ICON_SVG`. Register the icon at the beginning of `onload()`:
 
@@ -92,12 +92,12 @@ import { MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG } from "./icons";
 addIcon(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
 ```
 
-- [ ] **Step 3: Compile and verify build**
+- [x] **Step 3: Compile and verify build**
 
 Run: `npm run build`
 Expected: esbuild compiles successfully and creates `main.js`.
 
-- [ ] **Step 4: Commit code changes**
+- [x] **Step 4: Commit code changes**
 
 ```bash
 git add src/icons.ts src/main.ts
