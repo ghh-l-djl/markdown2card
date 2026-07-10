@@ -19,7 +19,7 @@
 - 支持当前页和全部页导出；导出目标可配置为 vault 相对路径或系统绝对路径，输出形式可选 ZIP 压缩包或 PNG 文件夹。
 - 支持导出后续行为：更新源文件 YAML frontmatter、创建发布版 Markdown，并把导出资产以 `files://` 路径写入发布版元数据。
 - 支持超尺寸 Mermaid 原比例追加页导出、复制当前图到剪贴板。
-- 集成 AI 智能重写模块，在导出后置动作中异步调用 Gemini 模型（如 `gemini-3.5-flash`）进行内容总结，支持配置 API 代理地址、可配置提示词模板，并提供完整的错误容错（降级回退为原文）与多语言支持。
+- 集成 AI 智能重写模块，在导出后置动作中异步调用 Gemini 模型（如 `gemini-3.5-flash`）进行内容总结，支持配置 API 代理地址、可配置提示词模板与多语言输出。调用前和模型返回后都会清理图片引用；请求失败时使用已清理图片的源正文继续生成发布版文件。
 - 支持预览界面语言切换，默认英文，可切换中文。
 - Markdown 图片默认按 `contain` 完整显示；等比缩放后仍超过卡片可用高度的长竖图，会被提升为独立图片页，不与文字混排、不跨卡片切分。
 - 独立图片页保留完整卡片结构，包括页眉、页脚、主题和背景；图片在内容区占用完整可用高度。
@@ -75,6 +75,7 @@ Obsidian 当前文件
 - `src/settings/settings.ts`：默认配置、主题/字体/导出/界面语言持久化管理。
 - `src/settings/SettingTab.ts`：Obsidian 设置页和相关弹窗。
 - `src/aiManager.ts`：AI 重写服务模块，封装调用 Gemini API 接口，负责安全凭证脱敏、代理地址拼装、以及接口异常捕获处理。
+- `src/markdownContent.ts`：发布正文清理模块，移除 Markdown 图片和 Obsidian 图片嵌入，同时保护非图片嵌入以及代码中的图片语法示例。
 - `src/downloadManager.ts`：把当前页或全部分页渲染为 PNG Blob，并可打包为 ZIP。
 - `src/clipboardManager.ts`：复制图片到剪贴板。
 - `src/backgroundManager.ts`：背景图样式和背景设置弹窗。

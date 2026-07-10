@@ -11,6 +11,7 @@ import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 import { AiManager } from "./aiManager";
 import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./imageLayout";
+import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
 import type { ImageLayoutState } from "./types";
@@ -1035,7 +1036,7 @@ export class RedView extends ItemView {
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const settings = this.settingsManager.getSettings();
 
-    let body = this.stripFrontMatter(sourceContent);
+    let body = removeMarkdownImages(this.stripFrontMatter(sourceContent));
 
     const bodyLength = body.trim().length;
     const threshold = settings.aiRewriteThreshold ?? 800;
@@ -1043,7 +1044,7 @@ export class RedView extends ItemView {
     if (settings.enableAiSummary && body.trim() && bodyLength > threshold) {
       new Notice(this.t("aiRewriting"));
       try {
-        body = await AiManager.rewriteContent(body, settings);
+        body = removeMarkdownImages(await AiManager.rewriteContent(body, settings));
         new Notice(this.t("aiRewriteSuccess"));
       } catch (error: any) {
         new Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);

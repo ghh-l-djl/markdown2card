@@ -59,7 +59,8 @@ When post-export actions are enabled, you can toggle AI rewriting to automatical
 - **Word/Character Count Threshold**: Specify a character count threshold (default: 800 characters) below which the AI rewriting step is skipped, allowing short posts to be exported directly without redundant API calls.
 - **Social Tags Extraction**: Automatically extracts hashtags (`#tag`) from the post body, removes them from the text to keep the main copy clean, and populates them as a list under the `publish_social_tags` field in the YAML frontmatter of the publish-ready package.
 - **Localized Default Prompts**: Default prompts are localized based on the user's interface language setting (English or Chinese). Switching the interface language automatically updates default prompts to match while preserving any custom prompts you have configured. The prompt requires the AI to output in the same language as the source article.
-- **Robust Fallback**: If the API call fails, a toast notification with the error is shown, and the plugin automatically falls back to the original note content, ensuring the export pipeline never breaks.
+- **Image-Free Publish Body**: Markdown images and Obsidian image embeds are removed before the rewrite request and sanitized from the generated result again. Non-image embeds and image-looking examples inside inline or fenced code are preserved.
+- **Robust Fallback**: If the API call fails, a toast notification with the error is shown, and the plugin uses the already-sanitized source body without image references, ensuring the export pipeline never breaks.
 
 ## Development
 
@@ -73,7 +74,7 @@ The build emits `main.js` next to `manifest.json` and `styles.css`, matching the
 layout expected by Obsidian community plugins.
 
 Automated tests cover image sizing, standalone-page classification, crop-control behavior,
-layout measurement fallbacks, source-line mapping, preview-scroll reset behavior, and export filtering. For UI changes, run `npm test` and
+layout measurement fallbacks, source-line mapping, preview-scroll reset behavior, export filtering, and publish-body image sanitization. For UI changes, run `npm test` and
 `npm run build`, then manually verify preview generation, auto pagination, Mermaid rendering,
 preview/editor navigation, file-switch scroll reset, first-enable rendering, template switching, theme switching, language switching, export path handling,
 ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,

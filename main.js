@@ -7408,6 +7408,80 @@ var AiManager = class {
   }
 };
 
+// src/markdownContent.ts
+var OBSIDIAN_EMBED = /!\[\[([^\]\n]+)\]\]/g;
+var IMAGE_FILE_EXTENSION = /\.(?:avif|bmp|gif|heic|heif|jpe?g|png|svg|tiff?|webp)$/i;
+var MARKDOWN_INLINE_IMAGE = /!\[[^\]\n]*\]\([^\n)]*\)/g;
+var MARKDOWN_REFERENCE_IMAGE = /!\[[^\]\n]*\]\[[^\]\n]*\]/g;
+function removeImagesFromText(text) {
+  return text.replace(OBSIDIAN_EMBED, (embed2, value) => {
+    const target = value.split("|", 1)[0].split("#", 1)[0].trim();
+    return IMAGE_FILE_EXTENSION.test(target) ? "" : embed2;
+  }).replace(MARKDOWN_INLINE_IMAGE, "").replace(MARKDOWN_REFERENCE_IMAGE, "");
+}
+function removeImagesOutsideInlineCode(line) {
+  let result = "";
+  let cursor = 0;
+  while (cursor < line.length) {
+    const opening = line.slice(cursor).match(/`+/);
+    if (!opening || opening.index === void 0) {
+      return result + removeImagesFromText(line.slice(cursor));
+    }
+    const openingIndex = cursor + opening.index;
+    result += removeImagesFromText(line.slice(cursor, openingIndex));
+    const delimiter = opening[0];
+    const closingIndex = line.indexOf(delimiter, openingIndex + delimiter.length);
+    if (closingIndex === -1)
+      return result + line.slice(openingIndex);
+    const codeEnd = closingIndex + delimiter.length;
+    result += line.slice(openingIndex, codeEnd);
+    cursor = codeEnd;
+  }
+  return result;
+}
+function removeMarkdownImages(markdown) {
+  var _a;
+  let fence = null;
+  let changed = false;
+  const lines = markdown.split("\n");
+  const keptLines = [];
+  lines.forEach((line, originalIndex) => {
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (fence) {
+      keptLines.push({ text: line, originalIndex });
+      if (new RegExp(`^ {0,3}${fence.character}{${fence.length},}\\s*$`).test(line))
+        fence = null;
+      return;
+    }
+    if (fenceMatch) {
+      fence = { character: fenceMatch[1][0], length: fenceMatch[1].length };
+      keptLines.push({ text: line, originalIndex });
+      return;
+    }
+    const withoutImages = removeImagesOutsideInlineCode(line);
+    if (withoutImages !== line)
+      changed = true;
+    const normalized = withoutImages === line ? line : withoutImages.replace(/[ \t]{2,}/g, " ").trimEnd();
+    if (normalized.trim() || withoutImages === line) {
+      keptLines.push({ text: normalized, originalIndex });
+    }
+  });
+  if (!changed)
+    return markdown;
+  const normalizedLines = keptLines.filter((line, index) => {
+    const previous = keptLines[index - 1];
+    return line.text.trim() || !previous || previous.text.trim() || line.originalIndex === previous.originalIndex + 1;
+  });
+  if (((_a = normalizedLines[0]) == null ? void 0 : _a.text.trim()) === "" && normalizedLines[0].originalIndex > 0) {
+    normalizedLines.shift();
+  }
+  const lastLine = normalizedLines[normalizedLines.length - 1];
+  if ((lastLine == null ? void 0 : lastLine.text.trim()) === "" && lastLine.originalIndex < lines.length - 1) {
+    normalizedLines.pop();
+  }
+  return normalizedLines.map((line) => line.text).join("\n");
+}
+
 // src/previewScroll.ts
 function resetPreviewScroll(previewEl) {
   const wrapper = previewEl == null ? void 0 : previewEl.parentElement;
@@ -8523,13 +8597,13 @@ var RedView = class extends import_obsidian6.ItemView {
     const publishPath = this.getPublishPath(sourceFile);
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const settings = this.settingsManager.getSettings();
-    let body = this.stripFrontMatter(sourceContent);
+    let body = removeMarkdownImages(this.stripFrontMatter(sourceContent));
     const bodyLength = body.trim().length;
     const threshold = (_a = settings.aiRewriteThreshold) != null ? _a : 800;
     if (settings.enableAiSummary && body.trim() && bodyLength > threshold) {
       new import_obsidian6.Notice(this.t("aiRewriting"));
       try {
-        body = await AiManager.rewriteContent(body, settings);
+        body = removeMarkdownImages(await AiManager.rewriteContent(body, settings));
         new import_obsidian6.Notice(this.t("aiRewriteSuccess"));
       } catch (error) {
         new import_obsidian6.Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);
