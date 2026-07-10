@@ -65,7 +65,8 @@ class ThemePreviewModal extends Modal {
     const settings = this.plugin.settingsManager.getSettings();
     const userInfo = header.createEl("div", { cls: "red-user-info" });
     const userLeft = userInfo.createEl("div", { cls: "red-user-left" });
-    userLeft.createEl("div", { cls: "red-user-avatar" }).createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: "📷" });
+    const avatar = userLeft.createEl("div", { cls: "red-user-avatar" });
+    avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
     const meta = userLeft.createEl("div", { cls: "red-user-meta" });
     const name = meta.createEl("div", { cls: "red-user-name-container" });
     name.createEl("div", { cls: "red-user-name", text: settings.userName });

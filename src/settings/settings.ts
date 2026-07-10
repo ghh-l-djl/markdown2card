@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import type YanqiPlugin from "../main";
+import { DEFAULT_AVATAR } from "../assets/defaultAvatar";
 import { templates } from "../templates";
 import type { FontOption, YanqiSettings, YanqiTheme } from "../types";
 
@@ -57,7 +58,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   tableScales: {},
   themes: [],
   customThemes: [],
-  userAvatar: "",
+  userAvatar: DEFAULT_AVATAR,
   userName: "markdown2card",
   notesTitle: "备忘录",
   userId: "@hazel",
@@ -122,6 +123,7 @@ export class SettingsManager extends EventEmitter {
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...savedData,
+      userAvatar: savedData.userAvatar || DEFAULT_SETTINGS.userAvatar,
       aiPromptTemplate: prompt,
       backgroundSettings: {
         ...DEFAULT_SETTINGS.backgroundSettings,
