@@ -2293,8 +2293,9 @@
   -webkit-user-drag: none;
 }
 .red-image-mode-crop img:active { cursor: grabbing; }
-.red-standalone-image-page {
-  display: flex !important;
+.red-standalone-image-page.red-section-active,
+.red-standalone-image-page.red-section-visible {
+  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -2303,31 +2304,58 @@
 }
 .red-image-controls {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   display: flex;
   gap: 4px;
   opacity: 0;
   transition: opacity 0.15s ease;
-  z-index: 4;
+  z-index: 12;
 }
-.red-content-image:hover .red-image-controls { opacity: 1; }
-.red-image-control-button {
+.red-content-image:hover .red-image-controls,
+.red-content-image:focus-within .red-image-controls { opacity: 1; }
+.red-image-preview .red-image-control-button {
+  appearance: none !important;
   min-width: 24px;
   height: 24px;
+  margin: 0 !important;
   padding: 0 6px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.62);
-  color: #fff;
-  font-size: 15px;
+  background-color: #111827 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  background-image: none !important;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(8px);
 }
-.red-image-control-button:hover { background: rgba(0, 0, 0, 0.82); }
+.red-image-preview .red-image-control-button:is(:hover, :focus-visible, :active) {
+  background-color: #030712 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+}
+.red-image-preview .red-image-control-button:focus-visible {
+  outline: 2px solid #60a5fa !important;
+  outline-offset: 1px;
+}
+.red-image-preview .red-image-control-button:disabled {
+  background-color: #374151 !important;
+  color: #d1d5db !important;
+  -webkit-text-fill-color: #d1d5db !important;
+  cursor: not-allowed;
+  opacity: 0.38 !important;
+  transform: none !important;
+}
 /* —— 表格缩放组件:每张表独立调大小，不影响全局字号 —— */
 .red-table-wrap { position: relative; display: block; }
 .red-table-ctrl {

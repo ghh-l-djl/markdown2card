@@ -2741,6 +2741,10 @@ var import_obsidian7 = require("obsidian");
 var import_obsidian = require("obsidian");
 
 // src/imageLayout.ts
+var IMAGE_CROP_HINT = "\u88C1\u526A\u6A21\u5F0F\uFF1A\u56FE\u7247\u4F1A\u5728\u56FA\u5B9A\u56FE\u7247\u6846\u6BD4\u4F8B\u4E0B\u4FDD\u6301\u94FA\u6EE1\uFF1B\u53EF\u7528 + \u653E\u5927\u3001\u2212 \u56DE\u9000\u653E\u5927\uFF08\u6700\u4F4E\u4FDD\u6301\u94FA\u6EE1\uFF09\uFF0C\u5E76\u62D6\u52A8\u8C03\u6574\u53D6\u666F\u3002";
+function canAdjustImageLayout(mode) {
+  return mode === "crop";
+}
 function isPositive(value) {
   return Number.isFinite(value) && value > 0;
 }
@@ -2759,6 +2763,15 @@ function shouldUseStandalonePage(naturalWidth, naturalHeight, contentWidth, page
   if (![naturalWidth, naturalHeight, contentWidth, pageContentHeight].every(isPositive))
     return false;
   return contentWidth * naturalHeight / naturalWidth > pageContentHeight;
+}
+function resolveLayoutBox(...boxes) {
+  for (const box of boxes) {
+    if (!box)
+      continue;
+    if (isPositive(box.width) && isPositive(box.height))
+      return box;
+  }
+  return { width: 1, height: 1 };
 }
 function createImageLayoutKey(notePath, resourcePath, occurrence) {
   return `${encodeURIComponent(notePath)}::${encodeURIComponent(resourcePath)}::${occurrence}`;
@@ -2889,9 +2902,15 @@ var RedConverter = class {
     if (!contentContainer || !section)
       return;
     await this.waitForImages(section);
-    await this.waitForLayoutBox(contentContainer);
-    const contentWidth = Math.max(1, section.clientWidth);
-    const pageContentHeight = Math.max(1, section.clientHeight);
+    const contentArea = previewEl.querySelector(".red-preview-content") || contentContainer;
+    await this.waitForLayoutBox(contentArea);
+    const layoutBox = resolveLayoutBox(
+      this.readLayoutBox(contentArea),
+      this.readLayoutBox(contentContainer),
+      this.readLayoutBox(section)
+    );
+    const contentWidth = Math.max(1, Math.round(layoutBox.width));
+    const pageContentHeight = Math.max(1, Math.round(layoutBox.height));
     const occurrences = /* @__PURE__ */ new Map();
     const images = Array.from(section.querySelectorAll("img")).filter((img) => !img.closest(".red-user-avatar"));
     images.forEach((img) => {
@@ -2929,6 +2948,12 @@ var RedConverter = class {
       viewport.appendChild(img);
       this.promoteImageFigure(figure);
     });
+  }
+  static readLayoutBox(element) {
+    if (!element)
+      return null;
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
   }
   static promoteImageFigure(figure) {
     const paragraph = figure.parentElement;
@@ -8008,10 +8033,14 @@ var RedView = class extends import_obsidian6.ItemView {
       img.draggable = false;
       const naturalWidth = Number(figure.dataset.naturalWidth) || img.naturalWidth;
       const naturalHeight = Number(figure.dataset.naturalHeight) || img.naturalHeight;
+      const cropOnlyButtons = [];
       const apply = () => {
         figure.dataset.imageMode = st.mode;
         figure.classList.toggle("red-image-mode-contain", st.mode === "contain");
         figure.classList.toggle("red-image-mode-crop", st.mode === "crop");
+        cropOnlyButtons.forEach((button) => {
+          button.disabled = !canAdjustImageLayout(st.mode);
+        });
         if (st.mode === "contain") {
           img.style.removeProperty("width");
           img.style.removeProperty("height");
@@ -8025,35 +8054,43 @@ var RedView = class extends import_obsidian6.ItemView {
         img.style.transform = `translate(${st.offsetX}px, ${st.offsetY}px) scale(${st.scale})`;
         img.title = "\u62D6\u52A8\u56FE\u7247\u8C03\u6574\u88C1\u526A\u533A\u57DF";
       };
-      const controls = figure.createEl("div", { cls: "red-image-controls red-editor-only" });
-      const mk = (text, title, fn) => controls.createEl("button", {
-        cls: "red-image-control-button",
-        text,
-        attr: { title, type: "button" }
-      }).addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        fn();
-        apply();
-        persist();
-      });
-      mk("\u88C1\u526A", "\u8FDB\u5165\u88C1\u526A\u6A21\u5F0F", () => {
+      const controls = viewport.createEl("div", { cls: "red-image-controls red-editor-only" });
+      const mk = (text, title, fn) => {
+        const button = controls.createEl("button", {
+          cls: "red-image-control-button",
+          text,
+          attr: { title, type: "button" }
+        });
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          fn();
+          apply();
+          persist();
+        });
+        return button;
+      };
+      mk("\u88C1\u526A", "\u56FA\u5B9A\u56FE\u7247\u6846\u6BD4\u4F8B\uFF0C\u94FA\u6EE1\u540E\u62D6\u52A8\u8C03\u6574\u53D6\u666F", () => {
+        if (st.mode !== "crop")
+          new import_obsidian6.Notice(IMAGE_CROP_HINT, 5e3);
         st.mode = "crop";
       });
       mk("\u5B8C\u6574", "\u5B8C\u6574\u663E\u793A", () => {
         st.mode = "contain";
       });
-      mk("\u2212", "\u7F29\u5C0F", () => {
-        st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2));
-      });
-      mk("+", "\u653E\u5927", () => {
-        st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2));
-      });
-      mk("\u21BA", "\u91CD\u7F6E\u88C1\u526A", () => {
-        st.scale = 1;
-        st.offsetX = 0;
-        st.offsetY = 0;
-      });
+      cropOnlyButtons.push(
+        mk("\u2212", "\u56DE\u9000\u653E\u5927\uFF0C\u6700\u4F4E\u4FDD\u6301\u94FA\u6EE1", () => {
+          st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2));
+        }),
+        mk("+", "\u653E\u5927\u540E\u8C03\u6574\u53D6\u666F", () => {
+          st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2));
+        }),
+        mk("\u21BA", "\u6062\u590D\u9ED8\u8BA4\u94FA\u6EE1\u4E0E\u5C45\u4E2D\u4F4D\u7F6E", () => {
+          st.scale = 1;
+          st.offsetX = 0;
+          st.offsetY = 0;
+        })
+      );
       let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
       img.addEventListener("pointerdown", (event) => {
         if (st.mode !== "crop")

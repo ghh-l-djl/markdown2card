@@ -21,7 +21,10 @@
 - 支持超尺寸 Mermaid 原比例追加页导出、复制当前图到剪贴板。
 - 集成 AI 智能重写模块，在导出后置动作中异步调用 Gemini 模型（如 `gemini-3.5-flash`）进行内容总结，支持配置 API 代理地址、可配置提示词模板，并提供完整的错误容错（降级回退为原文）与多语言支持。
 - 支持预览界面语言切换，默认英文，可切换中文。
-- 支持图片拖拽、缩放、四角改大小，并按图片地址哈希持久化。
+- Markdown 图片默认按 `contain` 完整显示；等比缩放后仍超过卡片可用高度的长竖图，会被提升为独立图片页，不与文字混排、不跨卡片切分。
+- 独立图片页保留完整卡片结构，包括页眉、页脚、主题和背景；图片在内容区占用完整可用高度。
+- 支持固定图片框比例的铺满取景：裁剪模式下可放大、回退放大、重置和自由拖动偏移；偏移刻意不限制边界。
+- 图片状态按“笔记路径 + 资源路径 + 同图出现序号”存入 `imageLayouts`，避免不同笔记或重复图片互相覆盖。
 - 支持表格字号缩放和拖拽缩放，并按表格文本哈希持久化。
 - 支持编辑器光标到预览页、预览页点击到编辑器行号的双向联动。
 - 支持头像、用户名、用户 ID、页脚文案、备忘录标题的预览内直接编辑。
@@ -40,10 +43,11 @@ Obsidian 当前文件
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
   -> RedView.waitForPreviewLayout
+  -> RedConverter.prepareContentImages
   -> RedConverter.autoPaginate
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
-  -> setupImageZoom / setupTableResize
+  -> setupImageLayoutInteractions / setupTableResize
   -> html-to-image toBlob/toCanvas
   -> vault/文件系统写入 PNG 或 JSZip
   -> 可选 YAML frontmatter 后处理 & 异步调用 AiManager.rewriteContent 进行正文重写
@@ -56,8 +60,9 @@ Obsidian 当前文件
 
 - `src/main.ts`：插件入口，注册视图、命令、自定义 Ribbon 图标和设置页。
 - `src/icons.ts`：插件自定义图标名称和 SVG 路径定义。
-- `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出路径解析、导出后 YAML 处理、界面语言映射、图片和表格交互。
-- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，并在模板/主题生效后按 DOM 高度自动分页。
+- `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出路径解析、导出后 YAML 处理、界面语言映射、图片取景和表格交互。
+- `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，在分页前封装和分类 Markdown 图片，并在模板/主题生效后按 DOM 高度自动分页。
+- `src/imageLayout.ts`：图片 `contain` / `cover` 尺寸计算、独立图片页判定、稳定布局尺寸回退、取景控件状态与导出过滤。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
 - `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，自动计算卡片主题亮度并动态绑定亮/暗色作用域 Class，并修正 Mermaid 图表与内置警告框在混合主题背景下的对比度与样式。
 - `src/settings/settings.ts`：默认配置、主题/字体/导出/界面语言持久化管理。
@@ -68,6 +73,48 @@ Obsidian 当前文件
 - `src/backgroundManager.ts`：背景图样式和背景设置弹窗。
 - `src/templates/*.json`：从 bundle 中提取的 11 套内置主题。
 - `src/assets/backgrounds.ts`：从 bundle 中提取 of 6 张内置背景。
+
+## Markdown 图片布局与取景处理
+
+### 1. 预处理时机与稳定尺寸测量
+
+`RedConverter.prepareContentImages` 在 Markdown 和图片加载完成、模板与主题已应用，但尚未自动分页时执行。它会把正文 `<img>` 封装为：
+
+```text
+figure.red-content-image
+  -> div.red-content-image-viewport
+       -> img
+       -> div.red-image-controls.red-editor-only
+```
+
+布局尺寸优先从 `.red-preview-content` 读取，然后依次回退到 `.red-content-container` 和当前 section。`resolveLayoutBox` 忽略宽或高为 0 的折叠测量，避免 Obsidian 分页初始化期间把隐藏或尚未布局的页面误写为 `1 × 1` 图片视口，进而造成卡片白屏。
+
+### 2. 长图独立卡片判定
+
+先计算图片按内容宽度等比缩放后的高度：
+
+```text
+scaledHeight = contentWidth * naturalHeight / naturalWidth
+```
+
+当 `scaledHeight > pageContentHeight` 时，`shouldUseStandalonePage` 将图片标记为 `.red-image-standalone`。`splitSectionByHeight` 把这类图片作为原子块提升到单独的 `.red-standalone-image-page`：如果当前页已有文字则先结束当前页，然后为图片创建一张完整卡片。这保证长图既不会被分片，也不会只占普通内容卡片的局部高度。
+
+CSS 只在独立图片页处于 `.red-section-active` 或 `.red-section-visible` 时才启用 flex 居中，不会用 `display: flex !important` 破坏非当前分页的隐藏规则。
+
+### 3. 完整显示与固定框取景
+
+- **完整模式 (`contain`)**：使用 `min(viewportWidth / naturalWidth, viewportHeight / naturalHeight)` 等比缩放，保证原图不被裁掉。
+- **裁剪模式 (`crop`)**：更准确的定义是“固定图片框的铺满取景”。基础倍率使用 `max(viewportWidth / naturalWidth, viewportHeight / naturalHeight)` 让图片至少铺满图片框，然后叠加用户倍率和 `offsetX/offsetY`。超出 viewport 的内容由 `overflow: hidden` 隐藏。
+
+用户倍率范围为 `1..3`。`1` 表示“刚好铺满图片框”，不是原图 100%；因此 `−` 只用于回退之前的放大，不会缩到铺满倍率以下。横图的 inline viewport 默认与原图同比例，所以刚进入裁剪时通常没有可见变化，需先点击 `+` 放大再拖动取景。
+
+### 4. 交互状态、持久化与导出
+
+`setupImageLayoutInteractions` 创建“裁剪 / 完整 / − / + / 重置”控件。控件相对真实 viewport 定位，避免图片在 figure 内居中时按钮跑到可见区域之外。按钮使用卡片作用域内的强制深色背景和白色文字，避免被 Obsidian 或卡片主题覆盖。
+
+完整模式下 `− / + / 重置` 会被禁用，不会在画面无变化时暗中修改裁剪状态。每次从完整切换到裁剪时会显示定义提示。拖动偏移不做边界 clamp，允许用户主动露出空白区域。
+
+状态通过 `imageLayouts[key] = { mode, scale, offsetX, offsetY }` 持久化，key 由笔记路径、图片资源路径和同资源在笔记中的出现序号组成。旧 `imageScales` 数据模型已完全移除，不包含迁移分支。操作控件带 `.red-editor-only`，`html-to-image` 和剪贴板渲染均通过 `isExportableNode` 过滤掉这些节点。
 
 ## Mermaid 与分页处理逻辑
 

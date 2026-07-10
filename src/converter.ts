@@ -1,6 +1,6 @@
 import { loadMermaid, type App } from "obsidian";
 import type YanqiPlugin from "./main";
-import { calculateContainSize, createImageLayoutKey, shouldUseStandalonePage } from "./imageLayout";
+import { calculateContainSize, createImageLayoutKey, resolveLayoutBox, shouldUseStandalonePage } from "./imageLayout";
 
 export class RedConverter {
   private static app: App;
@@ -135,10 +135,16 @@ export class RedConverter {
     const section = contentContainer?.querySelector<HTMLElement>(":scope > .red-content-section");
     if (!contentContainer || !section) return;
     await this.waitForImages(section);
-    await this.waitForLayoutBox(contentContainer);
+    const contentArea = previewEl.querySelector<HTMLElement>(".red-preview-content") || contentContainer;
+    await this.waitForLayoutBox(contentArea);
 
-    const contentWidth = Math.max(1, section.clientWidth);
-    const pageContentHeight = Math.max(1, section.clientHeight);
+    const layoutBox = resolveLayoutBox(
+      this.readLayoutBox(contentArea),
+      this.readLayoutBox(contentContainer),
+      this.readLayoutBox(section)
+    );
+    const contentWidth = Math.max(1, Math.round(layoutBox.width));
+    const pageContentHeight = Math.max(1, Math.round(layoutBox.height));
     const occurrences = new Map<string, number>();
     const images = Array.from(section.querySelectorAll<HTMLImageElement>("img"))
       .filter((img) => !img.closest(".red-user-avatar"));
@@ -176,6 +182,12 @@ export class RedConverter {
       viewport.appendChild(img);
       this.promoteImageFigure(figure);
     });
+  }
+
+  private static readLayoutBox(element: HTMLElement | null | undefined): { width: number; height: number } | null {
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
   }
 
   private static promoteImageFigure(figure: HTMLElement): void {

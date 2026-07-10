@@ -10,7 +10,7 @@ import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 import { AiManager } from "./aiManager";
-import { calculateCoverScale } from "./imageLayout";
+import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./imageLayout";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -638,10 +638,12 @@ export class RedView extends ItemView {
       img.draggable = false;
       const naturalWidth = Number(figure.dataset.naturalWidth) || img.naturalWidth;
       const naturalHeight = Number(figure.dataset.naturalHeight) || img.naturalHeight;
+      const cropOnlyButtons: HTMLButtonElement[] = [];
       const apply = () => {
         figure.dataset.imageMode = st.mode;
         figure.classList.toggle("red-image-mode-contain", st.mode === "contain");
         figure.classList.toggle("red-image-mode-crop", st.mode === "crop");
+        cropOnlyButtons.forEach((button) => { button.disabled = !canAdjustImageLayout(st.mode); });
         if (st.mode === "contain") {
           img.style.removeProperty("width");
           img.style.removeProperty("height");
@@ -655,19 +657,28 @@ export class RedView extends ItemView {
         img.style.transform = `translate(${st.offsetX}px, ${st.offsetY}px) scale(${st.scale})`;
         img.title = "拖动图片调整裁剪区域";
       };
-      const controls = figure.createEl("div", { cls: "red-image-controls red-editor-only" });
-      const mk = (text: string, title: string, fn: () => void) => controls.createEl("button", {
-        cls: "red-image-control-button",
-        text,
-        attr: { title, type: "button" }
-      }).addEventListener("click", (event) => {
-        event.preventDefault(); event.stopPropagation(); fn(); apply(); persist();
+      const controls = viewport.createEl("div", { cls: "red-image-controls red-editor-only" });
+      const mk = (text: string, title: string, fn: () => void): HTMLButtonElement => {
+        const button = controls.createEl("button", {
+          cls: "red-image-control-button",
+          text,
+          attr: { title, type: "button" }
+        });
+        button.addEventListener("click", (event) => {
+          event.preventDefault(); event.stopPropagation(); fn(); apply(); persist();
+        });
+        return button;
+      };
+      mk("裁剪", "固定图片框比例，铺满后拖动调整取景", () => {
+        if (st.mode !== "crop") new Notice(IMAGE_CROP_HINT, 5000);
+        st.mode = "crop";
       });
-      mk("裁剪", "进入裁剪模式", () => { st.mode = "crop"; });
       mk("完整", "完整显示", () => { st.mode = "contain"; });
-      mk("−", "缩小", () => { st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2)); });
-      mk("+", "放大", () => { st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2)); });
-      mk("↺", "重置裁剪", () => { st.scale = 1; st.offsetX = 0; st.offsetY = 0; });
+      cropOnlyButtons.push(
+        mk("−", "回退放大，最低保持铺满", () => { st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2)); }),
+        mk("+", "放大后调整取景", () => { st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2)); }),
+        mk("↺", "恢复默认铺满与居中位置", () => { st.scale = 1; st.offsetX = 0; st.offsetY = 0; })
+      );
       let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
       img.addEventListener("pointerdown", (event) => {
         if (st.mode !== "crop") return;

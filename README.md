@@ -14,7 +14,7 @@ Language: English | [简体中文](./README.zh-CN.md)
 *Settings Panel: A feature-rich settings sidebar that allows switching themes, selecting custom background styles and fonts, adjusting footer visibility, and providing one-click copy or export actions.*
 
 ![Mermaid & Image Support](./支持mermaid和图片.png)
-*Mermaid & Image Support: Easily scales and renders embedded images and Mermaid diagrams onto the cards, including automatic scaling and appending full-size exports for oversized diagrams.*
+*Mermaid & Image Support: Renders embedded images and Mermaid diagrams safely inside cards. Long portrait images receive a dedicated full card instead of being split across pages, while oversized Mermaid diagrams can be appended at their original aspect ratio during export.*
 
 ![Auto-Pagination & LaTeX](./代码自动分页-支持latex.png)
 *Auto-Pagination, Code Blocks & LaTeX: Supports rendering and syntax highlighting for code blocks and LaTeX math formulas, with automatic physical pagination based on actual card height to prevent content clipping.*
@@ -30,9 +30,11 @@ It renders the active Markdown note as exportable social-card images.
 - Converts Markdown into fixed-ratio image cards with live preview.
 - Automatically paginates long content by the actual rendered card height, so content is not silently clipped.
 - Supports manual page breaks with `---`.
+- Keeps ordinary images fully visible by default. Portrait images that would exceed the available card height are promoted to a dedicated image card and are never split across multiple cards.
+- Provides fixed-frame image reframing: crop mode keeps the image frame ratio fixed, fills the frame, and lets users zoom or drag the image to choose the visible area. Zoom and reset controls are enabled only in crop mode; editor controls are excluded from exports.
 - Renders Mermaid diagrams into card-safe SVG blocks, including dark-theme contrast fixes, auto scaling for oversized diagrams, and appended original-size Mermaid exports when a diagram would exceed the card.
 - Provides multiple image templates, including default, notes, Xiaohongshu, Weibo, WeChat, magazine, quote, terminal, GitHub, and signature styles.
-- Supports theme switching, cover styles, custom fonts, background images, footer visibility, image crop/zoom, table scaling, current-page export, all-pages export, and clipboard copy.
+- Supports theme switching, cover styles, custom fonts, background images, footer visibility, persistent per-image reframing, table scaling, current-page export, all-pages export, and clipboard copy.
 - Lets users choose the preview UI language, defaulting to English with a Chinese option.
 - Writes exports to a configurable destination. Relative paths are written inside the vault; absolute macOS/Linux or Windows paths are written to the file system.
 - Supports ZIP archive output or a PNG folder named after the current Markdown file.
@@ -61,14 +63,16 @@ When post-export actions are enabled, you can toggle AI rewriting to automatical
 
 ```bash
 npm install
+npm test
 npm run build
 ```
 
 The build emits `main.js` next to `manifest.json` and `styles.css`, matching the
 layout expected by Obsidian community plugins.
 
-There is currently no automated test script. For UI changes, run `npm run build`
-and manually verify preview generation, auto pagination, Mermaid rendering,
+Automated tests cover image sizing, standalone-page classification, crop-control behavior,
+layout measurement fallbacks, and export filtering. For UI changes, run `npm test` and
+`npm run build`, then manually verify preview generation, auto pagination, Mermaid rendering,
 first-enable rendering, template switching, theme switching, language switching, export path handling,
 ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,
-appended oversized Mermaid exports, and copy behavior in an Obsidian vault.
+long-image cards, image reframing, appended oversized Mermaid exports, and copy behavior in an Obsidian vault.

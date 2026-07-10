@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  IMAGE_CROP_HINT,
   calculateContainSize,
   calculateCoverScale,
+  canAdjustImageLayout,
   createImageLayoutKey,
   isExportableNode,
+  resolveLayoutBox,
   shouldUseStandalonePage
 } from "../src/imageLayout";
 
@@ -37,4 +40,23 @@ test("export filter excludes editor-only controls", () => {
   assert.equal(isExportableNode({ classList: { contains: (name: string) => name === "red-editor-only" } }), false);
   assert.equal(isExportableNode({ classList: { contains: () => false } }), true);
   assert.equal(isExportableNode({}), true);
+});
+
+test("layout box resolution skips collapsed measurements", () => {
+  assert.deepEqual(resolveLayoutBox(null, { width: 0, height: 0 }, { width: 382, height: 472 }), {
+    width: 382,
+    height: 472
+  });
+  assert.deepEqual(resolveLayoutBox({ width: 0, height: 0 }, { width: 0, height: 0 }), { width: 1, height: 1 });
+});
+
+test("image adjustment controls are available only while cropping", () => {
+  assert.equal(canAdjustImageLayout("contain"), false);
+  assert.equal(canAdjustImageLayout("crop"), true);
+});
+
+test("crop guidance accurately defines fixed-frame reframing", () => {
+  assert.match(IMAGE_CROP_HINT, /固定图片框比例/);
+  assert.match(IMAGE_CROP_HINT, /最低保持铺满/);
+  assert.match(IMAGE_CROP_HINT, /拖动调整取景/);
 });

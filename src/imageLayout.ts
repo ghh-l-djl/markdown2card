@@ -3,6 +3,17 @@ export interface ImageSize {
   height: number;
 }
 
+export interface LayoutBox {
+  width: number;
+  height: number;
+}
+
+export const IMAGE_CROP_HINT = "裁剪模式：图片会在固定图片框比例下保持铺满；可用 + 放大、− 回退放大（最低保持铺满），并拖动调整取景。";
+
+export function canAdjustImageLayout(mode: "contain" | "crop"): boolean {
+  return mode === "crop";
+}
+
 function isPositive(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
@@ -36,6 +47,14 @@ export function shouldUseStandalonePage(
 ): boolean {
   if (![naturalWidth, naturalHeight, contentWidth, pageContentHeight].every(isPositive)) return false;
   return contentWidth * naturalHeight / naturalWidth > pageContentHeight;
+}
+
+export function resolveLayoutBox(...boxes: Array<LayoutBox | null | undefined>): LayoutBox {
+  for (const box of boxes) {
+    if (!box) continue;
+    if (isPositive(box.width) && isPositive(box.height)) return box;
+  }
+  return { width: 1, height: 1 };
 }
 
 export function createImageLayoutKey(notePath: string, resourcePath: string, occurrence: number): string {
