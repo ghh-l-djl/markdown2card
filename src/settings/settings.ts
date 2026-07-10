@@ -53,7 +53,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   fontSize: 16,
   backgroundId: "",
   coverStyle: "cover-classic",
-  imageScales: {},
+  imageLayouts: {},
   tableScales: {},
   themes: [],
   customThemes: [],

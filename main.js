@@ -2739,6 +2739,36 @@ var import_obsidian7 = require("obsidian");
 
 // src/converter.ts
 var import_obsidian = require("obsidian");
+
+// src/imageLayout.ts
+function isPositive(value) {
+  return Number.isFinite(value) && value > 0;
+}
+function calculateContainSize(naturalWidth, naturalHeight, availableWidth, availableHeight) {
+  if (![naturalWidth, naturalHeight, availableWidth, availableHeight].every(isPositive))
+    return { width: 0, height: 0 };
+  const scale = Math.min(availableWidth / naturalWidth, availableHeight / naturalHeight);
+  return { width: naturalWidth * scale, height: naturalHeight * scale };
+}
+function calculateCoverScale(naturalWidth, naturalHeight, viewportWidth, viewportHeight) {
+  if (![naturalWidth, naturalHeight, viewportWidth, viewportHeight].every(isPositive))
+    return 0;
+  return Math.max(viewportWidth / naturalWidth, viewportHeight / naturalHeight);
+}
+function shouldUseStandalonePage(naturalWidth, naturalHeight, contentWidth, pageContentHeight) {
+  if (![naturalWidth, naturalHeight, contentWidth, pageContentHeight].every(isPositive))
+    return false;
+  return contentWidth * naturalHeight / naturalWidth > pageContentHeight;
+}
+function createImageLayoutKey(notePath, resourcePath, occurrence) {
+  return `${encodeURIComponent(notePath)}::${encodeURIComponent(resourcePath)}::${occurrence}`;
+}
+function isExportableNode(node) {
+  var _a;
+  return !((_a = node.classList) == null ? void 0 : _a.contains("red-editor-only"));
+}
+
+// src/converter.ts
 var RedConverter = class {
   static initialize(app, plugin) {
     this.app = app;
@@ -2853,6 +2883,79 @@ var RedConverter = class {
       contentContainer.appendChild(section);
     });
   }
+  static async prepareContentImages(previewEl, notePath) {
+    const contentContainer = previewEl.querySelector(".red-content-container");
+    const section = contentContainer == null ? void 0 : contentContainer.querySelector(":scope > .red-content-section");
+    if (!contentContainer || !section)
+      return;
+    await this.waitForImages(section);
+    await this.waitForLayoutBox(contentContainer);
+    const contentWidth = Math.max(1, section.clientWidth);
+    const pageContentHeight = Math.max(1, section.clientHeight);
+    const occurrences = /* @__PURE__ */ new Map();
+    const images = Array.from(section.querySelectorAll("img")).filter((img) => !img.closest(".red-user-avatar"));
+    images.forEach((img) => {
+      var _a;
+      if (!img.naturalWidth || !img.naturalHeight || img.closest(".red-content-image"))
+        return;
+      const resourcePath = img.getAttribute("src") || img.src;
+      const occurrence = occurrences.get(resourcePath) || 0;
+      occurrences.set(resourcePath, occurrence + 1);
+      const standalone = shouldUseStandalonePage(
+        img.naturalWidth,
+        img.naturalHeight,
+        contentWidth,
+        pageContentHeight
+      );
+      const size = calculateContainSize(
+        img.naturalWidth,
+        img.naturalHeight,
+        contentWidth,
+        pageContentHeight
+      );
+      const figure = document.createElement("figure");
+      figure.className = `red-content-image ${standalone ? "red-image-standalone" : "red-image-inline"} red-image-mode-contain`;
+      figure.dataset.imageMode = "contain";
+      figure.dataset.imageLayout = standalone ? "standalone" : "inline";
+      figure.dataset.imageKey = createImageLayoutKey(notePath, resourcePath, occurrence);
+      figure.dataset.naturalWidth = String(img.naturalWidth);
+      figure.dataset.naturalHeight = String(img.naturalHeight);
+      const viewport = document.createElement("div");
+      viewport.className = "red-content-image-viewport";
+      viewport.style.width = standalone ? `${contentWidth}px` : `${size.width}px`;
+      viewport.style.height = standalone ? `${pageContentHeight}px` : `${size.height}px`;
+      (_a = img.parentElement) == null ? void 0 : _a.insertBefore(figure, img);
+      figure.appendChild(viewport);
+      viewport.appendChild(img);
+      this.promoteImageFigure(figure);
+    });
+  }
+  static promoteImageFigure(figure) {
+    const paragraph = figure.parentElement;
+    if (!paragraph || paragraph.tagName !== "P" || !paragraph.parentElement)
+      return;
+    const parent = paragraph.parentElement;
+    const nodes = Array.from(paragraph.childNodes);
+    const index = nodes.indexOf(figure);
+    const createParagraph = (items) => {
+      if (!items.some((node) => {
+        var _a;
+        return ((_a = node.textContent) == null ? void 0 : _a.trim()) || node instanceof HTMLElement;
+      }))
+        return null;
+      const clone = paragraph.cloneNode(false);
+      items.forEach((node) => clone.appendChild(node));
+      return clone;
+    };
+    const before = createParagraph(nodes.slice(0, index));
+    const after = createParagraph(nodes.slice(index + 1));
+    if (before)
+      parent.insertBefore(before, paragraph);
+    parent.insertBefore(figure, paragraph);
+    if (after)
+      parent.insertBefore(after, paragraph);
+    paragraph.remove();
+  }
   static createSectionsFromParts(content, index, isFirstCard) {
     var _a;
     const settings = (_a = this.plugin.settingsManager) == null ? void 0 : _a.getSettings();
@@ -2922,6 +3025,17 @@ var RedConverter = class {
     this.scaleMermaidBlocksInSpecialGroups(pending, probe, contentContainer);
     while (pending.length) {
       const block = pending[0];
+      if (block.classList.contains("red-image-standalone")) {
+        pending.shift();
+        if (hasBody(current))
+          pages.push(current);
+        const imagePage = makePage(pages.length === 0);
+        imagePage.classList.add("red-standalone-image-page");
+        imagePage.appendChild(block);
+        pages.push(imagePage);
+        current = makePage(false);
+        continue;
+      }
       if (this.isPageBreakMarker(block)) {
         pending.shift();
         if (hasBody(current)) {
@@ -5016,7 +5130,7 @@ var DEFAULT_SETTINGS = {
   fontSize: 16,
   backgroundId: "",
   coverStyle: "cover-classic",
-  imageScales: {},
+  imageLayouts: {},
   tableScales: {},
   themes: [],
   customThemes: [],
@@ -6532,7 +6646,7 @@ var DownloadManager = class {
       quality: 1,
       pixelRatio: EXPORT_PIXEL_RATIO,
       skipFonts: false,
-      filter: () => true,
+      filter: isExportableNode,
       imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     };
   }
@@ -6746,7 +6860,7 @@ var ClipboardManager = class {
       quality: 1,
       pixelRatio: EXPORT_PIXEL_RATIO,
       skipFonts: false,
-      filter: () => true,
+      filter: isExportableNode,
       imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     };
   }
@@ -7587,7 +7701,7 @@ var RedView = class extends import_obsidian6.ItemView {
     this.syncInitialized = true;
     this.registerDomEvent(this.previewEl, "click", (event) => {
       const target = event.target;
-      if (!(target == null ? void 0 : target.closest) || target.closest(".red-img-frame, .red-img-ctrl, button, input, a, [contenteditable], .red-user-avatar, .red-select"))
+      if (!(target == null ? void 0 : target.closest) || target.closest(".red-content-image, button, input, a, [contenteditable], .red-user-avatar, .red-select"))
         return;
       const section = target.closest(".red-content-section");
       if (!section)
@@ -7627,12 +7741,15 @@ var RedView = class extends import_obsidian6.ItemView {
       await this.waitForPreviewLayout();
       if (renderId !== this.previewRenderId)
         return;
+      await RedConverter.prepareContentImages(this.previewEl, this.currentFile.path);
+      if (renderId !== this.previewRenderId)
+        return;
       await RedConverter.autoPaginate(this.previewEl);
       if (renderId !== this.previewRenderId)
         return;
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
-      this.setupImageZoom();
+      this.setupImageLayoutInteractions();
       this.setupTableResize();
       const settings = this.settingsManager.getSettings();
       if (settings.backgroundSettings.imageUrl) {
@@ -7871,85 +7988,90 @@ var RedView = class extends import_obsidian6.ItemView {
       handle.addEventListener("pointercancel", end);
     });
   }
-  setupImageZoom() {
+  setupImageLayoutInteractions() {
     const settings = this.settingsManager.getSettings();
-    const store = settings.imageScales || {};
+    const store = settings.imageLayouts || {};
     let timer = null;
     const persist = () => {
       if (timer)
         window.clearTimeout(timer);
-      timer = window.setTimeout(() => this.settingsManager.updateSettings({ imageScales: store }), 400);
+      timer = window.setTimeout(() => this.settingsManager.updateSettings({ imageLayouts: store }), 400);
     };
-    this.previewEl.querySelectorAll(".red-content-section img").forEach((img) => {
-      if (img.dataset.redCrop === "1" || !img.parentElement)
+    this.previewEl.querySelectorAll(".red-content-image").forEach((figure) => {
+      const img = figure.querySelector("img");
+      const viewport = figure.querySelector(".red-content-image-viewport");
+      const key = figure.dataset.imageKey;
+      if (!img || !viewport || !key || figure.querySelector(".red-image-controls"))
         return;
-      const key = this.imgKey(img.getAttribute("src") || img.src || "");
-      const st = store[key] || { s: 1, x: 0, y: 0 };
+      const st = store[key] || { mode: "contain", scale: 1, offsetX: 0, offsetY: 0 };
       store[key] = st;
-      const cs = getComputedStyle(img);
-      const defaultMaxH = cs.maxHeight && cs.maxHeight !== "none" ? cs.maxHeight : "";
-      const frame = document.createElement("div");
-      frame.className = "red-img-frame";
-      if (defaultMaxH)
-        frame.style.maxHeight = defaultMaxH;
-      if (cs.boxShadow !== "none")
-        frame.style.boxShadow = cs.boxShadow;
-      if (cs.borderRadius !== "0px")
-        frame.style.borderRadius = cs.borderRadius;
-      img.parentElement.insertBefore(frame, img);
-      frame.appendChild(img);
-      img.dataset.redCrop = "1";
-      img.classList.add("red-img-crop");
       img.draggable = false;
-      img.title = "\u62D6\u52A8\u56FE\u7247\u8C03\u6574\u4F4D\u7F6E\uFF1B\u56DB\u89D2\u62D6\u62FD\u6539\u5927\u5C0F\uFF1B\u53F3\u4E0A\u89D2 +/- \u7F29\u653E";
-      const applyT = () => {
-        img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s})`;
+      const naturalWidth = Number(figure.dataset.naturalWidth) || img.naturalWidth;
+      const naturalHeight = Number(figure.dataset.naturalHeight) || img.naturalHeight;
+      const apply = () => {
+        figure.dataset.imageMode = st.mode;
+        figure.classList.toggle("red-image-mode-contain", st.mode === "contain");
+        figure.classList.toggle("red-image-mode-crop", st.mode === "crop");
+        if (st.mode === "contain") {
+          img.style.removeProperty("width");
+          img.style.removeProperty("height");
+          img.style.transform = "none";
+          img.title = "";
+          return;
+        }
+        const baseScale = calculateCoverScale(naturalWidth, naturalHeight, viewport.clientWidth, viewport.clientHeight);
+        img.style.width = `${naturalWidth * baseScale}px`;
+        img.style.height = `${naturalHeight * baseScale}px`;
+        img.style.transform = `translate(${st.offsetX}px, ${st.offsetY}px) scale(${st.scale})`;
+        img.title = "\u62D6\u52A8\u56FE\u7247\u8C03\u6574\u88C1\u526A\u533A\u57DF";
       };
-      const applyH = () => {
-        frame.style.width = typeof st.w === "number" ? `${st.w}px` : "";
-        frame.style.height = typeof st.h === "number" ? `${st.h}px` : "";
-        frame.style.maxHeight = typeof st.h === "number" ? "none" : defaultMaxH;
-      };
-      applyT();
-      applyH();
-      const ctrl = frame.createEl("div", { cls: "red-img-ctrl" });
-      const mk = (text, fn) => ctrl.createEl("button", { cls: "red-img-btn", text }).addEventListener("click", (event) => {
+      const controls = figure.createEl("div", { cls: "red-image-controls red-editor-only" });
+      const mk = (text, title, fn) => controls.createEl("button", {
+        cls: "red-image-control-button",
+        text,
+        attr: { title, type: "button" }
+      }).addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         fn();
-        applyT();
-        applyH();
+        apply();
         persist();
       });
-      mk("\u2212", () => {
-        st.s = Math.max(0.5, +(st.s - 0.1).toFixed(2));
+      mk("\u88C1\u526A", "\u8FDB\u5165\u88C1\u526A\u6A21\u5F0F", () => {
+        st.mode = "crop";
       });
-      mk("+", () => {
-        st.s = Math.min(3, +(st.s + 0.1).toFixed(2));
+      mk("\u5B8C\u6574", "\u5B8C\u6574\u663E\u793A", () => {
+        st.mode = "contain";
       });
-      mk("\u21BA", () => {
-        st.s = 1;
-        st.x = 0;
-        st.y = 0;
-        st.h = void 0;
-        st.w = void 0;
+      mk("\u2212", "\u7F29\u5C0F", () => {
+        st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2));
+      });
+      mk("+", "\u653E\u5927", () => {
+        st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2));
+      });
+      mk("\u21BA", "\u91CD\u7F6E\u88C1\u526A", () => {
+        st.scale = 1;
+        st.offsetX = 0;
+        st.offsetY = 0;
       });
       let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
       img.addEventListener("pointerdown", (event) => {
+        if (st.mode !== "crop")
+          return;
         dragging = true;
         sx = event.clientX;
         sy = event.clientY;
-        ox = st.x;
-        oy = st.y;
+        ox = st.offsetX;
+        oy = st.offsetY;
         img.setPointerCapture(event.pointerId);
         event.preventDefault();
       });
       img.addEventListener("pointermove", (event) => {
         if (!dragging)
           return;
-        st.x = ox + event.clientX - sx;
-        st.y = oy + event.clientY - sy;
-        applyT();
+        st.offsetX = ox + event.clientX - sx;
+        st.offsetY = oy + event.clientY - sy;
+        apply();
       });
       const end = (event) => {
         if (!dragging)
@@ -7963,46 +8085,7 @@ var RedView = class extends import_obsidian6.ItemView {
       };
       img.addEventListener("pointerup", end);
       img.addEventListener("pointercancel", end);
-      [
-        ["red-img-corner red-img-corner-nw", -1, -1],
-        ["red-img-corner red-img-corner-ne", 1, -1],
-        ["red-img-corner red-img-corner-sw", -1, 1],
-        ["red-img-corner red-img-corner-se", 1, 1]
-      ].forEach(([cls, hx, vy]) => {
-        const handle = frame.createEl("div", { cls, attr: { title: "\u62D6\u62FD\u6539\u53D8\u56FE\u7247\u5927\u5C0F" } });
-        let resizing = false, rsx = 0, rsy = 0, rw0 = 0, rh0 = 0, maxW = 9999;
-        handle.addEventListener("pointerdown", (event) => {
-          var _a;
-          resizing = true;
-          rsx = event.clientX;
-          rsy = event.clientY;
-          rw0 = st.w || frame.offsetWidth;
-          rh0 = st.h || frame.offsetHeight;
-          maxW = ((_a = frame.parentElement) == null ? void 0 : _a.clientWidth) || 9999;
-          handle.setPointerCapture(event.pointerId);
-          event.preventDefault();
-          event.stopPropagation();
-        });
-        handle.addEventListener("pointermove", (event) => {
-          if (!resizing)
-            return;
-          st.w = Math.round(Math.max(60, Math.min(maxW, rw0 + hx * (event.clientX - rsx) * 2)));
-          st.h = Math.round(Math.max(60, Math.min(1200, rh0 + vy * (event.clientY - rsy))));
-          applyH();
-        });
-        const finish = (event) => {
-          if (!resizing)
-            return;
-          resizing = false;
-          persist();
-          try {
-            handle.releasePointerCapture(event.pointerId);
-          } catch (e) {
-          }
-        };
-        handle.addEventListener("pointerup", finish);
-        handle.addEventListener("pointercancel", finish);
-      });
+      apply();
     });
   }
   updateControlsState(enabled) {
@@ -8465,12 +8548,6 @@ var RedView = class extends import_obsidian6.ItemView {
         button.setText(normal);
       }, 2e3);
     }
-  }
-  imgKey(src) {
-    let hash = 0;
-    for (let i = 0; i < src.length; i++)
-      hash = hash * 31 + src.charCodeAt(i) | 0;
-    return `i${hash >>> 0}`;
   }
   tableKey(table) {
     const text = (table.textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);

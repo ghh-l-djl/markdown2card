@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { toBlob, toCanvas } from "html-to-image";
+import { isExportableNode } from "./imageLayout";
 
 export const EXPORT_PIXEL_RATIO = 3;
 export const EXPORT_SETTLE_MS = 80;
@@ -15,7 +16,7 @@ export class DownloadManager {
       quality: 1,
       pixelRatio: EXPORT_PIXEL_RATIO,
       skipFonts: false,
-      filter: () => true,
+      filter: isExportableNode,
       imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     };
   }

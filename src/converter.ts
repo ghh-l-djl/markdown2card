@@ -1,5 +1,6 @@
 import { loadMermaid, type App } from "obsidian";
 import type YanqiPlugin from "./main";
+import { calculateContainSize, createImageLayoutKey, shouldUseStandalonePage } from "./imageLayout";
 
 export class RedConverter {
   private static app: App;
@@ -129,6 +130,74 @@ export class RedConverter {
     });
   }
 
+  static async prepareContentImages(previewEl: HTMLElement, notePath: string): Promise<void> {
+    const contentContainer = previewEl.querySelector<HTMLElement>(".red-content-container");
+    const section = contentContainer?.querySelector<HTMLElement>(":scope > .red-content-section");
+    if (!contentContainer || !section) return;
+    await this.waitForImages(section);
+    await this.waitForLayoutBox(contentContainer);
+
+    const contentWidth = Math.max(1, section.clientWidth);
+    const pageContentHeight = Math.max(1, section.clientHeight);
+    const occurrences = new Map<string, number>();
+    const images = Array.from(section.querySelectorAll<HTMLImageElement>("img"))
+      .filter((img) => !img.closest(".red-user-avatar"));
+
+    images.forEach((img) => {
+      if (!img.naturalWidth || !img.naturalHeight || img.closest(".red-content-image")) return;
+      const resourcePath = img.getAttribute("src") || img.src;
+      const occurrence = occurrences.get(resourcePath) || 0;
+      occurrences.set(resourcePath, occurrence + 1);
+      const standalone = shouldUseStandalonePage(
+        img.naturalWidth,
+        img.naturalHeight,
+        contentWidth,
+        pageContentHeight
+      );
+      const size = calculateContainSize(
+        img.naturalWidth,
+        img.naturalHeight,
+        contentWidth,
+        pageContentHeight
+      );
+      const figure = document.createElement("figure");
+      figure.className = `red-content-image ${standalone ? "red-image-standalone" : "red-image-inline"} red-image-mode-contain`;
+      figure.dataset.imageMode = "contain";
+      figure.dataset.imageLayout = standalone ? "standalone" : "inline";
+      figure.dataset.imageKey = createImageLayoutKey(notePath, resourcePath, occurrence);
+      figure.dataset.naturalWidth = String(img.naturalWidth);
+      figure.dataset.naturalHeight = String(img.naturalHeight);
+      const viewport = document.createElement("div");
+      viewport.className = "red-content-image-viewport";
+      viewport.style.width = standalone ? `${contentWidth}px` : `${size.width}px`;
+      viewport.style.height = standalone ? `${pageContentHeight}px` : `${size.height}px`;
+      img.parentElement?.insertBefore(figure, img);
+      figure.appendChild(viewport);
+      viewport.appendChild(img);
+      this.promoteImageFigure(figure);
+    });
+  }
+
+  private static promoteImageFigure(figure: HTMLElement): void {
+    const paragraph = figure.parentElement;
+    if (!paragraph || paragraph.tagName !== "P" || !paragraph.parentElement) return;
+    const parent = paragraph.parentElement;
+    const nodes = Array.from(paragraph.childNodes);
+    const index = nodes.indexOf(figure);
+    const createParagraph = (items: Node[]): HTMLElement | null => {
+      if (!items.some((node) => node.textContent?.trim() || node instanceof HTMLElement)) return null;
+      const clone = paragraph.cloneNode(false) as HTMLElement;
+      items.forEach((node) => clone.appendChild(node));
+      return clone;
+    };
+    const before = createParagraph(nodes.slice(0, index));
+    const after = createParagraph(nodes.slice(index + 1));
+    if (before) parent.insertBefore(before, paragraph);
+    parent.insertBefore(figure, paragraph);
+    if (after) parent.insertBefore(after, paragraph);
+    paragraph.remove();
+  }
+
   private static createSectionsFromParts(content: HTMLElement[], index: number, isFirstCard: boolean): Node {
     const settings = this.plugin.settingsManager?.getSettings();
     const renderableContent = content.filter((el) => this.isRenderableElement(el));
@@ -199,6 +268,17 @@ export class RedConverter {
 
     while (pending.length) {
       const block = pending[0];
+
+      if (block.classList.contains("red-image-standalone")) {
+        pending.shift();
+        if (hasBody(current)) pages.push(current);
+        const imagePage = makePage(pages.length === 0);
+        imagePage.classList.add("red-standalone-image-page");
+        imagePage.appendChild(block);
+        pages.push(imagePage);
+        current = makePage(false);
+        continue;
+      }
 
       // Handle page break marker
       if (this.isPageBreakMarker(block)) {

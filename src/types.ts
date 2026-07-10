@@ -25,12 +25,11 @@ export interface YanqiTheme {
   isVisible?: boolean;
 }
 
-export interface ImageState {
-  s: number;
-  x: number;
-  y: number;
-  w?: number;
-  h?: number;
+export interface ImageLayoutState {
+  mode: "contain" | "crop";
+  scale: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 export interface TableState {
@@ -50,7 +49,7 @@ export interface YanqiSettings {
   fontSize: number;
   backgroundId: string;
   coverStyle: string;
-  imageScales: Record<string, ImageState>;
+  imageLayouts: Record<string, ImageLayoutState>;
   tableScales: Record<string, TableState>;
   themes: YanqiTheme[];
   customThemes: YanqiTheme[];

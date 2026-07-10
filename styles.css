@@ -1076,12 +1076,12 @@
 .red-content-section img {
   display: block;
   max-width: 100% !important;
-  max-height: 252px !important;
+  max-height: none !important;
   object-fit: contain;
 }
 
 .red-content-section[data-index="0"] img {
-  max-height: 310px !important;
+  max-height: none !important;
 }
 
 .red-content-section .red-footnotes,
@@ -2252,31 +2252,56 @@
   box-shadow: none !important;
 }
 
-/* ③ 图片裁剪框:拖动调位 + 右上角 +/− 缩放 */
-.red-img-frame {
+/* ③ 正文图片布局与主动裁剪 */
+.red-content-image {
   position: relative;
-  overflow: hidden;
-  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   max-width: 100%;
   margin: 0.6em auto;
-  border-radius: 8px;
+  line-height: 0;
 }
-.red-img-crop {
+.red-content-image-viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.red-content-image img {
   display: block;
-  width: 100%;
-  height: auto;
-  max-width: none !important;
+  max-width: 100% !important;
   max-height: none !important;
   margin: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+}
+.red-image-mode-contain img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+.red-image-mode-crop img {
+  position: absolute;
+  max-width: none !important;
+  object-fit: fill !important;
   transform-origin: center center;
   cursor: grab;
   user-select: none;
   -webkit-user-drag: none;
 }
-.red-img-crop:active { cursor: grabbing; }
-.red-img-ctrl {
+.red-image-mode-crop img:active { cursor: grabbing; }
+.red-standalone-image-page {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.red-standalone-image-page .red-content-image {
+  margin: 0;
+}
+.red-image-controls {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -2286,11 +2311,11 @@
   transition: opacity 0.15s ease;
   z-index: 4;
 }
-.red-img-frame:hover .red-img-ctrl { opacity: 1; }
-.red-img-btn {
-  width: 24px;
+.red-content-image:hover .red-image-controls { opacity: 1; }
+.red-image-control-button {
+  min-width: 24px;
   height: 24px;
-  padding: 0;
+  padding: 0 6px;
   border: none;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.62);
@@ -2302,26 +2327,7 @@
   align-items: center;
   justify-content: center;
 }
-.red-img-btn:hover { background: rgba(0, 0, 0, 0.82); }
-.red-img-corner {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  border-radius: 3px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  z-index: 5;
-  touch-action: none;
-  box-sizing: border-box;
-}
-.red-img-frame:hover .red-img-corner { opacity: 1; }
-.red-img-corner:hover { background: rgba(0, 0, 0, 0.8); }
-.red-img-corner-nw { top: 5px; left: 5px; cursor: nwse-resize; }
-.red-img-corner-ne { top: 5px; right: 5px; cursor: nesw-resize; }
-.red-img-corner-sw { bottom: 5px; left: 5px; cursor: nesw-resize; }
-.red-img-corner-se { bottom: 5px; right: 5px; cursor: nwse-resize; }
+.red-image-control-button:hover { background: rgba(0, 0, 0, 0.82); }
 /* —— 表格缩放组件:每张表独立调大小，不影响全局字号 —— */
 .red-table-wrap { position: relative; display: block; }
 .red-table-ctrl {

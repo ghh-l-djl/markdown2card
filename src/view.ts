@@ -10,6 +10,8 @@ import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 import { AiManager } from "./aiManager";
+import { calculateCoverScale } from "./imageLayout";
+import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
 
@@ -388,7 +390,7 @@ export class RedView extends ItemView {
     this.syncInitialized = true;
     this.registerDomEvent(this.previewEl, "click", (event) => {
       const target = event.target as HTMLElement;
-      if (!target?.closest || target.closest(".red-img-frame, .red-img-ctrl, button, input, a, [contenteditable], .red-user-avatar, .red-select")) return;
+      if (!target?.closest || target.closest(".red-content-image, button, input, a, [contenteditable], .red-user-avatar, .red-select")) return;
       const section = target.closest(".red-content-section");
       if (!section) return;
       const sections = Array.from(this.previewEl.querySelectorAll(".red-content-section"));
@@ -420,11 +422,13 @@ export class RedView extends ItemView {
       this.syncFooterLayout();
       await this.waitForPreviewLayout();
       if (renderId !== this.previewRenderId) return;
+      await RedConverter.prepareContentImages(this.previewEl, this.currentFile.path);
+      if (renderId !== this.previewRenderId) return;
       await RedConverter.autoPaginate(this.previewEl);
       if (renderId !== this.previewRenderId) return;
       this.themeManager.applyTheme(this.previewEl);
       this.syncFooterLayout();
-      this.setupImageZoom();
+      this.setupImageLayoutInteractions();
       this.setupTableResize();
       const settings = this.settingsManager.getSettings();
       if (settings.backgroundSettings.imageUrl) {
@@ -616,66 +620,70 @@ export class RedView extends ItemView {
     });
   }
 
-  setupImageZoom(): void {
+  setupImageLayoutInteractions(): void {
     const settings = this.settingsManager.getSettings();
-    const store = settings.imageScales || {};
+    const store = settings.imageLayouts || {};
     let timer: number | null = null;
     const persist = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => this.settingsManager.updateSettings({ imageScales: store }), 400);
+      timer = window.setTimeout(() => this.settingsManager.updateSettings({ imageLayouts: store }), 400);
     };
-    this.previewEl.querySelectorAll<HTMLImageElement>(".red-content-section img").forEach((img) => {
-      if (img.dataset.redCrop === "1" || !img.parentElement) return;
-      const key = this.imgKey(img.getAttribute("src") || img.src || "");
-      const st = store[key] || { s: 1, x: 0, y: 0 };
+    this.previewEl.querySelectorAll<HTMLElement>(".red-content-image").forEach((figure) => {
+      const img = figure.querySelector<HTMLImageElement>("img");
+      const viewport = figure.querySelector<HTMLElement>(".red-content-image-viewport");
+      const key = figure.dataset.imageKey;
+      if (!img || !viewport || !key || figure.querySelector(".red-image-controls")) return;
+      const st: ImageLayoutState = store[key] || { mode: "contain", scale: 1, offsetX: 0, offsetY: 0 };
       store[key] = st;
-      const cs = getComputedStyle(img);
-      const defaultMaxH = cs.maxHeight && cs.maxHeight !== "none" ? cs.maxHeight : "";
-      const frame = document.createElement("div");
-      frame.className = "red-img-frame";
-      if (defaultMaxH) frame.style.maxHeight = defaultMaxH;
-      if (cs.boxShadow !== "none") frame.style.boxShadow = cs.boxShadow;
-      if (cs.borderRadius !== "0px") frame.style.borderRadius = cs.borderRadius;
-      img.parentElement.insertBefore(frame, img);
-      frame.appendChild(img);
-      img.dataset.redCrop = "1";
-      img.classList.add("red-img-crop");
       img.draggable = false;
-      img.title = "拖动图片调整位置；四角拖拽改大小；右上角 +/- 缩放";
-      const applyT = () => { img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s})`; };
-      const applyH = () => {
-        frame.style.width = typeof st.w === "number" ? `${st.w}px` : "";
-        frame.style.height = typeof st.h === "number" ? `${st.h}px` : "";
-        frame.style.maxHeight = typeof st.h === "number" ? "none" : defaultMaxH;
+      const naturalWidth = Number(figure.dataset.naturalWidth) || img.naturalWidth;
+      const naturalHeight = Number(figure.dataset.naturalHeight) || img.naturalHeight;
+      const apply = () => {
+        figure.dataset.imageMode = st.mode;
+        figure.classList.toggle("red-image-mode-contain", st.mode === "contain");
+        figure.classList.toggle("red-image-mode-crop", st.mode === "crop");
+        if (st.mode === "contain") {
+          img.style.removeProperty("width");
+          img.style.removeProperty("height");
+          img.style.transform = "none";
+          img.title = "";
+          return;
+        }
+        const baseScale = calculateCoverScale(naturalWidth, naturalHeight, viewport.clientWidth, viewport.clientHeight);
+        img.style.width = `${naturalWidth * baseScale}px`;
+        img.style.height = `${naturalHeight * baseScale}px`;
+        img.style.transform = `translate(${st.offsetX}px, ${st.offsetY}px) scale(${st.scale})`;
+        img.title = "拖动图片调整裁剪区域";
       };
-      applyT(); applyH();
-      const ctrl = frame.createEl("div", { cls: "red-img-ctrl" });
-      const mk = (text: string, fn: () => void) => ctrl.createEl("button", { cls: "red-img-btn", text }).addEventListener("click", (event) => {
-        event.preventDefault(); event.stopPropagation(); fn(); applyT(); applyH(); persist();
+      const controls = figure.createEl("div", { cls: "red-image-controls red-editor-only" });
+      const mk = (text: string, title: string, fn: () => void) => controls.createEl("button", {
+        cls: "red-image-control-button",
+        text,
+        attr: { title, type: "button" }
+      }).addEventListener("click", (event) => {
+        event.preventDefault(); event.stopPropagation(); fn(); apply(); persist();
       });
-      mk("−", () => { st.s = Math.max(0.5, +(st.s - 0.1).toFixed(2)); });
-      mk("+", () => { st.s = Math.min(3, +(st.s + 0.1).toFixed(2)); });
-      mk("↺", () => { st.s = 1; st.x = 0; st.y = 0; st.h = undefined; st.w = undefined; });
+      mk("裁剪", "进入裁剪模式", () => { st.mode = "crop"; });
+      mk("完整", "完整显示", () => { st.mode = "contain"; });
+      mk("−", "缩小", () => { st.scale = Math.max(1, +(st.scale - 0.1).toFixed(2)); });
+      mk("+", "放大", () => { st.scale = Math.min(3, +(st.scale + 0.1).toFixed(2)); });
+      mk("↺", "重置裁剪", () => { st.scale = 1; st.offsetX = 0; st.offsetY = 0; });
       let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
-      img.addEventListener("pointerdown", (event) => { dragging = true; sx = event.clientX; sy = event.clientY; ox = st.x; oy = st.y; img.setPointerCapture(event.pointerId); event.preventDefault(); });
-      img.addEventListener("pointermove", (event) => { if (!dragging) return; st.x = ox + event.clientX - sx; st.y = oy + event.clientY - sy; applyT(); });
+      img.addEventListener("pointerdown", (event) => {
+        if (st.mode !== "crop") return;
+        dragging = true; sx = event.clientX; sy = event.clientY; ox = st.offsetX; oy = st.offsetY;
+        img.setPointerCapture(event.pointerId); event.preventDefault();
+      });
+      img.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        st.offsetX = ox + event.clientX - sx;
+        st.offsetY = oy + event.clientY - sy;
+        apply();
+      });
       const end = (event: PointerEvent) => { if (!dragging) return; dragging = false; persist(); try { img.releasePointerCapture(event.pointerId); } catch {} };
       img.addEventListener("pointerup", end);
       img.addEventListener("pointercancel", end);
-      [
-        ["red-img-corner red-img-corner-nw", -1, -1],
-        ["red-img-corner red-img-corner-ne", 1, -1],
-        ["red-img-corner red-img-corner-sw", -1, 1],
-        ["red-img-corner red-img-corner-se", 1, 1]
-      ].forEach(([cls, hx, vy]: any[]) => {
-        const handle = frame.createEl("div", { cls, attr: { title: "拖拽改变图片大小" } });
-        let resizing = false, rsx = 0, rsy = 0, rw0 = 0, rh0 = 0, maxW = 9999;
-        handle.addEventListener("pointerdown", (event) => { resizing = true; rsx = event.clientX; rsy = event.clientY; rw0 = st.w || frame.offsetWidth; rh0 = st.h || frame.offsetHeight; maxW = frame.parentElement?.clientWidth || 9999; handle.setPointerCapture(event.pointerId); event.preventDefault(); event.stopPropagation(); });
-        handle.addEventListener("pointermove", (event) => { if (!resizing) return; st.w = Math.round(Math.max(60, Math.min(maxW, rw0 + hx * (event.clientX - rsx) * 2))); st.h = Math.round(Math.max(60, Math.min(1200, rh0 + vy * (event.clientY - rsy)))); applyH(); });
-        const finish = (event: PointerEvent) => { if (!resizing) return; resizing = false; persist(); try { handle.releasePointerCapture(event.pointerId); } catch {} };
-        handle.addEventListener("pointerup", finish);
-        handle.addEventListener("pointercancel", finish);
-      });
+      apply();
     });
   }
 
@@ -1164,12 +1172,6 @@ export class RedView extends ItemView {
         button.setText(normal);
       }, 2000);
     }
-  }
-
-  private imgKey(src: string): string {
-    let hash = 0;
-    for (let i = 0; i < src.length; i++) hash = (hash * 31 + src.charCodeAt(i)) | 0;
-    return `i${hash >>> 0}`;
   }
 
   private tableKey(table: HTMLElement): string {

@@ -1,5 +1,6 @@
 import { toBlob, toCanvas } from "html-to-image";
 import { EXPORT_PIXEL_RATIO, EXPORT_SETTLE_MS } from "./downloadManager";
+import { isExportableNode } from "./imageLayout";
 
 export class ClipboardManager {
   static getExportConfig() {
@@ -7,7 +8,7 @@ export class ClipboardManager {
       quality: 1,
       pixelRatio: EXPORT_PIXEL_RATIO,
       skipFonts: false,
-      filter: () => true,
+      filter: isExportableNode,
       imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
     };
   }
