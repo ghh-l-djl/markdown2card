@@ -1024,8 +1024,9 @@ export class RedView extends ItemView {
     }
 
     const { cleanText, tags } = this.extractAndRemoveTags(body);
+    const publishTitle = this.getPublishTitle(sourceFile);
 
-    const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags);
+    const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags, publishTitle);
     const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
 
     if (existingPublishFile instanceof TFile) {
@@ -1054,9 +1055,10 @@ export class RedView extends ItemView {
     return adapter.getFullPath ? adapter.getFullPath(path) : path;
   }
 
-  private buildPublishMarkdownWithBody(body: string, sourcePath: string, absoluteAssetPath: string, tags: string[]): string {
+  private buildPublishMarkdownWithBody(body: string, sourcePath: string, absoluteAssetPath: string, tags: string[], title: string): string {
     const lines = [
       "---",
+      `title: ${this.yamlQuote(title)}`,
       "content_role: publish_package",
       "publish_status: ready",
       "publish_platform: xhs",
@@ -1078,6 +1080,21 @@ export class RedView extends ItemView {
     lines.push(body);
 
     return lines.join("\n");
+  }
+
+  private getPublishTitle(file: TFile): string {
+    const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    const sourceTitle = typeof frontmatter?.title === "string" ? frontmatter.title.trim() : "";
+    const rawAlternativeTitles = frontmatter?.alternative_titles;
+    const alternativeTitles = (Array.isArray(rawAlternativeTitles) ? rawAlternativeTitles : [rawAlternativeTitles])
+      .filter((value): value is string => typeof value === "string")
+      .map(value => value.trim())
+      .filter(Boolean);
+    const primaryTitle = sourceTitle || file.basename;
+    const candidates = [primaryTitle, ...alternativeTitles];
+    const shortTitle = candidates.find(candidate => Array.from(candidate).length <= 20);
+
+    return shortTitle || Array.from(primaryTitle).slice(0, 20).join("");
   }
 
   private extractAndRemoveTags(text: string): { cleanText: string; tags: string[] } {
