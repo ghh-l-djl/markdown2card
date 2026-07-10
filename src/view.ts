@@ -945,7 +945,7 @@ export class RedView extends ItemView {
       assetPath = zipPath;
     }
 
-    if (settings.enablePostExportActions) {
+    if (allPages && settings.enablePostExportActions) {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
 

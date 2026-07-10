@@ -8285,7 +8285,7 @@ var RedView = class extends import_obsidian6.ItemView {
       await this.writeExportBlob(zipPath, zipBlob, exportRoot.isAbsolute);
       assetPath = zipPath;
     }
-    if (settings.enablePostExportActions) {
+    if (allPages && settings.enablePostExportActions) {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
     new import_obsidian6.Notice(`Exported to ${assetPath}`);
