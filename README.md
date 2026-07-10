@@ -52,6 +52,9 @@ When post-export actions are enabled, you can toggle AI rewriting to automatical
 - **Customizable Model**: Enter any Gemini model identifier supported by your API key (default: `gemini-3.5-flash`).
 - **API Proxy Support**: Specify an optional proxy host/base URL endpoint to bypass regional connection blocks or use alternative gateways.
 - **Custom Prompt Template**: Customize the AI prompt template using the `${content}` placeholder to tailor the output structure, tone, and hashtags.
+- **Word/Character Count Threshold**: Specify a character count threshold (default: 800 characters) below which the AI rewriting step is skipped, allowing short posts to be exported directly without redundant API calls.
+- **Social Tags Extraction**: Automatically extracts hashtags (`#tag`) from the post body, removes them from the text to keep the main copy clean, and populates them as a list under the `publish_social_tags` field in the YAML frontmatter of the publish-ready package.
+- **Localized Default Prompts**: Default prompts are localized based on the user's interface language setting (English or Chinese). Switching the interface language automatically updates default prompts to match while preserving any custom prompts you have configured. The prompt requires the AI to output in the same language as the source article.
 - **Robust Fallback**: If the API call fails, a toast notification with the error is shown, and the plugin automatically falls back to the original note content, ensuring the export pipeline never breaks.
 
 ## Development
