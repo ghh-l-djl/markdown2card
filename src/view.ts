@@ -11,6 +11,7 @@ import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 import { AiManager } from "./aiManager";
 import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./imageLayout";
+import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -414,7 +415,8 @@ export class RedView extends ItemView {
     if (renderId !== this.previewRenderId) return;
     await RedConverter.renderMermaidCodeBlocks(this.previewEl, content);
     if (renderId !== this.previewRenderId) return;
-    RedConverter.formatContent(this.previewEl);
+    const sourceSections = this.app.metadataCache.getFileCache(this.currentFile)?.sections || [];
+    RedConverter.formatContent(this.previewEl, sourceSections);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
@@ -883,7 +885,8 @@ export class RedView extends ItemView {
     if (!this.currentFile || !this.previewEl) return map;
     const cache = this.app.metadataCache.getFileCache(this.currentFile);
     const sections = cache?.sections || [];
-    const domCount = this.previewEl.querySelectorAll(".red-content-section").length;
+    const domSections = Array.from(this.previewEl.querySelectorAll<HTMLElement>(".red-content-section"));
+    const domCount = domSections.length;
     if (!domCount) return map;
     const firstLine = sections.find((section) => section.type !== "thematicBreak")?.position.start.line ?? 0;
     map.push(firstLine);
@@ -899,7 +902,9 @@ export class RedView extends ItemView {
       }
     });
     while (map.length < domCount) map.push(map.length ? map[map.length - 1] : 0);
-    return map.slice(0, domCount);
+    const fallbackMap = map.slice(0, domCount);
+    const pageSourceLines = domSections.map((section) => parseSourceLine(section.dataset.sourceLine));
+    return resolvePageLineMap(pageSourceLines, fallbackMap);
   }
 
   private getFileEditorLeaf(): { leaf: WorkspaceLeaf; editor: any } | null {

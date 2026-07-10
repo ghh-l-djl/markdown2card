@@ -1,6 +1,7 @@
 import { loadMermaid, type App } from "obsidian";
 import type YanqiPlugin from "./main";
 import { calculateContainSize, createImageLayoutKey, resolveLayoutBox, shouldUseStandalonePage } from "./imageLayout";
+import { pairBlocksWithSourceLines, parseSourceLine, type SourceSectionLike } from "./sourceLineMap";
 
 export class RedConverter {
   private static app: App;
@@ -37,7 +38,7 @@ export class RedConverter {
     }
   }
 
-  static formatContent(element: HTMLElement): void {
+  static formatContent(element: HTMLElement, sourceSections: SourceSectionLike[] = []): void {
     const sourceChildren = this.getRenderableSourceChildren(element);
     if (!this.hasRenderableContent(element)) {
       element.empty();
@@ -50,6 +51,11 @@ export class RedConverter {
     }
 
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
+
+    const renderableChildren = sourceChildren.filter((child) => this.isRenderableElement(child));
+    pairBlocksWithSourceLines(renderableChildren, sourceSections).forEach(({ block, sourceLine }) => {
+      block.dataset.sourceLine = String(sourceLine);
+    });
 
     const previewContainer = document.createElement("div");
     previewContainer.className = "red-preview-container";
@@ -124,6 +130,7 @@ export class RedConverter {
     contentContainer.empty();
     visibleSections.forEach((section, index) => {
       section.dataset.index = String(index);
+      this.updateSectionSourceLine(section);
       section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
       section.classList.toggle("red-section-active", index === 0);
       contentContainer.appendChild(section);
@@ -171,6 +178,8 @@ export class RedConverter {
       figure.dataset.imageMode = "contain";
       figure.dataset.imageLayout = standalone ? "standalone" : "inline";
       figure.dataset.imageKey = createImageLayoutKey(notePath, resourcePath, occurrence);
+      const sourceLine = parseSourceLine(img.closest<HTMLElement>("[data-source-line]")?.dataset.sourceLine);
+      if (sourceLine !== null) figure.dataset.sourceLine = String(sourceLine);
       figure.dataset.naturalWidth = String(img.naturalWidth);
       figure.dataset.naturalHeight = String(img.naturalHeight);
       const viewport = document.createElement("div");
@@ -208,6 +217,13 @@ export class RedConverter {
     parent.insertBefore(figure, paragraph);
     if (after) parent.insertBefore(after, paragraph);
     paragraph.remove();
+  }
+
+  private static updateSectionSourceLine(section: HTMLElement): void {
+    const sourceElement = section.querySelector<HTMLElement>("[data-source-line]");
+    const sourceLine = parseSourceLine(sourceElement?.dataset.sourceLine);
+    if (sourceLine === null) delete section.dataset.sourceLine;
+    else section.dataset.sourceLine = String(sourceLine);
   }
 
   private static createSectionsFromParts(content: HTMLElement[], index: number, isFirstCard: boolean): Node {

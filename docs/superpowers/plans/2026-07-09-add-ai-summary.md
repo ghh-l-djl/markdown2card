@@ -1,5 +1,7 @@
 # Add AI-powered Xiaohongshu Marketing Rewriter Implementation Plan
 
+> **Status:** Implemented and subsequently evolved. This file preserves the original plan; current defaults and behavior are authoritative in `src/settings/`, `src/aiManager.ts`, `README.md`, and `README.zh-CN.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Modify the Obsidian-to-Card plugin's post-export actions to call the Gemini API and rewrite the exported note's body into a highly engaging Xiaohongshu (XHS) marketing style.

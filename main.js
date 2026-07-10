@@ -2781,6 +2781,31 @@ function isExportableNode(node) {
   return !((_a = node.classList) == null ? void 0 : _a.contains("red-editor-only"));
 }
 
+// src/sourceLineMap.ts
+var NON_RENDERED_SECTION_TYPES = /* @__PURE__ */ new Set(["yaml", "frontmatter"]);
+function pairBlocksWithSourceLines(blocks, sections) {
+  const sourceLines = sections.filter((section) => !NON_RENDERED_SECTION_TYPES.has(section.type)).map((section) => section.position.start.line);
+  return blocks.slice(0, sourceLines.length).map((block, index) => ({
+    block,
+    sourceLine: sourceLines[index]
+  }));
+}
+function parseSourceLine(value) {
+  if (value === void 0 || value.trim() === "")
+    return null;
+  const line = Number(value);
+  return Number.isInteger(line) && line >= 0 ? line : null;
+}
+function resolvePageLineMap(pageSourceLines, fallbackLines) {
+  let previousLine = 0;
+  return pageSourceLines.map((sourceLine, index) => {
+    var _a;
+    const line = (_a = sourceLine != null ? sourceLine : fallbackLines[index]) != null ? _a : previousLine;
+    previousLine = line;
+    return line;
+  });
+}
+
 // src/converter.ts
 var RedConverter = class {
   static initialize(app, plugin) {
@@ -2813,7 +2838,7 @@ var RedConverter = class {
       await new Promise((resolve) => window.setTimeout(resolve, 180 * (attempt + 1)));
     }
   }
-  static formatContent(element) {
+  static formatContent(element, sourceSections = []) {
     const sourceChildren = this.getRenderableSourceChildren(element);
     if (!this.hasRenderableContent(element)) {
       element.empty();
@@ -2825,6 +2850,10 @@ var RedConverter = class {
       return;
     }
     element.dispatchEvent(new CustomEvent("content-validation-change", { detail: { isValid: true }, bubbles: true }));
+    const renderableChildren = sourceChildren.filter((child) => this.isRenderableElement(child));
+    pairBlocksWithSourceLines(renderableChildren, sourceSections).forEach(({ block, sourceLine }) => {
+      block.dataset.sourceLine = String(sourceLine);
+    });
     const previewContainer = document.createElement("div");
     previewContainer.className = "red-preview-container";
     const imagePreview = document.createElement("div");
@@ -2891,6 +2920,7 @@ var RedConverter = class {
     contentContainer.empty();
     visibleSections.forEach((section, index) => {
       section.dataset.index = String(index);
+      this.updateSectionSourceLine(section);
       section.classList.toggle("red-cover", index === 0 && section.classList.contains("red-cover"));
       section.classList.toggle("red-section-active", index === 0);
       contentContainer.appendChild(section);
@@ -2914,7 +2944,7 @@ var RedConverter = class {
     const occurrences = /* @__PURE__ */ new Map();
     const images = Array.from(section.querySelectorAll("img")).filter((img) => !img.closest(".red-user-avatar"));
     images.forEach((img) => {
-      var _a;
+      var _a, _b;
       if (!img.naturalWidth || !img.naturalHeight || img.closest(".red-content-image"))
         return;
       const resourcePath = img.getAttribute("src") || img.src;
@@ -2937,13 +2967,16 @@ var RedConverter = class {
       figure.dataset.imageMode = "contain";
       figure.dataset.imageLayout = standalone ? "standalone" : "inline";
       figure.dataset.imageKey = createImageLayoutKey(notePath, resourcePath, occurrence);
+      const sourceLine = parseSourceLine((_a = img.closest("[data-source-line]")) == null ? void 0 : _a.dataset.sourceLine);
+      if (sourceLine !== null)
+        figure.dataset.sourceLine = String(sourceLine);
       figure.dataset.naturalWidth = String(img.naturalWidth);
       figure.dataset.naturalHeight = String(img.naturalHeight);
       const viewport = document.createElement("div");
       viewport.className = "red-content-image-viewport";
       viewport.style.width = standalone ? `${contentWidth}px` : `${size.width}px`;
       viewport.style.height = standalone ? `${pageContentHeight}px` : `${size.height}px`;
-      (_a = img.parentElement) == null ? void 0 : _a.insertBefore(figure, img);
+      (_b = img.parentElement) == null ? void 0 : _b.insertBefore(figure, img);
       figure.appendChild(viewport);
       viewport.appendChild(img);
       this.promoteImageFigure(figure);
@@ -2980,6 +3013,14 @@ var RedConverter = class {
     if (after)
       parent.insertBefore(after, paragraph);
     paragraph.remove();
+  }
+  static updateSectionSourceLine(section) {
+    const sourceElement = section.querySelector("[data-source-line]");
+    const sourceLine = parseSourceLine(sourceElement == null ? void 0 : sourceElement.dataset.sourceLine);
+    if (sourceLine === null)
+      delete section.dataset.sourceLine;
+    else
+      section.dataset.sourceLine = String(sourceLine);
   }
   static createSectionsFromParts(content, index, isFirstCard) {
     var _a;
@@ -7749,6 +7790,7 @@ var RedView = class extends import_obsidian6.ItemView {
     });
   }
   async updatePreview(options = {}) {
+    var _a;
     if (!this.currentFile)
       return;
     const renderId = ++this.previewRenderId;
@@ -7762,7 +7804,8 @@ var RedView = class extends import_obsidian6.ItemView {
     await RedConverter.renderMermaidCodeBlocks(this.previewEl, content);
     if (renderId !== this.previewRenderId)
       return;
-    RedConverter.formatContent(this.previewEl);
+    const sourceSections = ((_a = this.app.metadataCache.getFileCache(this.currentFile)) == null ? void 0 : _a.sections) || [];
+    RedConverter.formatContent(this.previewEl, sourceSections);
     const valid = RedConverter.hasValidContent(this.previewEl);
     if (valid) {
       this.imgTemplateManager.applyTemplate(this.previewEl, this.settingsManager.getSettings());
@@ -8322,7 +8365,8 @@ var RedView = class extends import_obsidian6.ItemView {
       return map;
     const cache2 = this.app.metadataCache.getFileCache(this.currentFile);
     const sections = (cache2 == null ? void 0 : cache2.sections) || [];
-    const domCount = this.previewEl.querySelectorAll(".red-content-section").length;
+    const domSections = Array.from(this.previewEl.querySelectorAll(".red-content-section"));
+    const domCount = domSections.length;
     if (!domCount)
       return map;
     const firstLine = (_b = (_a = sections.find((section) => section.type !== "thematicBreak")) == null ? void 0 : _a.position.start.line) != null ? _b : 0;
@@ -8340,7 +8384,9 @@ var RedView = class extends import_obsidian6.ItemView {
     });
     while (map.length < domCount)
       map.push(map.length ? map[map.length - 1] : 0);
-    return map.slice(0, domCount);
+    const fallbackMap = map.slice(0, domCount);
+    const pageSourceLines = domSections.map((section) => parseSourceLine(section.dataset.sourceLine));
+    return resolvePageLineMap(pageSourceLines, fallbackMap);
   }
   getFileEditorLeaf() {
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {

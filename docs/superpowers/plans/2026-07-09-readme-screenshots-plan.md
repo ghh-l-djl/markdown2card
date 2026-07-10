@@ -1,5 +1,7 @@
 # README Screenshots Addition Implementation Plan (Updated)
 
+> **Status:** Implemented. This file is a historical plan; the current screenshots and captions are authoritative in `README.md` and `README.zh-CN.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a Preview section with 5 screenshots (including the new settings panel) and correct bilingual descriptions to README.md and README.zh-CN.md.

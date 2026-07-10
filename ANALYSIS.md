@@ -26,7 +26,7 @@
 - 支持固定图片框比例的铺满取景：裁剪模式下可放大、回退放大、重置和自由拖动偏移；偏移刻意不限制边界。
 - 图片状态按“笔记路径 + 资源路径 + 同图出现序号”存入 `imageLayouts`，避免不同笔记或重复图片互相覆盖。
 - 支持表格字号缩放和拖拽缩放，并按表格文本哈希持久化。
-- 支持编辑器光标到预览页、预览页点击到编辑器行号的双向联动。
+- 支持编辑器光标到预览页、预览页点击到编辑器行号的双向联动；自动分页卡片使用渲染块继承的源行号，不再用卡片序号猜测位置。
 - 支持头像、用户名、用户 ID、页脚文案、备忘录标题的预览内直接编辑。
 - 支持背景图上传、内置背景选择、背景拖动和缩放。
 - 支持主题显示/隐藏、自定义主题、自定义字体和基础排版设置。
@@ -38,13 +38,14 @@ Obsidian 当前文件
   -> vault.cachedRead
   -> MarkdownRenderer.render
   -> RedConverter.renderMermaidCodeBlocks
+  -> metadataCache.sections 与可渲染块配对并标记 data-source-line
   -> RedConverter.formatContent
   -> ImgTemplateManager.applyTemplate
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
   -> RedView.waitForPreviewLayout
   -> RedConverter.prepareContentImages
-  -> RedConverter.autoPaginate
+  -> RedConverter.autoPaginate（最终卡片记录首个有效源行号）
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
   -> setupImageLayoutInteractions / setupTableResize
@@ -62,6 +63,7 @@ Obsidian 当前文件
 - `src/icons.ts`：插件自定义图标名称和 SVG 路径定义。
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出路径解析、导出后 YAML 处理、界面语言映射、图片取景和表格交互。
 - `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，在分页前封装和分类 Markdown 图片，并在模板/主题生效后按 DOM 高度自动分页。
+- `src/sourceLineMap.ts`：将 Obsidian Markdown 元数据中的源行号与可渲染块配对，解析分页源位置，并在元数据缺失时回退到手动分页映射。
 - `src/imageLayout.ts`：图片 `contain` / `cover` 尺寸计算、独立图片页判定、稳定布局尺寸回退、取景控件状态与导出过滤。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
 - `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，自动计算卡片主题亮度并动态绑定亮/暗色作用域 Class，并修正 Mermaid 图表与内置警告框在混合主题背景下的对比度与样式。
@@ -72,7 +74,7 @@ Obsidian 当前文件
 - `src/clipboardManager.ts`：复制图片到剪贴板。
 - `src/backgroundManager.ts`：背景图样式和背景设置弹窗。
 - `src/templates/*.json`：从 bundle 中提取的 11 套内置主题。
-- `src/assets/backgrounds.ts`：从 bundle 中提取 of 6 张内置背景。
+- `src/assets/backgrounds.ts`：6 张内置背景。
 
 ## Markdown 图片布局与取景处理
 

@@ -1,5 +1,7 @@
 # Plain SVG Icon Implementation Plan
 
+> **Status:** Implemented. This file is a historical plan; the current icon contract is authoritative in `CLAUDE.md`, `src/icons.ts`, `src/main.ts`, and `icon-plain.svg`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Create a plain, monochrome SVG version of the plugin icon, register it globally within Obsidian, and display it in the sidebar ribbon and views.
