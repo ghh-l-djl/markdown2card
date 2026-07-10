@@ -7408,6 +7408,14 @@ var AiManager = class {
   }
 };
 
+// src/previewScroll.ts
+function resetPreviewScroll(previewEl) {
+  const wrapper = previewEl == null ? void 0 : previewEl.parentElement;
+  if (!(wrapper == null ? void 0 : wrapper.classList.contains("red-preview-wrapper")))
+    return;
+  wrapper.scrollTop = 0;
+}
+
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
 var UI_TEXT = {
@@ -7914,6 +7922,7 @@ var RedView = class extends import_obsidian6.ItemView {
   }
   async onFileOpen(file) {
     var _a, _b;
+    resetPreviewScroll(this.previewEl);
     this.currentFile = file;
     this.currentImageIndex = 0;
     if (!file || file.extension !== "md") {
@@ -7926,6 +7935,7 @@ var RedView = class extends import_obsidian6.ItemView {
     this.isPreviewLocked = false;
     (0, import_obsidian6.setIcon)(this.lockButton, "unlock");
     await this.updatePreview();
+    resetPreviewScroll(this.previewEl);
   }
   async onFileModify(file) {
     if (file !== this.currentFile || this.isPreviewLocked)

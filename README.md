@@ -29,6 +29,7 @@ It renders the active Markdown note as exportable social-card images.
 - Opens a dedicated `markdown2card` preview view inside Obsidian.
 - Converts Markdown into fixed-ratio image cards with live preview.
 - Automatically paginates long content by the actual rendered card height, so content is not silently clipped.
+- Resets the preview viewport when switching notes, while preserving the current scroll position during same-note live updates.
 - Keeps preview and source navigation aligned: clicking a generated card moves the Obsidian editor to that card's first source block, including cards created by automatic pagination.
 - Supports manual page breaks with `---`.
 - Keeps ordinary images fully visible by default. Portrait images that would exceed the available card height are promoted to a dedicated image card and are never split across multiple cards.
@@ -72,8 +73,8 @@ The build emits `main.js` next to `manifest.json` and `styles.css`, matching the
 layout expected by Obsidian community plugins.
 
 Automated tests cover image sizing, standalone-page classification, crop-control behavior,
-layout measurement fallbacks, source-line mapping, and export filtering. For UI changes, run `npm test` and
+layout measurement fallbacks, source-line mapping, preview-scroll reset behavior, and export filtering. For UI changes, run `npm test` and
 `npm run build`, then manually verify preview generation, auto pagination, Mermaid rendering,
-preview/editor navigation, first-enable rendering, template switching, theme switching, language switching, export path handling,
+preview/editor navigation, file-switch scroll reset, first-enable rendering, template switching, theme switching, language switching, export path handling,
 ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,
 long-image cards, image reframing, appended oversized Mermaid exports, and copy behavior in an Obsidian vault.

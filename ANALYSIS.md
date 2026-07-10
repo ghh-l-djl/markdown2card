@@ -35,6 +35,7 @@
 
 ```text
 Obsidian 当前文件
+  -> RedView.onFileOpen 重置预览滚动位置
   -> vault.cachedRead
   -> MarkdownRenderer.render
   -> RedConverter.renderMermaidCodeBlocks
@@ -49,6 +50,7 @@ Obsidian 当前文件
   -> ThemeManager.applyTheme
   -> RedView.syncFooterLayout
   -> setupImageLayoutInteractions / setupTableResize
+  -> RedView.onFileOpen 在渲染完成后再次确认预览位于顶部
   -> html-to-image toBlob/toCanvas
   -> vault/文件系统写入 PNG 或 JSZip
   -> 可选 YAML frontmatter 后处理 & 异步调用 AiManager.rewriteContent 进行正文重写
@@ -57,6 +59,8 @@ Obsidian 当前文件
 
 首次启用插件时，Obsidian 的 Markdown 后处理器和右侧视图布局可能晚于插件视图创建完成。预览链路因此带有两层稳定化处理：渲染过程用 `previewRenderId` 丢弃过期异步结果；首轮完成后如果仍检测到原始 Mermaid 代码块，或单页内容实际溢出，会延迟执行一次 settle retry。`RedConverter` 也会展平 Obsidian 的 `markdown-preview-*` 包装层，避免整篇文档被当成不可拆分块，并在 Mermaid DOM 源码为空时从原始 Markdown fence 回填源码。
 
+文件切换和同文件实时刷新采用不同的滚动策略：`onFileOpen` 在渲染前后通过 `resetPreviewScroll` 把共享的 `.red-preview-wrapper` 归零，防止上一份长文档的滚动位置裁掉新卡片页眉；`onFileModify` 直接刷新预览而不归零，保留用户在当前笔记中的阅读位置。预览滚动状态不参与卡片分页计算。
+
 ## 模块
 
 - `src/main.ts`：插件入口，注册视图、命令、自定义 Ribbon 图标和设置页。
@@ -64,6 +68,7 @@ Obsidian 当前文件
 - `src/view.ts`：主预览视图、工具栏、底栏、导航、实时刷新、联动、导出路径解析、导出后 YAML 处理、界面语言映射、图片取景和表格交互。
 - `src/converter.ts`：把 Obsidian 渲染后的 Markdown DOM 重组为卡片 DOM，兜底渲染 Mermaid 代码块，在分页前封装和分类 Markdown 图片，并在模板/主题生效后按 DOM 高度自动分页。
 - `src/sourceLineMap.ts`：将 Obsidian Markdown 元数据中的源行号与可渲染块配对，解析分页源位置，并在元数据缺失时回退到手动分页映射。
+- `src/previewScroll.ts`：识别预览视图所属的 `.red-preview-wrapper`，在文件打开生命周期中恢复顶部滚动位置。
 - `src/imageLayout.ts`：图片 `contain` / `cover` 尺寸计算、独立图片页判定、稳定布局尺寸回退、取景控件状态与导出过滤。
 - `src/imgTemplates/index.ts`：12 套卡片骨架模板；小红书和微博模板有各自的社交平台头尾结构。
 - `src/themeManager.ts`：把主题对象中的 inline CSS 声明应用到 DOM，过滤嵌套选择器/伪元素等非 inline 片段，切换主题时重置头部与页脚关键元素的旧 inline style，自动计算卡片主题亮度并动态绑定亮/暗色作用域 Class，并修正 Mermaid 图表与内置警告框在混合主题背景下的对比度与样式。

@@ -11,6 +11,7 @@ import type { SettingsManager } from "./settings/settings";
 import type { ThemeManager } from "./themeManager";
 import { AiManager } from "./aiManager";
 import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./imageLayout";
+import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
 import type { ImageLayoutState } from "./types";
 
@@ -517,6 +518,7 @@ export class RedView extends ItemView {
   }
 
   async onFileOpen(file: TFile | null): Promise<void> {
+    resetPreviewScroll(this.previewEl);
     this.currentFile = file;
     this.currentImageIndex = 0;
     if (!file || file.extension !== "md") {
@@ -529,6 +531,7 @@ export class RedView extends ItemView {
     this.isPreviewLocked = false;
     setIcon(this.lockButton, "unlock");
     await this.updatePreview();
+    resetPreviewScroll(this.previewEl);
   }
 
   async onFileModify(file: TAbstractFile): Promise<void> {
