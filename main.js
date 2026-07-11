@@ -4045,6 +4045,12 @@ var MARKDOWN2CARD_ICON_SVG = `<path d="M53.75 9H19.5C13.149 9 8 14.149 8 20.5V79
 
 // src/settings/SettingTab.ts
 var import_obsidian2 = require("obsidian");
+
+// src/support.ts
+var FUNDING_URL = "https://ghh-l-djl.github.io/";
+var THEME_CUSTOMIZATION_URL = "mailto:3340649257@qq.com?subject=markdown2card%20theme%20customization";
+
+// src/settings/SettingTab.ts
 var ConfirmModal = class extends import_obsidian2.Modal {
   constructor(app, title, message, onConfirm) {
     super(app);
@@ -4360,7 +4366,14 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
       cls: "red-settings-note",
       text: "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem."
     });
-    new import_obsidian2.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open("https://ghh-l-djl.github.io/", "_blank")));
+    new import_obsidian2.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open(FUNDING_URL, "_blank")));
+    new import_obsidian2.Setting(section).setName("Custom theme").setDesc("Contact the development team for a branded card theme.").addButton((button) => button.setButtonText("Contact").onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
+    if (this.plugin.settingsManager.getSettings().supportReminderDismissed) {
+      new import_obsidian2.Setting(section).setName("Support reminders").setDesc("Reminders are currently disabled.").addButton((button) => button.setButtonText("Enable reminders").onClick(async () => {
+        await this.plugin.settingsManager.updateSettings({ supportReminderDismissed: false });
+        this.display();
+      }));
+    }
   }
 };
 
@@ -5249,6 +5262,9 @@ var DEFAULT_SETTINGS = {
   },
   exportPath: "markdown2card-exports",
   exportFormat: "zip",
+  exportCount: 0,
+  lastSupportReminderExportCount: 0,
+  supportReminderDismissed: false,
   enablePostExportActions: false,
   uiLanguage: "en",
   enableAiSummary: false,
@@ -6978,6 +6994,26 @@ var ClipboardManager = class {
   }
 };
 
+// src/exportReminder.ts
+var FIRST_SUPPORT_REMINDER_EXPORT = 10;
+var SUPPORT_REMINDER_INTERVAL = 20;
+function recordSuccessfulExport(state) {
+  const previousExportCount = Number.isFinite(state.exportCount) ? Math.max(0, state.exportCount) : 0;
+  const previousReminderCount = Number.isFinite(state.lastSupportReminderExportCount) ? Math.max(0, state.lastSupportReminderExportCount) : 0;
+  const exportCount = previousExportCount + 1;
+  const reachedFirstReminder = exportCount >= FIRST_SUPPORT_REMINDER_EXPORT;
+  const exportsSinceReminder = exportCount - previousReminderCount;
+  const shouldRemind = !state.supportReminderDismissed && reachedFirstReminder && (previousReminderCount === 0 || exportsSinceReminder >= SUPPORT_REMINDER_INTERVAL);
+  return {
+    nextState: {
+      ...state,
+      exportCount,
+      lastSupportReminderExportCount: shouldRemind ? exportCount : previousReminderCount
+    },
+    shouldRemind
+  };
+}
+
 // src/imgTemplates/index.ts
 var import_obsidian4 = require("obsidian");
 var VERIFIED_ICON = `<svg viewBox="0 0 22 22"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"></path></g></svg>`;
@@ -7675,6 +7711,36 @@ var TEMPLATE_LABEL_KEYS = {
   github: "github",
   "minimal-cover": "minimalCover",
   signature: "signature"
+};
+var SupportReminderModal = class extends import_obsidian6.Modal {
+  constructor(app, settingsManager, language) {
+    super(app);
+    this.settingsManager = settingsManager;
+    this.language = language;
+  }
+  onOpen() {
+    const isZh = this.language === "zh";
+    this.contentEl.empty();
+    this.contentEl.addClass("red-support-modal");
+    this.contentEl.createEl("h2", { text: isZh ? "\u611F\u8C22\u4F60\u5E38\u7528 markdown2card" : "Thanks for using markdown2card" });
+    this.contentEl.createEl("p", {
+      text: isZh ? "\u5982\u679C\u5B83\u4E3A\u4F60\u8282\u7701\u4E86\u65F6\u95F4\uFF0C\u53EF\u4EE5\u8D44\u52A9\u6301\u7EED\u5F00\u53D1\uFF1B\u5982\u679C\u9700\u8981\u54C1\u724C\u5316\u5361\u7247\uFF0C\u4E5F\u53EF\u4EE5\u8054\u7CFB\u5F00\u53D1\u56E2\u961F\u5B9A\u5236\u4E3B\u9898\u3002" : "If it saves you time, you can support continued development or contact the team for a custom branded theme."
+    });
+    const buttons = this.contentEl.createDiv("modal-button-container");
+    buttons.createEl("button", { text: isZh ? "\u7A0D\u540E" : "Later" }).addEventListener("click", () => this.close());
+    buttons.createEl("button", { text: isZh ? "\u4E3B\u9898\u5B9A\u5236" : "Custom theme" }).addEventListener("click", () => {
+      window.open(THEME_CUSTOMIZATION_URL, "_blank");
+    });
+    buttons.createEl("button", { text: isZh ? "\u5DF2\u652F\u6301\uFF0C\u4E0D\u518D\u63D0\u793A" : "Already supported \u2014 stop reminders" }).addEventListener("click", async () => {
+      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
+      this.close();
+    });
+    buttons.createEl("button", { cls: "mod-cta", text: isZh ? "\u8D44\u52A9\u5E76\u5173\u95ED\u63D0\u9192" : "Support and stop reminders" }).addEventListener("click", async () => {
+      window.open(FUNDING_URL, "_blank");
+      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
+      this.close();
+    });
+  }
 };
 var EN_THEME_LABELS = {
   default: "Default theme",
@@ -8611,7 +8677,20 @@ var RedView = class extends import_obsidian6.ItemView {
     if (allPages && settings.enablePostExportActions) {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
+    await this.recordExportAndMaybeRemind();
     new import_obsidian6.Notice(`Exported to ${assetPath}`);
+  }
+  async recordExportAndMaybeRemind() {
+    const settings = this.settingsManager.getSettings();
+    const result = recordSuccessfulExport({
+      exportCount: settings.exportCount,
+      lastSupportReminderExportCount: settings.lastSupportReminderExportCount,
+      supportReminderDismissed: settings.supportReminderDismissed
+    });
+    await this.settingsManager.updateSettings(result.nextState);
+    if (result.shouldRemind) {
+      new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
+    }
   }
   resolveExportRoot(rawPath) {
     const value = rawPath.trim() || "markdown2card-exports";

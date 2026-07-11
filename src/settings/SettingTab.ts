@@ -1,5 +1,6 @@
 import { App, Modal, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type YanqiPlugin from "../main";
+import { FUNDING_URL, THEME_CUSTOMIZATION_URL } from "../support";
 import type { FontOption, YanqiTheme } from "../types";
 
 class ConfirmModal extends Modal {
@@ -454,6 +455,24 @@ export class RedSettingTab extends PluginSettingTab {
       .addButton((button) => button
         .setButtonText("Donate")
         .setCta()
-        .onClick(() => window.open("https://ghh-l-djl.github.io/", "_blank")));
+        .onClick(() => window.open(FUNDING_URL, "_blank")));
+    new Setting(section)
+      .setName("Custom theme")
+      .setDesc("Contact the development team for a branded card theme.")
+      .addButton((button) => button
+        .setButtonText("Contact")
+        .onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
+
+    if (this.plugin.settingsManager.getSettings().supportReminderDismissed) {
+      new Setting(section)
+        .setName("Support reminders")
+        .setDesc("Reminders are currently disabled.")
+        .addButton((button) => button
+          .setButtonText("Enable reminders")
+          .onClick(async () => {
+            await this.plugin.settingsManager.updateSettings({ supportReminderDismissed: false });
+            this.display();
+          }));
+    }
   }
 }

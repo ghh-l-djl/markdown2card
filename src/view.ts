@@ -1,10 +1,11 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
-import { ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
+import { App, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
 import { DownloadManager } from "./downloadManager";
+import { recordSuccessfulExport } from "./exportReminder";
 import { ImgTemplateManager } from "./imgTemplates";
 import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
@@ -14,6 +15,7 @@ import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./im
 import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
+import { FUNDING_URL, THEME_CUSTOMIZATION_URL } from "./support";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -138,6 +140,38 @@ const TEMPLATE_LABEL_KEYS: Record<string, string> = {
   "minimal-cover": "minimalCover",
   signature: "signature"
 };
+
+class SupportReminderModal extends Modal {
+  constructor(app: App, private settingsManager: SettingsManager, private language: UiLanguage) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const isZh = this.language === "zh";
+    this.contentEl.empty();
+    this.contentEl.addClass("red-support-modal");
+    this.contentEl.createEl("h2", { text: isZh ? "感谢你常用 markdown2card" : "Thanks for using markdown2card" });
+    this.contentEl.createEl("p", {
+      text: isZh
+        ? "如果它为你节省了时间，可以资助持续开发；如果需要品牌化卡片，也可以联系开发团队定制主题。"
+        : "If it saves you time, you can support continued development or contact the team for a custom branded theme."
+    });
+    const buttons = this.contentEl.createDiv("modal-button-container");
+    buttons.createEl("button", { text: isZh ? "稍后" : "Later" }).addEventListener("click", () => this.close());
+    buttons.createEl("button", { text: isZh ? "主题定制" : "Custom theme" }).addEventListener("click", () => {
+      window.open(THEME_CUSTOMIZATION_URL, "_blank");
+    });
+    buttons.createEl("button", { text: isZh ? "已支持，不再提示" : "Already supported — stop reminders" }).addEventListener("click", async () => {
+      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
+      this.close();
+    });
+    buttons.createEl("button", { cls: "mod-cta", text: isZh ? "资助并关闭提醒" : "Support and stop reminders" }).addEventListener("click", async () => {
+      window.open(FUNDING_URL, "_blank");
+      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
+      this.close();
+    });
+  }
+}
 
 const EN_THEME_LABELS: Record<string, string> = {
   default: "Default theme",
@@ -977,7 +1011,22 @@ export class RedView extends ItemView {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
 
+    await this.recordExportAndMaybeRemind();
+
     new Notice(`Exported to ${assetPath}`);
+  }
+
+  private async recordExportAndMaybeRemind(): Promise<void> {
+    const settings = this.settingsManager.getSettings();
+    const result = recordSuccessfulExport({
+      exportCount: settings.exportCount,
+      lastSupportReminderExportCount: settings.lastSupportReminderExportCount,
+      supportReminderDismissed: settings.supportReminderDismissed
+    });
+    await this.settingsManager.updateSettings(result.nextState);
+    if (result.shouldRemind) {
+      new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
+    }
   }
 
   private resolveExportRoot(rawPath: string): { path: string; isAbsolute: boolean } {
