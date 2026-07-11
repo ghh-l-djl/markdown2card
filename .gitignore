@@ -6,3 +6,10 @@ node_modules/
 !.env.example
 .worktrees/
 .superpowers/
+
+# Local payment-entitlement planning documents
+/CONTEXT.md
+/docs/adr/0001-use-supabase-for-paid-entitlements.md
+/docs/adr/0002-separate-local-test-from-cloud-production.md
+/docs/superpowers/specs/2026-07-11-paid-entitlement-design.md
+/.scratch/paid-entitlement/
