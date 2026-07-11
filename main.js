@@ -5259,7 +5259,6 @@ var DEFAULT_SETTINGS = {
   exportFormat: "zip",
   exportCount: 0,
   lastSupportReminderExportCount: 0,
-  supportReminderDismissed: false,
   enablePostExportActions: false,
   uiLanguage: "en",
   enableAiSummary: false,
@@ -6996,15 +6995,15 @@ var ClipboardManager = class {
 };
 
 // src/exportReminder.ts
-var FIRST_SUPPORT_REMINDER_EXPORT = 10;
-var SUPPORT_REMINDER_INTERVAL = 20;
+var FIRST_SUPPORT_REMINDER_EXPORT = 1;
+var SUPPORT_REMINDER_INTERVAL = 2;
 function recordSuccessfulExport(state) {
   const previousExportCount = Number.isFinite(state.exportCount) ? Math.max(0, state.exportCount) : 0;
-  const previousReminderCount = Number.isFinite(state.lastSupportReminderExportCount) ? Math.max(0, state.lastSupportReminderExportCount) : 0;
+  const previousReminderCount = Number.isFinite(state.lastSupportReminderExportCount) ? Math.min(previousExportCount, Math.max(0, state.lastSupportReminderExportCount)) : 0;
   const exportCount = previousExportCount + 1;
   const reachedFirstReminder = exportCount >= FIRST_SUPPORT_REMINDER_EXPORT;
   const exportsSinceReminder = exportCount - previousReminderCount;
-  const shouldRemind = !state.supportReminderDismissed && reachedFirstReminder && (previousReminderCount === 0 || exportsSinceReminder >= SUPPORT_REMINDER_INTERVAL);
+  const shouldRemind = reachedFirstReminder && (previousReminderCount === 0 || exportsSinceReminder >= SUPPORT_REMINDER_INTERVAL);
   return {
     nextState: {
       ...state,
@@ -7714,9 +7713,8 @@ var TEMPLATE_LABEL_KEYS = {
   signature: "signature"
 };
 var SupportReminderModal = class extends import_obsidian6.Modal {
-  constructor(app, settingsManager, language) {
+  constructor(app, language) {
     super(app);
-    this.settingsManager = settingsManager;
     this.language = language;
   }
   onOpen() {
@@ -7743,25 +7741,14 @@ var SupportReminderModal = class extends import_obsidian6.Modal {
     const fundingButton = actions.createEl("button", { cls: "red-support-action red-support-funding" });
     const fundingIcon = fundingButton.createSpan("red-support-action-icon");
     (0, import_obsidian6.setIcon)(fundingIcon, "heart-handshake");
-    const fundingLabel = fundingButton.createSpan({
+    fundingButton.createSpan({
       cls: "red-support-action-text",
-      text: isZh ? "\u8D5E\u52A9\u521B\u4F5C \xB7 \u652F\u6301\u540E\u5173\u95ED\u5F39\u7A97" : "Sponsor \xB7 Stop this message after support"
+      text: isZh ? "\u8D5E\u52A9\u521B\u4F5C \xB7 \u4E86\u89E3\u652F\u6301\u65B9\u5F0F" : "Sponsor \xB7 Learn how to support"
     });
-    let fundingOpened = false;
-    fundingButton.addEventListener("click", async () => {
-      if (!fundingOpened) {
-        fundingOpened = true;
-        window.open(FUNDING_URL, "_blank");
-        fundingButton.addClass("is-confirming");
-        fundingLabel.setText(isZh ? "\u5DF2\u5B8C\u6210\u652F\u6301 \xB7 \u70B9\u51FB\u5173\u95ED\u5F39\u7A97" : "Support completed \xB7 Click to disable this message");
-        return;
-      }
-      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
-      this.close();
-    });
+    fundingButton.addEventListener("click", () => window.open(FUNDING_URL, "_blank"));
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
-      text: isZh ? "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86\uFF1F\u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005\u5173\u95ED\u5F39\u7A97" : "Already supported? Contact the developer via Xiaohongshu or email to disable this message."
+      text: isZh ? "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86\uFF1F\u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005" : "Already supported? Contact the developer via Xiaohongshu or email."
     });
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshu_contact_default, alt: isZh ? "Hazel \u5C0F\u7EA2\u4E66\u8054\u7CFB\u5361" : "Hazel's Xiaohongshu contact card" }
@@ -8714,12 +8701,11 @@ var RedView = class extends import_obsidian6.ItemView {
     const settings = this.settingsManager.getSettings();
     const result = recordSuccessfulExport({
       exportCount: settings.exportCount,
-      lastSupportReminderExportCount: settings.lastSupportReminderExportCount,
-      supportReminderDismissed: settings.supportReminderDismissed
+      lastSupportReminderExportCount: settings.lastSupportReminderExportCount
     });
     await this.settingsManager.updateSettings(result.nextState);
     if (result.shouldRemind) {
-      new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
+      new SupportReminderModal(this.app, settings.uiLanguage).open();
     }
   }
   resolveExportRoot(rawPath) {

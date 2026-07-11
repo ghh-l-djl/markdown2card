@@ -69,7 +69,6 @@ export interface YanqiSettings {
   exportFormat: "zip" | "png-folder";
   exportCount: number;
   lastSupportReminderExportCount: number;
-  supportReminderDismissed: boolean;
   enablePostExportActions: boolean;
   uiLanguage: "en" | "zh";
   enableAiSummary: boolean;

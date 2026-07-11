@@ -144,7 +144,7 @@ const TEMPLATE_LABEL_KEYS: Record<string, string> = {
 };
 
 class SupportReminderModal extends Modal {
-  constructor(app: App, private settingsManager: SettingsManager, private language: UiLanguage) {
+  constructor(app: App, private language: UiLanguage) {
     super(app);
   }
 
@@ -176,28 +176,17 @@ class SupportReminderModal extends Modal {
     const fundingButton = actions.createEl("button", { cls: "red-support-action red-support-funding" });
     const fundingIcon = fundingButton.createSpan("red-support-action-icon");
     setIcon(fundingIcon, "heart-handshake");
-    const fundingLabel = fundingButton.createSpan({
+    fundingButton.createSpan({
       cls: "red-support-action-text",
-      text: isZh ? "赞助创作 · 支持后关闭弹窗" : "Sponsor · Stop this message after support"
+      text: isZh ? "赞助创作 · 了解支持方式" : "Sponsor · Learn how to support"
     });
-    let fundingOpened = false;
-    fundingButton.addEventListener("click", async () => {
-      if (!fundingOpened) {
-        fundingOpened = true;
-        window.open(FUNDING_URL, "_blank");
-        fundingButton.addClass("is-confirming");
-        fundingLabel.setText(isZh ? "已完成支持 · 点击关闭弹窗" : "Support completed · Click to disable this message");
-        return;
-      }
-      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
-      this.close();
-    });
+    fundingButton.addEventListener("click", () => window.open(FUNDING_URL, "_blank"));
 
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
       text: isZh
-        ? "已经支持过了？通过小红书或邮箱联系开发者关闭弹窗"
-        : "Already supported? Contact the developer via Xiaohongshu or email to disable this message."
+        ? "已经支持过了？通过小红书或邮箱联系开发者"
+        : "Already supported? Contact the developer via Xiaohongshu or email."
     });
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshuContactImage, alt: isZh ? "Hazel 小红书联系卡" : "Hazel's Xiaohongshu contact card" }
@@ -1057,12 +1046,11 @@ export class RedView extends ItemView {
     const settings = this.settingsManager.getSettings();
     const result = recordSuccessfulExport({
       exportCount: settings.exportCount,
-      lastSupportReminderExportCount: settings.lastSupportReminderExportCount,
-      supportReminderDismissed: settings.supportReminderDismissed
+      lastSupportReminderExportCount: settings.lastSupportReminderExportCount
     });
     await this.settingsManager.updateSettings(result.nextState);
     if (result.shouldRemind) {
-      new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
+      new SupportReminderModal(this.app, settings.uiLanguage).open();
     }
   }
 

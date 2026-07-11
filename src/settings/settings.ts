@@ -88,7 +88,6 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   exportFormat: "zip",
   exportCount: 0,
   lastSupportReminderExportCount: 0,
-  supportReminderDismissed: false,
   enablePostExportActions: false,
   uiLanguage: "en",
   enableAiSummary: false,
