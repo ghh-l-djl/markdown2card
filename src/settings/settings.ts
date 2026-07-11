@@ -89,6 +89,8 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   enablePostExportActions: false,
   uiLanguage: "en",
   enableAiSummary: false,
+  aiProvider: "gemini",
+  agyCommandPath: "agy",
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",

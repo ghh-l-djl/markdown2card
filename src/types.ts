@@ -70,6 +70,8 @@ export interface YanqiSettings {
   enablePostExportActions: boolean;
   uiLanguage: "en" | "zh";
   enableAiSummary: boolean;
+  aiProvider: "gemini" | "agy";
+  agyCommandPath: string;
   geminiApiKey: string;
   geminiApiUrl: string;
   geminiModel: string;

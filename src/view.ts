@@ -68,7 +68,7 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     simhei: "Heiti",
     kaiti: "Kaiti",
     yahei: "Microsoft YaHei",
-    aiRewriting: "Calling Gemini to rewrite Xiaohongshu marketing copy...",
+    aiRewriting: "Calling AI to rewrite Xiaohongshu marketing copy...",
     aiRewriteSuccess: "AI marketing copy generated successfully!",
     aiRewriteFailed: "AI rewriting failed. Exporting using original text."
   },
@@ -118,7 +118,7 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     simhei: "黑体",
     kaiti: "楷体",
     yahei: "雅黑",
-    aiRewriting: "正在调用 Gemini 重写小红书营销文案...",
+    aiRewriting: "正在调用 AI 重写小红书营销文案...",
     aiRewriteSuccess: "AI 营销文案生成成功！",
     aiRewriteFailed: "AI 重写失败，将使用文章原文作为正文导出。"
   }

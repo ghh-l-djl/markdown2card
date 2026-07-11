@@ -268,8 +268,8 @@ export class RedSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName(isZh ? "启用 AI 智能重写" : "Enable AI Rewrite")
         .setDesc(isZh 
-          ? "使用 Gemini 自动将导出文件的正文重写为小红书等营销风格文案"
-          : "Use Gemini to automatically rewrite the exported note body into marketing copy like Xiaohongshu style"
+          ? "使用 Gemini API 或本地 agy 命令自动重写导出文件的正文"
+          : "Use the Gemini API or local agy command to rewrite the exported note body"
         )
         .addToggle((toggle) => toggle
           .setValue(settings.enableAiSummary)
@@ -280,45 +280,73 @@ export class RedSettingTab extends PluginSettingTab {
 
       if (settings.enableAiSummary) {
         new Setting(containerEl)
-          .setName("Gemini API Key")
-          .setDesc(isZh 
-            ? "输入您的 Gemini API 密钥 (从 Google AI Studio 获取)"
-            : "Enter your Gemini API key (obtained from Google AI Studio)"
-          )
-          .addText((text) => {
-            text.inputEl.type = "password";
-            text.setPlaceholder("AIzaSy...")
-              .setValue(settings.geminiApiKey)
+          .setName(isZh ? "AI 调用方式" : "AI Provider")
+          .setDesc(isZh ? "选择 Gemini API 或本地终端 agy -p" : "Choose the Gemini API or local agy -p command")
+          .addDropdown((dropdown) => dropdown
+            .addOption("gemini", "Gemini API")
+            .addOption("agy", isZh ? "本地 agy 命令" : "Local agy command")
+            .setValue(settings.aiProvider || "gemini")
+            .onChange(async (value) => {
+              await this.plugin.settingsManager.updateSettings({ aiProvider: value as "gemini" | "agy" });
+              this.display();
+            }));
+
+        if (settings.aiProvider === "agy") {
+          new Setting(containerEl)
+            .setName(isZh ? "agy 命令路径" : "agy executable path")
+            .setDesc(isZh
+              ? "agy 可执行文件的路径或命令名；插件将以“agy -p 提示词”方式调用"
+              : "Executable path or command name; the plugin invokes it as agy -p prompt")
+            .addText((text) => text
+              .setPlaceholder("agy")
+              .setValue(settings.agyCommandPath || "agy")
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
-              });
-          });
+                this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
+              }));
+        }
 
-        new Setting(containerEl)
-          .setName(isZh ? "Gemini API 地址" : "API Proxy / Base URL")
-          .setDesc(isZh 
-            ? "自定义 Gemini API 的基础请求地址或反代地址"
-            : "Custom Gemini API base URL or proxy endpoint URL"
-          )
-          .addText((text) => text
-            .setPlaceholder("https://generativelanguage.googleapis.com")
-            .setValue(settings.geminiApiUrl || "")
-            .onChange((value) => {
-              this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
-            }));
+        if (settings.aiProvider !== "agy") {
+          new Setting(containerEl)
+            .setName("Gemini API Key")
+            .setDesc(isZh
+              ? "输入您的 Gemini API 密钥 (从 Google AI Studio 获取)"
+              : "Enter your Gemini API key (obtained from Google AI Studio)"
+            )
+            .addText((text) => {
+              text.inputEl.type = "password";
+              text.setPlaceholder("AIzaSy...")
+                .setValue(settings.geminiApiKey)
+                .onChange((value) => {
+                  this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+                });
+            });
 
-        new Setting(containerEl)
-          .setName(isZh ? "Gemini 模型" : "Gemini Model")
-          .setDesc(isZh 
-            ? "输入重写使用的 Gemini 模型名称 (例如: gemini-3.5-flash)" 
-            : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
-          )
-          .addText((text) => text
-            .setPlaceholder("gemini-3.5-flash")
-            .setValue(settings.geminiModel)
-            .onChange((value) => {
-              this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
-            }));
+          new Setting(containerEl)
+            .setName(isZh ? "Gemini API 地址" : "API Proxy / Base URL")
+            .setDesc(isZh
+              ? "自定义 Gemini API 的基础请求地址或反代地址"
+              : "Custom Gemini API base URL or proxy endpoint URL"
+            )
+            .addText((text) => text
+              .setPlaceholder("https://generativelanguage.googleapis.com")
+              .setValue(settings.geminiApiUrl || "")
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
+              }));
+
+          new Setting(containerEl)
+            .setName(isZh ? "Gemini 模型" : "Gemini Model")
+            .setDesc(isZh
+              ? "输入重写使用的 Gemini 模型名称 (例如: gemini-3.5-flash)"
+              : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
+            )
+            .addText((text) => text
+              .setPlaceholder("gemini-3.5-flash")
+              .setValue(settings.geminiModel)
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
+              }));
+        }
 
         new Setting(containerEl)
           .setName(isZh ? "AI 重写字数阈值" : "AI Rewrite Character Threshold")

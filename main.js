@@ -4266,30 +4266,41 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
     if (settings.enablePostExportActions) {
       containerEl.createEl("h3", { text: isZh ? "AI \u603B\u7ED3\u4E0E\u91CD\u5199\u8BBE\u7F6E" : "AI Summary & Rewrite Settings" });
       new import_obsidian2.Setting(containerEl).setName(isZh ? "\u542F\u7528 AI \u667A\u80FD\u91CD\u5199" : "Enable AI Rewrite").setDesc(
-        isZh ? "\u4F7F\u7528 Gemini \u81EA\u52A8\u5C06\u5BFC\u51FA\u6587\u4EF6\u7684\u6B63\u6587\u91CD\u5199\u4E3A\u5C0F\u7EA2\u4E66\u7B49\u8425\u9500\u98CE\u683C\u6587\u6848" : "Use Gemini to automatically rewrite the exported note body into marketing copy like Xiaohongshu style"
+        isZh ? "\u4F7F\u7528 Gemini API \u6216\u672C\u5730 agy \u547D\u4EE4\u81EA\u52A8\u91CD\u5199\u5BFC\u51FA\u6587\u4EF6\u7684\u6B63\u6587" : "Use the Gemini API or local agy command to rewrite the exported note body"
       ).addToggle((toggle) => toggle.setValue(settings.enableAiSummary).onChange((value) => {
         this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
         this.display();
       }));
       if (settings.enableAiSummary) {
-        new import_obsidian2.Setting(containerEl).setName("Gemini API Key").setDesc(
-          isZh ? "\u8F93\u5165\u60A8\u7684 Gemini API \u5BC6\u94A5 (\u4ECE Google AI Studio \u83B7\u53D6)" : "Enter your Gemini API key (obtained from Google AI Studio)"
-        ).addText((text) => {
-          text.inputEl.type = "password";
-          text.setPlaceholder("AIzaSy...").setValue(settings.geminiApiKey).onChange((value) => {
-            this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+        new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u8C03\u7528\u65B9\u5F0F" : "AI Provider").setDesc(isZh ? "\u9009\u62E9 Gemini API \u6216\u672C\u5730\u7EC8\u7AEF agy -p" : "Choose the Gemini API or local agy -p command").addDropdown((dropdown) => dropdown.addOption("gemini", "Gemini API").addOption("agy", isZh ? "\u672C\u5730 agy \u547D\u4EE4" : "Local agy command").setValue(settings.aiProvider || "gemini").onChange(async (value) => {
+          await this.plugin.settingsManager.updateSettings({ aiProvider: value });
+          this.display();
+        }));
+        if (settings.aiProvider === "agy") {
+          new import_obsidian2.Setting(containerEl).setName(isZh ? "agy \u547D\u4EE4\u8DEF\u5F84" : "agy executable path").setDesc(isZh ? "agy \u53EF\u6267\u884C\u6587\u4EF6\u7684\u8DEF\u5F84\u6216\u547D\u4EE4\u540D\uFF1B\u63D2\u4EF6\u5C06\u4EE5\u201Cagy -p \u63D0\u793A\u8BCD\u201D\u65B9\u5F0F\u8C03\u7528" : "Executable path or command name; the plugin invokes it as agy -p prompt").addText((text) => text.setPlaceholder("agy").setValue(settings.agyCommandPath || "agy").onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
+          }));
+        }
+        if (settings.aiProvider !== "agy") {
+          new import_obsidian2.Setting(containerEl).setName("Gemini API Key").setDesc(
+            isZh ? "\u8F93\u5165\u60A8\u7684 Gemini API \u5BC6\u94A5 (\u4ECE Google AI Studio \u83B7\u53D6)" : "Enter your Gemini API key (obtained from Google AI Studio)"
+          ).addText((text) => {
+            text.inputEl.type = "password";
+            text.setPlaceholder("AIzaSy...").setValue(settings.geminiApiKey).onChange((value) => {
+              this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+            });
           });
-        });
-        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini API \u5730\u5740" : "API Proxy / Base URL").setDesc(
-          isZh ? "\u81EA\u5B9A\u4E49 Gemini API \u7684\u57FA\u7840\u8BF7\u6C42\u5730\u5740\u6216\u53CD\u4EE3\u5730\u5740" : "Custom Gemini API base URL or proxy endpoint URL"
-        ).addText((text) => text.setPlaceholder("https://generativelanguage.googleapis.com").setValue(settings.geminiApiUrl || "").onChange((value) => {
-          this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
-        }));
-        new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini \u6A21\u578B" : "Gemini Model").setDesc(
-          isZh ? "\u8F93\u5165\u91CD\u5199\u4F7F\u7528\u7684 Gemini \u6A21\u578B\u540D\u79F0 (\u4F8B\u5982: gemini-3.5-flash)" : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
-        ).addText((text) => text.setPlaceholder("gemini-3.5-flash").setValue(settings.geminiModel).onChange((value) => {
-          this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
-        }));
+          new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini API \u5730\u5740" : "API Proxy / Base URL").setDesc(
+            isZh ? "\u81EA\u5B9A\u4E49 Gemini API \u7684\u57FA\u7840\u8BF7\u6C42\u5730\u5740\u6216\u53CD\u4EE3\u5730\u5740" : "Custom Gemini API base URL or proxy endpoint URL"
+          ).addText((text) => text.setPlaceholder("https://generativelanguage.googleapis.com").setValue(settings.geminiApiUrl || "").onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
+          }));
+          new import_obsidian2.Setting(containerEl).setName(isZh ? "Gemini \u6A21\u578B" : "Gemini Model").setDesc(
+            isZh ? "\u8F93\u5165\u91CD\u5199\u4F7F\u7528\u7684 Gemini \u6A21\u578B\u540D\u79F0 (\u4F8B\u5982: gemini-3.5-flash)" : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
+          ).addText((text) => text.setPlaceholder("gemini-3.5-flash").setValue(settings.geminiModel).onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
+          }));
+        }
         new import_obsidian2.Setting(containerEl).setName(isZh ? "AI \u91CD\u5199\u5B57\u6570\u9608\u503C" : "AI Rewrite Character Threshold").setDesc(
           isZh ? "\u6B63\u6587\u5B57\u6570\u5C11\u4E8E\u6B64\u9608\u503C\u65F6\u5C06\u4E0D\u8FDB\u884C\u91CD\u5199 (\u5355\u4F4D: \u5B57\u7B26)" : "No rewrite will be performed if the body length is less than or equal to this threshold."
         ).addText((text) => {
@@ -5235,6 +5246,8 @@ var DEFAULT_SETTINGS = {
   enablePostExportActions: false,
   uiLanguage: "en",
   enableAiSummary: false,
+  aiProvider: "gemini",
+  agyCommandPath: "agy",
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
@@ -7358,15 +7371,43 @@ var ImgTemplateManager = class {
 
 // src/aiManager.ts
 var import_obsidian5 = require("obsidian");
+
+// src/agyManager.ts
+var import_child_process = require("child_process");
+async function runAgyCommand(executablePath, prompt) {
+  const executable = executablePath.trim();
+  if (!executable)
+    throw new Error("agy executable path is not configured");
+  return new Promise((resolve, reject) => {
+    (0, import_child_process.execFile)(executable, ["-p", prompt], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        const detail = stderr.trim() || error.message;
+        reject(new Error(`agy command failed: ${detail}`));
+        return;
+      }
+      const output = stdout.trim();
+      if (!output) {
+        reject(new Error("agy command returned an empty response"));
+        return;
+      }
+      resolve(output);
+    });
+  });
+}
+
+// src/aiManager.ts
 var AiManager = class {
   static async rewriteContent(content, settings) {
     var _a, _b, _c, _d, _e;
     const { geminiApiKey, geminiModel, aiPromptTemplate } = settings;
     const isZh = settings.uiLanguage === "zh";
+    const prompt = aiPromptTemplate.split("${content}").join(content);
+    if (settings.aiProvider === "agy") {
+      return runAgyCommand(settings.agyCommandPath || "agy", prompt);
+    }
     if (!geminiApiKey) {
       throw new Error(isZh ? "\u8BF7\u5728\u63D2\u4EF6\u8BBE\u7F6E\u4E2D\u914D\u7F6E Gemini API Key" : "Please configure Gemini API Key in plugin settings");
     }
-    const prompt = aiPromptTemplate.replaceAll("${content}", content);
     let baseUrl = (settings.geminiApiUrl || "https://generativelanguage.googleapis.com").trim();
     baseUrl = baseUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
@@ -7539,7 +7580,7 @@ var UI_TEXT = {
     simhei: "Heiti",
     kaiti: "Kaiti",
     yahei: "Microsoft YaHei",
-    aiRewriting: "Calling Gemini to rewrite Xiaohongshu marketing copy...",
+    aiRewriting: "Calling AI to rewrite Xiaohongshu marketing copy...",
     aiRewriteSuccess: "AI marketing copy generated successfully!",
     aiRewriteFailed: "AI rewriting failed. Exporting using original text."
   },
@@ -7589,7 +7630,7 @@ var UI_TEXT = {
     simhei: "\u9ED1\u4F53",
     kaiti: "\u6977\u4F53",
     yahei: "\u96C5\u9ED1",
-    aiRewriting: "\u6B63\u5728\u8C03\u7528 Gemini \u91CD\u5199\u5C0F\u7EA2\u4E66\u8425\u9500\u6587\u6848...",
+    aiRewriting: "\u6B63\u5728\u8C03\u7528 AI \u91CD\u5199\u5C0F\u7EA2\u4E66\u8425\u9500\u6587\u6848...",
     aiRewriteSuccess: "AI \u8425\u9500\u6587\u6848\u751F\u6210\u6210\u529F\uFF01",
     aiRewriteFailed: "AI \u91CD\u5199\u5931\u8D25\uFF0C\u5C06\u4F7F\u7528\u6587\u7AE0\u539F\u6587\u4F5C\u4E3A\u6B63\u6587\u5BFC\u51FA\u3002"
   }

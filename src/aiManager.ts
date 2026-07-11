@@ -1,16 +1,20 @@
 import { requestUrl } from "obsidian";
+import { runAgyCommand } from "./agyManager";
 import { YanqiSettings } from "./types";
 
 export class AiManager {
   static async rewriteContent(content: string, settings: YanqiSettings): Promise<string> {
     const { geminiApiKey, geminiModel, aiPromptTemplate } = settings;
     const isZh = settings.uiLanguage === "zh";
+    const prompt = aiPromptTemplate.split("${content}").join(content);
+
+    if (settings.aiProvider === "agy") {
+      return runAgyCommand(settings.agyCommandPath || "agy", prompt);
+    }
 
     if (!geminiApiKey) {
       throw new Error(isZh ? "请在插件设置中配置 Gemini API Key" : "Please configure Gemini API Key in plugin settings");
     }
-
-    const prompt = aiPromptTemplate.replaceAll("${content}", content);
 
     let baseUrl = (settings.geminiApiUrl || "https://generativelanguage.googleapis.com").trim();
     baseUrl = baseUrl.replace(/\/+$/, "");
