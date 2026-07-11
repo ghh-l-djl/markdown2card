@@ -7761,7 +7761,7 @@ var SupportReminderModal = class extends import_obsidian6.Modal {
     });
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
-      text: isZh ? "\u5DF2\u901A\u8FC7\u5FAE\u4FE1\u6216\u652F\u4ED8\u5B9D\u626B\u7801\u652F\u6301\uFF1F\u5728\u5C0F\u7EA2\u4E66\u8054\u7CFB\u5F00\u53D1\u8005\u5173\u95ED\u5F39\u7A97" : "Already supported by WeChat or Alipay? Contact the developer on Xiaohongshu to disable this message."
+      text: isZh ? "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86\uFF1F\u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005\u5173\u95ED\u5F39\u7A97" : "Already supported? Contact the developer via Xiaohongshu or email to disable this message."
     });
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshu_contact_default, alt: isZh ? "Hazel \u5C0F\u7EA2\u4E66\u8054\u7CFB\u5361" : "Hazel's Xiaohongshu contact card" }

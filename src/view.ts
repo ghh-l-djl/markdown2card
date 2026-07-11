@@ -196,8 +196,8 @@ class SupportReminderModal extends Modal {
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
       text: isZh
-        ? "已通过微信或支付宝扫码支持？在小红书联系开发者关闭弹窗"
-        : "Already supported by WeChat or Alipay? Contact the developer on Xiaohongshu to disable this message."
+        ? "已经支持过了？通过小红书或邮箱联系开发者关闭弹窗"
+        : "Already supported? Contact the developer via Xiaohongshu or email to disable this message."
     });
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshuContactImage, alt: isZh ? "Hazel 小红书联系卡" : "Hazel's Xiaohongshu contact card" }
