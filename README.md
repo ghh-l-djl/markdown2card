@@ -41,7 +41,7 @@ It renders the active Markdown note as exportable social-card images.
 - Writes exports to a configurable destination. Relative paths are written inside the vault; absolute macOS/Linux or Windows paths are written to the file system.
 - Supports ZIP archive output or a PNG folder named after the current Markdown file.
 - Can optionally run post-export actions that mark the source note as source material, create a publish-ready Markdown note, and link the exported assets.
-- Integrates AI-powered rewriting using Google Gemini models (e.g., `gemini-3.5-flash`) to automatically summarize and transform note content into engaging social media (like Xiaohongshu) copy during post-export.
+- Integrates AI-powered rewriting through either Google Gemini or the local `agy` CLI to transform note content into engaging social-media copy during post-export.
 
 ## Template Notes
 
@@ -51,16 +51,19 @@ It renders the active Markdown note as exportable social-card images.
 
 ## AI Rewriting & Marketing Copy
 
-When post-export actions are enabled, you can toggle AI rewriting to automatically generate marketing-style copy using Google Gemini:
+When post-export actions are enabled, you can toggle AI rewriting and choose either the Gemini API or a local `agy -p` command:
+- **Provider Selection**: Keep the API-key workflow with Gemini, or run the configured local agy executable. The local provider passes the complete prompt as the `-p` argument and uses agy's standard output as the publish body.
+- **Local agy Path**: Configure an executable name or absolute path. GUI-launched Obsidian instances often have a minimal `PATH`, so an absolute path such as `/Users/name/.local/bin/agy` is recommended.
+- **Local agy Proxy**: Optionally configure a proxy URL and `NO_PROXY` list. The plugin supplies the proxy as both uppercase and lowercase `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` variables to the agy child process.
 - **Masked Credentials**: The Gemini API Key input field is masked (`password` field type) to prevent accidental exposure during screenshots or screen-shares.
 - **Customizable Model**: Enter any Gemini model identifier supported by your API key (default: `gemini-3.5-flash`).
-- **API Proxy Support**: Specify an optional proxy host/base URL endpoint to bypass regional connection blocks or use alternative gateways.
+- **Gemini Base URL**: Specify an optional Gemini API base URL or gateway endpoint.
 - **Custom Prompt Template**: Customize the AI prompt template using the `${content}` placeholder to tailor the output structure, tone, and hashtags.
 - **Word/Character Count Threshold**: Specify a character count threshold (default: 800 characters) below which the AI rewriting step is skipped, allowing short posts to be exported directly without redundant API calls.
 - **Social Tags Extraction**: Automatically extracts hashtags (`#tag`) from the post body, removes them from the text to keep the main copy clean, and populates them as a list under the `publish_social_tags` field in the YAML frontmatter of the publish-ready package.
 - **Localized Default Prompts**: Default prompts are localized based on the user's interface language setting (English or Chinese). Switching the interface language automatically updates default prompts to match while preserving any custom prompts you have configured. The prompt requires the AI to output in the same language as the source article.
 - **Image-Free Publish Body**: Markdown images and Obsidian image embeds are removed before the rewrite request and sanitized from the generated result again. Non-image embeds and image-looking examples inside inline or fenced code are preserved.
-- **Robust Fallback**: If the API call fails, a toast notification with the error is shown, and the plugin uses the already-sanitized source body without image references, ensuring the export pipeline never breaks.
+- **Robust Fallback**: If the selected provider fails or returns no content, a toast notification with the error is shown, and the plugin uses the already-sanitized source body without image references, ensuring the export pipeline never breaks.
 
 ## Development
 
@@ -74,7 +77,7 @@ The build emits `main.js` next to `manifest.json` and `styles.css`, matching the
 layout expected by Obsidian community plugins.
 
 Automated tests cover image sizing, standalone-page classification, crop-control behavior,
-layout measurement fallbacks, source-line mapping, preview-scroll reset behavior, export filtering, and publish-body image sanitization. For UI changes, run `npm test` and
+layout measurement fallbacks, source-line mapping, preview-scroll reset behavior, export filtering, publish-body image sanitization, and local agy argument/proxy propagation. For UI changes, run `npm test` and
 `npm run build`, then manually verify preview generation, auto pagination, Mermaid rendering,
 preview/editor navigation, file-switch scroll reset, first-enable rendering, template switching, theme switching, language switching, export path handling,
 ZIP and PNG-folder export formats, optional post-export Markdown metadata updates,
