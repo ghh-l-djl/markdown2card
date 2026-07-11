@@ -4280,6 +4280,12 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
           new import_obsidian2.Setting(containerEl).setName(isZh ? "agy \u547D\u4EE4\u8DEF\u5F84" : "agy executable path").setDesc(isZh ? "agy \u53EF\u6267\u884C\u6587\u4EF6\u7684\u8DEF\u5F84\u6216\u547D\u4EE4\u540D\uFF1B\u63D2\u4EF6\u5C06\u4EE5\u201Cagy -p \u63D0\u793A\u8BCD\u201D\u65B9\u5F0F\u8C03\u7528" : "Executable path or command name; the plugin invokes it as agy -p prompt").addText((text) => text.setPlaceholder("agy").setValue(settings.agyCommandPath || "agy").onChange((value) => {
             this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
           }));
+          new import_obsidian2.Setting(containerEl).setName(isZh ? "agy \u4EE3\u7406\u5730\u5740" : "agy proxy URL").setDesc(isZh ? "\u53EF\u9009\u3002\u8C03\u7528 agy \u65F6\u540C\u65F6\u8BBE\u7F6E HTTP_PROXY\u3001HTTPS_PROXY \u548C ALL_PROXY\uFF0C\u4F8B\u5982 http://127.0.0.1:7890" : "Optional. Sets HTTP_PROXY, HTTPS_PROXY, and ALL_PROXY for agy, for example http://127.0.0.1:7890").addText((text) => text.setPlaceholder("http://127.0.0.1:7890").setValue(settings.agyProxyUrl || "").onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ agyProxyUrl: value.trim() });
+          }));
+          new import_obsidian2.Setting(containerEl).setName(isZh ? "agy \u4E0D\u4EE3\u7406\u5730\u5740" : "agy NO_PROXY").setDesc(isZh ? "\u53EF\u9009\u3002\u65E0\u9700\u4EE3\u7406\u7684\u4E3B\u673A\u5217\u8868\uFF0C\u4EE5\u9017\u53F7\u5206\u9694" : "Optional. Comma-separated hosts that should bypass the proxy").addText((text) => text.setPlaceholder("localhost,127.0.0.1,::1").setValue(settings.agyNoProxy || "").onChange((value) => {
+            this.plugin.settingsManager.updateSettings({ agyNoProxy: value.trim() });
+          }));
         }
         if (settings.aiProvider !== "agy") {
           new import_obsidian2.Setting(containerEl).setName("Gemini API Key").setDesc(
@@ -5248,6 +5254,8 @@ var DEFAULT_SETTINGS = {
   enableAiSummary: false,
   aiProvider: "gemini",
   agyCommandPath: "agy",
+  agyProxyUrl: "",
+  agyNoProxy: "localhost,127.0.0.1,::1",
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
@@ -7374,12 +7382,28 @@ var import_obsidian5 = require("obsidian");
 
 // src/agyManager.ts
 var import_child_process = require("child_process");
-async function runAgyCommand(executablePath, prompt) {
+async function runAgyCommand(executablePath, prompt, options = {}) {
+  var _a, _b;
   const executable = executablePath.trim();
   if (!executable)
     throw new Error("agy executable path is not configured");
+  const env = { ...process.env };
+  const proxyUrl = (_a = options.proxyUrl) == null ? void 0 : _a.trim();
+  const noProxy = (_b = options.noProxy) == null ? void 0 : _b.trim();
+  if (proxyUrl) {
+    env.http_proxy = proxyUrl;
+    env.HTTP_PROXY = proxyUrl;
+    env.https_proxy = proxyUrl;
+    env.HTTPS_PROXY = proxyUrl;
+    env.all_proxy = proxyUrl;
+    env.ALL_PROXY = proxyUrl;
+  }
+  if (noProxy) {
+    env.no_proxy = noProxy;
+    env.NO_PROXY = noProxy;
+  }
   return new Promise((resolve, reject) => {
-    (0, import_child_process.execFile)(executable, ["-p", prompt], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    (0, import_child_process.execFile)(executable, ["-p", prompt], { env, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         const detail = stderr.trim() || error.message;
         reject(new Error(`agy command failed: ${detail}`));
@@ -7403,7 +7427,10 @@ var AiManager = class {
     const isZh = settings.uiLanguage === "zh";
     const prompt = aiPromptTemplate.split("${content}").join(content);
     if (settings.aiProvider === "agy") {
-      return runAgyCommand(settings.agyCommandPath || "agy", prompt);
+      return runAgyCommand(settings.agyCommandPath || "agy", prompt, {
+        proxyUrl: settings.agyProxyUrl,
+        noProxy: settings.agyNoProxy
+      });
     }
     if (!geminiApiKey) {
       throw new Error(isZh ? "\u8BF7\u5728\u63D2\u4EF6\u8BBE\u7F6E\u4E2D\u914D\u7F6E Gemini API Key" : "Please configure Gemini API Key in plugin settings");

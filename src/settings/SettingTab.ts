@@ -303,6 +303,30 @@ export class RedSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
               }));
+
+          new Setting(containerEl)
+            .setName(isZh ? "agy 代理地址" : "agy proxy URL")
+            .setDesc(isZh
+              ? "可选。调用 agy 时同时设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY，例如 http://127.0.0.1:7890"
+              : "Optional. Sets HTTP_PROXY, HTTPS_PROXY, and ALL_PROXY for agy, for example http://127.0.0.1:7890")
+            .addText((text) => text
+              .setPlaceholder("http://127.0.0.1:7890")
+              .setValue(settings.agyProxyUrl || "")
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ agyProxyUrl: value.trim() });
+              }));
+
+          new Setting(containerEl)
+            .setName(isZh ? "agy 不代理地址" : "agy NO_PROXY")
+            .setDesc(isZh
+              ? "可选。无需代理的主机列表，以逗号分隔"
+              : "Optional. Comma-separated hosts that should bypass the proxy")
+            .addText((text) => text
+              .setPlaceholder("localhost,127.0.0.1,::1")
+              .setValue(settings.agyNoProxy || "")
+              .onChange((value) => {
+                this.plugin.settingsManager.updateSettings({ agyNoProxy: value.trim() });
+              }));
         }
 
         if (settings.aiProvider !== "agy") {

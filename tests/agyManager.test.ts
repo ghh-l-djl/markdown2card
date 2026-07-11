@@ -31,3 +31,26 @@ test("agy rejects an empty response", async () => {
 
   await assert.rejects(runAgyCommand(executable, "prompt"), /empty response/i);
 });
+
+test("agy receives configured proxy environment variables", async () => {
+  const executable = await createFakeAgy(
+    "printf '%s' \"$http_proxy|$HTTP_PROXY|$https_proxy|$HTTPS_PROXY|$all_proxy|$ALL_PROXY|$no_proxy|$NO_PROXY\""
+  );
+
+  assert.equal(
+    await runAgyCommand(executable, "prompt", {
+      proxyUrl: "http://127.0.0.1:7890",
+      noProxy: "localhost,127.0.0.1"
+    }),
+    [
+      "http://127.0.0.1:7890",
+      "http://127.0.0.1:7890",
+      "http://127.0.0.1:7890",
+      "http://127.0.0.1:7890",
+      "http://127.0.0.1:7890",
+      "http://127.0.0.1:7890",
+      "localhost,127.0.0.1",
+      "localhost,127.0.0.1"
+    ].join("|")
+  );
+});

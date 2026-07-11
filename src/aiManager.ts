@@ -9,7 +9,10 @@ export class AiManager {
     const prompt = aiPromptTemplate.split("${content}").join(content);
 
     if (settings.aiProvider === "agy") {
-      return runAgyCommand(settings.agyCommandPath || "agy", prompt);
+      return runAgyCommand(settings.agyCommandPath || "agy", prompt, {
+        proxyUrl: settings.agyProxyUrl,
+        noProxy: settings.agyNoProxy
+      });
     }
 
     if (!geminiApiKey) {

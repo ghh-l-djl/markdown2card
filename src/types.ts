@@ -72,6 +72,8 @@ export interface YanqiSettings {
   enableAiSummary: boolean;
   aiProvider: "gemini" | "agy";
   agyCommandPath: string;
+  agyProxyUrl: string;
+  agyNoProxy: string;
   geminiApiKey: string;
   geminiApiUrl: string;
   geminiModel: string;

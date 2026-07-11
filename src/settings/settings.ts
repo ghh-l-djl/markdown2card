@@ -91,6 +91,8 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   enableAiSummary: false,
   aiProvider: "gemini",
   agyCommandPath: "agy",
+  agyProxyUrl: "",
+  agyNoProxy: "localhost,127.0.0.1,::1",
   geminiApiKey: "",
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
