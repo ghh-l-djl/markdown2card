@@ -462,17 +462,5 @@ export class RedSettingTab extends PluginSettingTab {
       .addButton((button) => button
         .setButtonText("Contact")
         .onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
-
-    if (this.plugin.settingsManager.getSettings().supportReminderDismissed) {
-      new Setting(section)
-        .setName("Support reminders")
-        .setDesc("Reminders are currently disabled.")
-        .addButton((button) => button
-          .setButtonText("Enable reminders")
-          .onClick(async () => {
-            await this.plugin.settingsManager.updateSettings({ supportReminderDismissed: false });
-            this.display();
-          }));
-    }
   }
 }

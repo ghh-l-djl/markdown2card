@@ -4368,12 +4368,6 @@ var RedSettingTab = class extends import_obsidian2.PluginSettingTab {
     });
     new import_obsidian2.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open(FUNDING_URL, "_blank")));
     new import_obsidian2.Setting(section).setName("Custom theme").setDesc("Contact the development team for a branded card theme.").addButton((button) => button.setButtonText("Contact").onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
-    if (this.plugin.settingsManager.getSettings().supportReminderDismissed) {
-      new import_obsidian2.Setting(section).setName("Support reminders").setDesc("Reminders are currently disabled.").addButton((button) => button.setButtonText("Enable reminders").onClick(async () => {
-        await this.plugin.settingsManager.updateSettings({ supportReminderDismissed: false });
-        this.display();
-      }));
-    }
   }
 };
 

@@ -37,7 +37,6 @@ It renders the active Markdown note as exportable social-card images.
 - Renders Mermaid diagrams into card-safe SVG blocks, including dark-theme contrast fixes, auto scaling for oversized diagrams, and appended original-size Mermaid exports when a diagram would exceed the card.
 - Provides multiple image templates, including default, notes, Xiaohongshu, Weibo, WeChat, magazine, quote, terminal, GitHub, and signature styles.
 - Supports theme switching, cover styles, custom fonts, background images, footer visibility, persistent per-image reframing, table scaling, current-page export, all-pages export, and clipboard copy.
-- Counts successful exports locally and occasionally invites frequent users to support development or request a custom theme. Choosing "Already supported" permanently disables the reminder; no usage data leaves the vault.
 - Lets users choose the preview UI language, defaulting to English with a Chinese option.
 - Writes exports to a configurable destination. Relative paths are written inside the vault; absolute macOS/Linux or Windows paths are written to the file system.
 - Supports ZIP archive output or a PNG folder named after the current Markdown file.
