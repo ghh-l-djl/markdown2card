@@ -249,12 +249,17 @@
 .modal:has(.red-support-modal) {
   width: min(720px, calc(100vw - 32px));
   max-width: 720px;
+  max-height: calc(100vh - 32px);
   border-radius: 22px;
   overflow: hidden;
 }
 
 .red-support-modal {
+  max-height: calc(100vh - 32px);
   padding: 0 0 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .red-support-hero {
@@ -387,13 +392,19 @@
   cursor: pointer;
 }
 
+.red-support-contact[open] summary {
+  margin-bottom: 10px;
+}
+
 .red-support-contact img {
   display: block;
-  width: min(100%, 360px);
-  max-height: 430px;
-  margin: 12px auto 2px;
-  object-fit: contain;
+  width: min(100%, 280px);
+  height: min(280px, 42vh);
+  margin: 0 auto 2px;
+  object-fit: cover;
+  object-position: center bottom;
   border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(54 39 27 / 12%);
   cursor: zoom-in;
 }
 
