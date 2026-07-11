@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
 import { App, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
+import supportHeroImage from "./assets/support-hero.jpg";
+import xiaohongshuContactImage from "./assets/xiaohongshu-contact.jpg";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
@@ -15,7 +17,7 @@ import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./im
 import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
-import { FUNDING_URL, THEME_CUSTOMIZATION_URL } from "./support";
+import { FUNDING_URL, GITHUB_URL } from "./support";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -150,26 +152,61 @@ class SupportReminderModal extends Modal {
     const isZh = this.language === "zh";
     this.contentEl.empty();
     this.contentEl.addClass("red-support-modal");
-    this.contentEl.createEl("h2", { text: isZh ? "感谢你常用 markdown2card" : "Thanks for using markdown2card" });
-    this.contentEl.createEl("p", {
+    const hero = this.contentEl.createDiv("red-support-hero");
+    hero.createEl("img", {
+      cls: "red-support-hero-image",
+      attr: { src: supportHeroImage, alt: isZh ? "独立开发者的生产力工具创作工坊" : "An independent developer's productivity-tool workshop" }
+    });
+    const copy = hero.createDiv("red-support-copy");
+    copy.createEl("span", { cls: "red-support-eyebrow", text: isZh ? "INDEPENDENT MAKER · 独立开发者" : "INDEPENDENT MAKER" });
+    copy.createEl("h2", { text: isZh ? "让好工具持续生长" : "Keep useful tools growing" });
+    copy.createEl("p", {
       text: isZh
-        ? "如果它为你节省了时间，可以资助持续开发；如果需要品牌化卡片，也可以联系开发团队定制主题。"
-        : "If it saves you time, you can support continued development or contact the team for a custom branded theme."
+        ? "我是 Hazel，一名独立开发者，持续创作能让思考、写作和发布更顺手的生产力工具。"
+        : "I'm Hazel, an independent developer creating productivity tools for clearer thinking, writing, and publishing."
     });
-    const buttons = this.contentEl.createDiv("modal-button-container");
-    buttons.createEl("button", { text: isZh ? "稍后" : "Later" }).addEventListener("click", () => this.close());
-    buttons.createEl("button", { text: isZh ? "主题定制" : "Custom theme" }).addEventListener("click", () => {
-      window.open(THEME_CUSTOMIZATION_URL, "_blank");
+
+    const actions = this.contentEl.createDiv("red-support-actions");
+    const githubButton = actions.createEl("button", { cls: "red-support-action red-support-github" });
+    const githubIcon = githubButton.createSpan("red-support-action-icon");
+    setIcon(githubIcon, "github");
+    githubButton.createSpan({ cls: "red-support-action-text", text: isZh ? "GitHub · 查看更多作品" : "GitHub · More projects" });
+    githubButton.addEventListener("click", () => window.open(GITHUB_URL, "_blank"));
+
+    const fundingButton = actions.createEl("button", { cls: "red-support-action red-support-funding" });
+    const fundingIcon = fundingButton.createSpan("red-support-action-icon");
+    setIcon(fundingIcon, "heart-handshake");
+    const fundingLabel = fundingButton.createSpan({
+      cls: "red-support-action-text",
+      text: isZh ? "赞助创作 · 支持后关闭弹窗" : "Sponsor · Stop this message after support"
     });
-    buttons.createEl("button", { text: isZh ? "已支持，不再提示" : "Already supported — stop reminders" }).addEventListener("click", async () => {
+    let fundingOpened = false;
+    fundingButton.addEventListener("click", async () => {
+      if (!fundingOpened) {
+        fundingOpened = true;
+        window.open(FUNDING_URL, "_blank");
+        fundingButton.addClass("is-confirming");
+        fundingLabel.setText(isZh ? "已完成支持 · 点击关闭弹窗" : "Support completed · Click to disable this message");
+        return;
+      }
       await this.settingsManager.updateSettings({ supportReminderDismissed: true });
       this.close();
     });
-    buttons.createEl("button", { cls: "mod-cta", text: isZh ? "资助并关闭提醒" : "Support and stop reminders" }).addEventListener("click", async () => {
-      window.open(FUNDING_URL, "_blank");
-      await this.settingsManager.updateSettings({ supportReminderDismissed: true });
-      this.close();
+
+    const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
+    contact.createEl("summary", {
+      text: isZh
+        ? "已通过微信或支付宝扫码支持？在小红书联系开发者关闭弹窗"
+        : "Already supported by WeChat or Alipay? Contact the developer on Xiaohongshu to disable this message."
     });
+    const contactImage = contact.createEl("img", {
+      attr: { src: xiaohongshuContactImage, alt: isZh ? "Hazel 小红书联系卡" : "Hazel's Xiaohongshu contact card" }
+    });
+    contactImage.addEventListener("click", () => window.open(xiaohongshuContactImage, "_blank"));
+
+    const footer = this.contentEl.createDiv("red-support-footer");
+    footer.createEl("span", { text: isZh ? "谢谢你让独立创作走得更远。" : "Thank you for helping independent work go further." });
+    footer.createEl("button", { text: isZh ? "稍后再说" : "Maybe later" }).addEventListener("click", () => this.close());
   }
 }
 
