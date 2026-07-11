@@ -6,7 +6,7 @@ export interface ExportReminderState {
   lastSupportReminderExportCount: number;
 }
 
-export function recordSuccessfulExport(state: ExportReminderState): {
+export function recordSuccessfulExport(state: ExportReminderState, suppressReminder = false): {
   nextState: ExportReminderState;
   shouldRemind: boolean;
 } {
@@ -17,7 +17,8 @@ export function recordSuccessfulExport(state: ExportReminderState): {
   const exportCount = previousExportCount + 1;
   const reachedFirstReminder = exportCount >= FIRST_SUPPORT_REMINDER_EXPORT;
   const exportsSinceReminder = exportCount - previousReminderCount;
-  const shouldRemind = reachedFirstReminder
+  const shouldRemind = !suppressReminder
+    && reachedFirstReminder
     && (previousReminderCount === 0 || exportsSinceReminder >= SUPPORT_REMINDER_INTERVAL);
 
   return {

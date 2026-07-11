@@ -69,6 +69,9 @@ export interface YanqiSettings {
   exportFormat: "zip" | "png-folder";
   exportCount: number;
   lastSupportReminderExportCount: number;
+  activationCode: string;
+  activationValidationStatus: "unchecked" | "valid" | "invalid" | "unavailable";
+  activationLastCheckedAt: string;
   enablePostExportActions: boolean;
   uiLanguage: "en" | "zh";
   enableAiSummary: boolean;

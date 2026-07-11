@@ -408,6 +408,38 @@
   cursor: zoom-in;
 }
 
+.red-support-activation {
+  margin: 14px 20px 0;
+  padding: 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-secondary);
+}
+
+.red-support-activation h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.red-support-activation-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.red-support-activation-status {
+  min-height: 18px;
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.red-support-activation-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .red-support-footer {
   display: flex;
   align-items: center;

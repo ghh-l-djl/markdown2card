@@ -7,7 +7,8 @@ import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
 import { DownloadManager } from "./downloadManager";
-import { recordSuccessfulExport } from "./exportReminder";
+import { recordSuccessfulExportWithEntitlement, type PaidEntitlementStatus } from "./paidEntitlement";
+import { checkPaidEntitlement } from "./paidEntitlementClient";
 import { ImgTemplateManager } from "./imgTemplates";
 import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
@@ -144,7 +145,7 @@ const TEMPLATE_LABEL_KEYS: Record<string, string> = {
 };
 
 class SupportReminderModal extends Modal {
-  constructor(app: App, private language: UiLanguage) {
+  constructor(app: App, private settingsManager: SettingsManager, private language: UiLanguage) {
     super(app);
   }
 
@@ -192,6 +193,38 @@ class SupportReminderModal extends Modal {
       attr: { src: xiaohongshuContactImage, alt: isZh ? "Hazel 小红书联系卡" : "Hazel's Xiaohongshu contact card" }
     });
     contactImage.addEventListener("click", () => window.open(xiaohongshuContactImage, "_blank"));
+
+    const activation = this.contentEl.createDiv("red-support-activation");
+    activation.createEl("h3", { text: isZh ? "已有激活码？" : "Already have an activation code?" });
+    const activationInput = activation.createEl("input", {
+      cls: "red-support-activation-input",
+      attr: {
+        type: "password",
+        placeholder: "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+      }
+    });
+    activationInput.value = this.settingsManager.getSettings().activationCode;
+    const activationStatus = activation.createEl("p", { cls: "red-support-activation-status" });
+    const activationButtons = activation.createDiv("red-support-activation-buttons");
+    activationButtons.createEl("button", { text: isZh ? "显示/隐藏" : "Show/hide" }).addEventListener("click", () => {
+      activationInput.type = activationInput.type === "password" ? "text" : "password";
+    });
+    activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "验证" : "Validate" }).addEventListener("click", async () => {
+      const value = activationInput.value;
+      const status = value.trim() ? await checkPaidEntitlement(value) : "invalid";
+      await this.settingsManager.updateSettings({
+        activationCode: value,
+        activationValidationStatus: status,
+        activationLastCheckedAt: new Date().toISOString()
+      });
+      if (status === "valid") {
+        this.close();
+        return;
+      }
+      activationStatus.setText(status === "invalid"
+        ? (isZh ? "激活码无效或已失效，请检查后重试。" : "The activation code is invalid or inactive. Check it and try again.")
+        : (isZh ? "暂时无法验证，请稍后重试。" : "Unable to validate right now. Try again later."));
+    });
 
     const footer = this.contentEl.createDiv("red-support-footer");
     footer.createEl("span", { text: isZh ? "谢谢你让独立创作走得更远。" : "Thank you for helping independent work go further." });
@@ -1009,6 +1042,9 @@ export class RedView extends ItemView {
   private async exportToVault(allPages: boolean): Promise<void> {
     if (!this.currentFile) throw new Error("No active markdown file");
     const settings = this.settingsManager.getSettings();
+    const entitlementPromise = settings.activationCode.trim()
+      ? checkPaidEntitlement(settings.activationCode)
+      : Promise.resolve<PaidEntitlementStatus>("invalid");
     const baseName = this.safeFileName(this.currentFile.basename);
     const exportRoot = this.resolveExportRoot(settings.exportPath || "markdown2card-exports");
     await this.ensureExportFolder(exportRoot.path, exportRoot.isAbsolute);
@@ -1037,20 +1073,20 @@ export class RedView extends ItemView {
       await this.applyPostExportActions(assetPath, exportRoot.isAbsolute);
     }
 
-    await this.recordExportAndMaybeRemind();
+    await this.recordExportAndMaybeRemind(await entitlementPromise);
 
     new Notice(`Exported to ${assetPath}`);
   }
 
-  private async recordExportAndMaybeRemind(): Promise<void> {
+  private async recordExportAndMaybeRemind(entitlementStatus: PaidEntitlementStatus): Promise<void> {
     const settings = this.settingsManager.getSettings();
-    const result = recordSuccessfulExport({
+    const result = recordSuccessfulExportWithEntitlement({
       exportCount: settings.exportCount,
       lastSupportReminderExportCount: settings.lastSupportReminderExportCount
-    });
+    }, entitlementStatus);
     await this.settingsManager.updateSettings(result.nextState);
     if (result.shouldRemind) {
-      new SupportReminderModal(this.app, settings.uiLanguage).open();
+      new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
     }
   }
 

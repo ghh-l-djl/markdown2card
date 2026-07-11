@@ -8,10 +8,17 @@ source rebuilt under markdown2card/src
 */`;
 
 const prod = process.argv[2] === "production";
+const paidEntitlementApiUrl = process.env.PAID_ENTITLEMENT_API_URL
+  || (prod
+    ? "https://api.markdown2card.invalid/functions/v1/validate-entitlement"
+    : "http://127.0.0.1:54321/functions/v1/validate-entitlement");
 
 const context = await esbuild.context({
   banner: { js: banner },
   entryPoints: ["src/main.ts"],
+  define: {
+    PAID_ENTITLEMENT_API_URL: JSON.stringify(paidEntitlementApiUrl)
+  },
   bundle: true,
   loader: { ".jpg": "dataurl", ".jpeg": "dataurl", ".png": "dataurl" },
   external: ["obsidian", "electron", "@codemirror/autocomplete", "@codemirror/collab", "@codemirror/commands", "@codemirror/language", "@codemirror/lint", "@codemirror/search", "@codemirror/state", "@codemirror/view", "@lezer/common", "@lezer/highlight", "@lezer/lr", ...builtins],

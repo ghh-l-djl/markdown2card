@@ -1,6 +1,7 @@
 import { App, Modal, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type YanqiPlugin from "../main";
 import { FUNDING_URL, THEME_CUSTOMIZATION_URL } from "../support";
+import { checkPaidEntitlement } from "../paidEntitlementClient";
 import type { FontOption, YanqiTheme } from "../types";
 
 class ConfirmModal extends Modal {
@@ -449,6 +450,47 @@ export class RedSettingTab extends PluginSettingTab {
       cls: "red-settings-note",
       text: "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem."
     });
+    const settings = this.plugin.settingsManager.getSettings();
+    const activationSetting = new Setting(section)
+      .setName("Activation code")
+      .setDesc(this.activationStatusDescription());
+    activationSetting.addText((text) => {
+      text.inputEl.type = "password";
+      text.setPlaceholder("M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX");
+      text.setValue(settings.activationCode);
+      text.onChange(async (value) => {
+        await this.plugin.settingsManager.updateSettings({
+          activationCode: value,
+          activationValidationStatus: "unchecked",
+          activationLastCheckedAt: ""
+        });
+      });
+      activationSetting.addExtraButton((button) => button
+        .setIcon("eye")
+        .setTooltip("Show or hide activation code")
+        .onClick(() => {
+          text.inputEl.type = text.inputEl.type === "password" ? "text" : "password";
+          button.setIcon(text.inputEl.type === "password" ? "eye" : "eye-off");
+        }));
+    });
+    activationSetting
+      .addButton((button) => button.setButtonText("Validate").onClick(async () => {
+        const current = this.plugin.settingsManager.getSettings().activationCode;
+        const status = current.trim() ? await checkPaidEntitlement(current) : "invalid";
+        await this.plugin.settingsManager.updateSettings({
+          activationValidationStatus: status,
+          activationLastCheckedAt: new Date().toISOString()
+        });
+        this.display();
+      }))
+      .addButton((button) => button.setButtonText("Clear").onClick(async () => {
+        await this.plugin.settingsManager.updateSettings({
+          activationCode: "",
+          activationValidationStatus: "unchecked",
+          activationLastCheckedAt: ""
+        });
+        this.display();
+      }));
     new Setting(section)
       .setName("Donate")
       .setDesc("Support ongoing development and theme maintenance.")
@@ -462,5 +504,16 @@ export class RedSettingTab extends PluginSettingTab {
       .addButton((button) => button
         .setButtonText("Contact")
         .onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
+  }
+
+  private activationStatusDescription(): string {
+    const settings = this.plugin.settingsManager.getSettings();
+    const checkedAt = settings.activationLastCheckedAt
+      ? ` Last checked: ${new Date(settings.activationLastCheckedAt).toLocaleString()}.`
+      : "";
+    if (settings.activationValidationStatus === "valid") return `Activation code is valid.${checkedAt}`;
+    if (settings.activationValidationStatus === "invalid") return `Activation code is invalid or inactive.${checkedAt}`;
+    if (settings.activationValidationStatus === "unavailable") return `Unable to validate right now. Try again later.${checkedAt}`;
+    return "Enter the code received after supporting markdown2card.";
   }
 }
