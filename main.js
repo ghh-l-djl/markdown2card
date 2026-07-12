@@ -4118,7 +4118,7 @@ function recordSuccessfulExportWithEntitlement(state, entitlementStatus) {
 // src/paidEntitlementClient.ts
 function checkPaidEntitlement(activationCode) {
   return validatePaidEntitlement(activationCode, {
-    endpoint: "https://api.markdown2card.invalid/functions/v1/validate-entitlement",
+    endpoint: "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/validate-entitlement",
     request: async (options) => (0, import_obsidian2.requestUrl)(options),
     timeoutMs: 1500
   });

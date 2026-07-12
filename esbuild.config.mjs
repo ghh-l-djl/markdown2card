@@ -13,7 +13,7 @@ const localBuild = mode === "local";
 const paidEntitlementApiUrl = process.env.PAID_ENTITLEMENT_API_URL
   || (localBuild || !prod
     ? "http://127.0.0.1:54321/functions/v1/validate-entitlement"
-    : "https://api.markdown2card.invalid/functions/v1/validate-entitlement");
+    : "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/validate-entitlement");
 const purchasePageUrl = process.env.PURCHASE_PAGE_URL
   || (localBuild || !prod
     ? "http://127.0.0.1:4173/"
