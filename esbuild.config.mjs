@@ -18,13 +18,18 @@ const purchasePageUrl = process.env.PURCHASE_PAGE_URL
   || (localBuild || !prod
     ? "http://127.0.0.1:4173/"
     : "https://ghh-l-djl.github.io/markdown2card-pay/");
+const checkoutClaimUrl = process.env.CHECKOUT_CLAIM_URL
+  || (localBuild || !prod
+    ? "http://127.0.0.1:54321/functions/v1/claim-checkout"
+    : "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/claim-checkout");
 
 const context = await esbuild.context({
   banner: { js: banner },
   entryPoints: ["src/main.ts"],
   define: {
     PAID_ENTITLEMENT_API_URL: JSON.stringify(paidEntitlementApiUrl),
-    MARKDOWN2CARD_PURCHASE_URL: JSON.stringify(purchasePageUrl)
+    MARKDOWN2CARD_PURCHASE_URL: JSON.stringify(purchasePageUrl),
+    MARKDOWN2CARD_CLAIM_URL: JSON.stringify(checkoutClaimUrl)
   },
   bundle: true,
   loader: { ".jpg": "dataurl", ".jpeg": "dataurl", ".png": "dataurl" },
