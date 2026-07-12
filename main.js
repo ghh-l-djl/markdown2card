@@ -4047,9 +4047,13 @@ var MARKDOWN2CARD_ICON_SVG = `<path d="M53.75 9H19.5C13.149 9 8 14.149 8 20.5V79
 var import_obsidian3 = require("obsidian");
 
 // src/support.ts
-var FUNDING_URL = "https://ghh-l-djl.github.io/";
 var GITHUB_URL = "https://github.com/ghh-l-djl/markdown2card";
 var THEME_CUSTOMIZATION_URL = "mailto:3340649257@qq.com?subject=markdown2card%20theme%20customization";
+function purchaseUrl(language, baseUrl = "https://ghh-l-djl.github.io/markdown2card-pay/") {
+  const url = new URL(baseUrl);
+  url.searchParams.set("lang", language);
+  return url.toString();
+}
 
 // src/paidEntitlementClient.ts
 var import_obsidian2 = require("obsidian");
@@ -4470,7 +4474,7 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       });
       this.display();
     }));
-    new import_obsidian3.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open(FUNDING_URL, "_blank")));
+    new import_obsidian3.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
     new import_obsidian3.Setting(section).setName("Custom theme").setDesc("Contact the development team for a branded card theme.").addButton((button) => button.setButtonText("Contact").onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
   }
   activationStatusDescription() {
@@ -7843,7 +7847,7 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
       cls: "red-support-action-text",
       text: isZh ? "\u8D5E\u52A9\u521B\u4F5C \xB7 \u4E86\u89E3\u652F\u6301\u65B9\u5F0F" : "Sponsor \xB7 Learn how to support"
     });
-    fundingButton.addEventListener("click", () => window.open(FUNDING_URL, "_blank"));
+    fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
       text: isZh ? "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86\uFF1F\u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005" : "Already supported? Contact the developer via Xiaohongshu or email."

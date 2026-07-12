@@ -1,6 +1,6 @@
 import { App, Modal, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type YanqiPlugin from "../main";
-import { FUNDING_URL, THEME_CUSTOMIZATION_URL } from "../support";
+import { purchaseUrl, THEME_CUSTOMIZATION_URL } from "../support";
 import { checkPaidEntitlement } from "../paidEntitlementClient";
 import type { FontOption, YanqiTheme } from "../types";
 
@@ -497,7 +497,7 @@ export class RedSettingTab extends PluginSettingTab {
       .addButton((button) => button
         .setButtonText("Donate")
         .setCta()
-        .onClick(() => window.open(FUNDING_URL, "_blank")));
+        .onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
     new Setting(section)
       .setName("Custom theme")
       .setDesc("Contact the development team for a branded card theme.")

@@ -18,7 +18,7 @@ import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./im
 import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
-import { FUNDING_URL, GITHUB_URL } from "./support";
+import { GITHUB_URL, purchaseUrl } from "./support";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -181,7 +181,7 @@ class SupportReminderModal extends Modal {
       cls: "red-support-action-text",
       text: isZh ? "赞助创作 · 了解支持方式" : "Sponsor · Learn how to support"
     });
-    fundingButton.addEventListener("click", () => window.open(FUNDING_URL, "_blank"));
+    fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
 
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
     contact.createEl("summary", {
