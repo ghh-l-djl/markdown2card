@@ -87,4 +87,4 @@ long-image cards, image reframing, appended oversized Mermaid exports, and copy 
 
 This plugin is published by AI-Vibe under the [Hazel Source-Available License 1.0](./LICENSE). The Hazel Materials are source-available, not open source: source inspection, official-release use, private modification, and contributions are permitted, but redistribution of modified versions or builds is prohibited. Upstream Note to RED materials remain available under the MIT License described in the license file.
 
-The plugin includes a payment prompt, and access to applicable features may require payment. The current access conditions are presented in the plugin. Unofficial builds that remove or bypass payment or access controls may not be distributed.
+Unofficial builds that remove or bypass payment or access controls may not be distributed.
