@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { claimCheckoutActivation, isCheckoutSessionId } from "../src/checkoutActivation";
 
@@ -27,4 +28,13 @@ test("does not activate pending or failed checkout sessions", async () => {
     });
     assert.equal(result.status, status === "pending" ? "unavailable" : "invalid");
   }
+});
+
+test("published plugin bundle contains no activation-code credential", async () => {
+  const bundle = await readFile("main.js", "utf8");
+  const withoutUiPlaceholder = bundle.replaceAll("M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX", "");
+  assert.doesNotMatch(
+    withoutUiPlaceholder,
+    /M2C-(?:[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}-){4}[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}/,
+  );
 });
