@@ -1,44 +1,119 @@
-YANQI Source-Available License
+Hazel Source-Available License 1.0
 
-Copyright (c) 2026 阿东玩AI / 言起 YANQI
+Copyright (c) 2026 AI-Vibe. All rights reserved.
 
-This project is a derivative work based on the open-source Obsidian plugin
-"Note to RED" by Yeban8090:
+"Hazel" is a trademark of AI-Vibe. This license does not grant permission to
+use the Hazel name, logo, icons, trade dress, or other brand identifiers except
+as necessary to identify an unmodified official release.
+
+This project contains original Hazel materials created by AI-Vibe (the "Hazel
+Materials") and portions derived from the MIT-licensed Obsidian plugin "Note to
+RED" by Yeban8090 (the "Upstream Materials"):
 
 https://github.com/Yeban8090/note-to-red
 
-The original Note to RED parts remain governed by the MIT License of the
-upstream project. The original copyright notice is preserved below.
+"Hazel Materials" means all original code, modifications, additions,
+documentation, artwork, templates, themes, branding, selection, coordination,
+and arrangement authored by or for AI-Vibe in this repository. "Upstream
+Materials" means only the portions copied or derived from Note to RED to which
+Yeban8090's upstream copyright applies. When the two are combined in one file,
+this license governs AI-Vibe's original contributions and the MIT License
+governs the Upstream Materials. A comparison with the upstream repository may
+be used to identify the Upstream Materials.
+
+The Upstream Materials remain governed by their original MIT License, reproduced
+in Appendix A. This license applies only to the Hazel Materials and does not
+limit any rights granted by the upstream MIT License.
+
+1. Permitted use
+
+For the duration of AI-Vibe's applicable copyright and subject to your continued
+compliance with this license, AI-Vibe grants you a limited, worldwide,
+non-exclusive, non-transferable, and non-sublicensable license to:
+
+a. access, inspect, and study the source code;
+b. install and use official, unmodified releases, subject to any payment,
+   subscription, account, or feature-access conditions presented by the
+   software;
+c. make private modifications solely for your own internal, non-distributed
+   use; and
+d. prepare and submit patches or pull requests to the official repository for
+   possible inclusion in the project.
+
+2. Restrictions
+
+Except with AI-Vibe's prior written permission, you may not:
+
+a. distribute, publish, upload, sublicense, sell, rent, host, mirror, or
+   otherwise make available any modified version or derivative work containing
+   Hazel Materials;
+b. distribute or make available compiled files, packages, installers, releases,
+   or other executable artifacts produced from modified Hazel Materials;
+c. remove, disable, bypass, conceal, or alter any payment, licensing,
+   subscription, attribution, account, or access-control mechanism and provide
+   the resulting source code or executable artifacts to another person;
+d. distribute an unmodified official release except by linking to the official
+   repository, the official release page, or the Obsidian community plugin
+   directory;
+e. use Hazel branding for an unofficial version, or imply that an unofficial
+   version is published, sponsored, approved, or endorsed by AI-Vibe; or
+f. remove or alter copyright, license, attribution, or trademark notices.
+
+GitHub may provide platform-hosted repository forks for source inspection and
+contribution. A fork containing modified Hazel Materials must not publish
+release artifacts, must not be promoted as an alternative distribution, and
+must not contain or facilitate a publicly distributed bypass of a payment,
+licensing, subscription, account, or access-control mechanism. Any other
+distribution of modified Hazel Materials remains prohibited by Section 2.
+
+3. Official distribution permission
+
+AI-Vibe grants GitHub and Obsidian permission to host, process, reproduce, and
+distribute official, unmodified releases and their source code as necessary to
+operate their repository, review, release, and community-plugin services.
+
+4. Contributions
+
+Unless a separate written contribution agreement applies, you grant AI-Vibe a
+worldwide, perpetual, irrevocable, royalty-free, non-exclusive, transferable,
+and sublicensable copyright license to use, reproduce, modify, prepare
+derivative works of, publicly display, publicly perform, distribute, sublicense,
+and relicense any contribution you intentionally submit to the official
+repository. You represent that you have the right to grant those permissions.
+
+5. Termination
+
+Your rights under this license terminate automatically if you violate its
+terms. Upon termination, you must stop using and distributing the Hazel
+Materials and delete copies under your control, except where retention is
+required by law. Sections concerning ownership, restrictions, disclaimers, and
+liability survive termination.
+
+6. No warranty
+
+THE HAZEL MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL AI-VIBE OR ITS CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE HAZEL MATERIALS OR THEIR USE.
+
+This license makes the Hazel Materials source-available, not open source as
+defined by the Open Source Initiative.
+
+Appendix A - MIT License for Note to RED Upstream Materials
 
 Copyright (c) 2025 Yeban8090
 
-For the new YANQI additions, including but not limited to the brand name,
-documentation, UI changes, interaction enhancements, skeleton templates,
-theme system, cover styles, screenshots, and future added code, the following
-terms apply:
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
-1. You may use this project for personal study, research, and non-commercial
-   personal use.
-2. You may submit issues, suggestions, and pull requests to improve this
-   project.
-3. If you modify, redistribute, fork, or publish derivative versions, you must
-   keep clear attribution to both:
-   - 言起 YANQI / 阿东玩AI
-   - Note to RED / Yeban8090
-4. Attribution must be visible in the README, about page, release notes, or
-   other public documentation of the derivative version.
-5. You may not remove attribution and republish this project as your own work.
-6. You may not publish a highly similar rebranded copy using substantially
-   similar names, interface, templates, themes, documentation, or screenshots.
-7. You may not sell, sublicense, list in a plugin marketplace, provide as a
-   SaaS product, or include this project or a derivative version in a
-   commercial product without prior written permission from the YANQI author.
-
-If you only use this project personally, learn from it, or contribute back to
-the project, you are welcome to do so. These restrictions are mainly intended
-to prevent unattributed copying, rebranding, and commercial repackaging.
-
-Disclaimer:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
