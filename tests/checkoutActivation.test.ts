@@ -20,11 +20,11 @@ test("claims a paid checkout without placing the activation code in the URI", as
 });
 
 test("does not activate pending or failed checkout sessions", async () => {
-  for (const status of ["pending", "failed", "cancelled"]) {
+  for (const status of ["pending", "failed", "cancelled", "expired"]) {
     const result = await claimCheckoutActivation("cs_test_abc123", {
       endpoint: "https://example.com/claim",
       request: async () => ({ status: 200, json: { status } })
     });
-    assert.notEqual(result.status, "valid");
+    assert.equal(result.status, status === "pending" ? "unavailable" : "invalid");
   }
 });

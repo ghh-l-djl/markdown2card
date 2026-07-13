@@ -35,7 +35,11 @@ export async function claimCheckoutActivation(
     });
     const body = response.json as { status?: unknown; activationCode?: unknown } | null;
     if (response.status !== 200 || !body || body.status !== "paid" || typeof body.activationCode !== "string") {
-      return { status: body?.status === "failed" || body?.status === "cancelled" ? "invalid" : "unavailable" };
+      return {
+        status: body?.status === "failed" || body?.status === "cancelled" || body?.status === "expired"
+          ? "invalid"
+          : "unavailable"
+      };
     }
     return { status: "valid", activationCode: body.activationCode };
   } catch {
