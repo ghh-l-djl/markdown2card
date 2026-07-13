@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
 import { App, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import supportHeroImage from "./assets/support-hero.jpg";
-import xiaohongshuContactImage from "./assets/xiaohongshu-contact.jpg";
+import xiaohongshuContactImage from "./assets/xiaohongshu-contact.png";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
