@@ -18,6 +18,36 @@ interface ValidatePaidEntitlementOptions {
   timeoutMs?: number;
 }
 
+interface PaidEntitlementChecksOptions {
+  endpoint: string;
+  request: ValidatePaidEntitlementOptions["request"];
+  exportTimeoutMs?: number;
+  manualTimeoutMs?: number;
+}
+
+interface PaidEntitlementChecks {
+  forExport: (activationCode: string) => Promise<PaidEntitlementStatus>;
+  manually: (activationCode: string) => Promise<PaidEntitlementStatus>;
+}
+
+export function createPaidEntitlementChecks(
+  options: PaidEntitlementChecksOptions
+): PaidEntitlementChecks {
+  const validateWithTimeout = (activationCode: string, timeoutMs: number) => validatePaidEntitlement(
+    activationCode,
+    {
+      endpoint: options.endpoint,
+      request: options.request,
+      timeoutMs
+    }
+  );
+
+  return {
+    forExport: (activationCode) => validateWithTimeout(activationCode, options.exportTimeoutMs ?? 1500),
+    manually: (activationCode) => validateWithTimeout(activationCode, options.manualTimeoutMs ?? 10000)
+  };
+}
+
 const ACTIVATION_CODE_PATTERN = /^M2C[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{25}$/;
 
 export function normalizeActivationCode(value: string): string {

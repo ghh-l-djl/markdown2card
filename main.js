@@ -4106,6 +4106,26 @@ function recordSuccessfulExport(state, suppressReminder = false) {
 }
 
 // src/paidEntitlement.ts
+function createPaidEntitlementChecks(options) {
+  const validateWithTimeout = (activationCode, timeoutMs) => validatePaidEntitlement(
+    activationCode,
+    {
+      endpoint: options.endpoint,
+      request: options.request,
+      timeoutMs
+    }
+  );
+  return {
+    forExport: (activationCode) => {
+      var _a;
+      return validateWithTimeout(activationCode, (_a = options.exportTimeoutMs) != null ? _a : 1500);
+    },
+    manually: (activationCode) => {
+      var _a;
+      return validateWithTimeout(activationCode, (_a = options.manualTimeoutMs) != null ? _a : 1e4);
+    }
+  };
+}
 function normalizeActivationCode(value) {
   return value.toUpperCase().replace(/[\s-]+/g, "");
 }
@@ -4143,12 +4163,15 @@ function recordSuccessfulExportWithEntitlement(state, entitlementStatus) {
 }
 
 // src/paidEntitlementClient.ts
+var paidEntitlementChecks = createPaidEntitlementChecks({
+  endpoint: "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/validate-entitlement",
+  request: async (options) => (0, import_obsidian2.requestUrl)(options)
+});
 function checkPaidEntitlement(activationCode) {
-  return validatePaidEntitlement(activationCode, {
-    endpoint: "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/validate-entitlement",
-    request: async (options) => (0, import_obsidian2.requestUrl)(options),
-    timeoutMs: 1500
-  });
+  return paidEntitlementChecks.forExport(activationCode);
+}
+function checkPaidEntitlementManually(activationCode) {
+  return paidEntitlementChecks.manually(activationCode);
 }
 
 // src/settings/SettingTab.ts
@@ -4487,7 +4510,7 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     });
     activationSetting.addButton((button) => button.setButtonText("Validate").onClick(async () => {
       const current = this.plugin.settingsManager.getSettings().activationCode;
-      const status = current.trim() ? await checkPaidEntitlement(current) : "invalid";
+      const status = current.trim() ? await checkPaidEntitlementManually(current) : "invalid";
       await this.plugin.settingsManager.updateSettings({
         activationValidationStatus: status,
         activationLastCheckedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -7900,7 +7923,7 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
     });
     activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "\u9A8C\u8BC1" : "Validate" }).addEventListener("click", async () => {
       const value = activationInput.value;
-      const status = value.trim() ? await checkPaidEntitlement(value) : "invalid";
+      const status = value.trim() ? await checkPaidEntitlementManually(value) : "invalid";
       await this.settingsManager.updateSettings({
         activationCode: value,
         activationValidationStatus: status,

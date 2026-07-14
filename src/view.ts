@@ -8,7 +8,7 @@ import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
 import { DownloadManager } from "./downloadManager";
 import { recordSuccessfulExportWithEntitlement, type PaidEntitlementStatus } from "./paidEntitlement";
-import { checkPaidEntitlement } from "./paidEntitlementClient";
+import { checkPaidEntitlement, checkPaidEntitlementManually } from "./paidEntitlementClient";
 import { ImgTemplateManager } from "./imgTemplates";
 import { MARKDOWN2CARD_ICON } from "./icons";
 import type { SettingsManager } from "./settings/settings";
@@ -211,7 +211,7 @@ class SupportReminderModal extends Modal {
     });
     activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "验证" : "Validate" }).addEventListener("click", async () => {
       const value = activationInput.value;
-      const status = value.trim() ? await checkPaidEntitlement(value) : "invalid";
+      const status = value.trim() ? await checkPaidEntitlementManually(value) : "invalid";
       await this.settingsManager.updateSettings({
         activationCode: value,
         activationValidationStatus: status,

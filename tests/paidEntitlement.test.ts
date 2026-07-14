@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createPaidEntitlementChecks,
   normalizeActivationCode,
   recordSuccessfulExportWithEntitlement,
   validatePaidEntitlement
 } from "../src/paidEntitlement";
+
+test("manual validation waits longer than export validation", async () => {
+  const checks = createPaidEntitlementChecks({
+    endpoint: "https://example.invalid/validate",
+    request: () => new Promise((resolve) => {
+      setTimeout(() => resolve({ status: 200, json: { valid: true } }), 20);
+    }),
+    exportTimeoutMs: 5,
+    manualTimeoutMs: 50
+  });
+
+  assert.equal(await checks.forExport("M2C-ABCD2-EFGH3-JKMN4-PQRST-UVWXY"), "unavailable");
+  assert.equal(await checks.manually("M2C-ABCD2-EFGH3-JKMN4-PQRST-UVWXY"), "valid");
+});
 
 test("normalizes activation codes without case, spaces, or hyphens", () => {
   assert.equal(
