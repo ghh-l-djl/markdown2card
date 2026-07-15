@@ -1,6 +1,16 @@
 import { ExportReminderState, recordSuccessfulExport } from "./exportReminder";
 
 export type PaidEntitlementStatus = "valid" | "invalid" | "unavailable";
+export type SavedPaidEntitlementStatus = PaidEntitlementStatus | "unchecked";
+
+export function resolveSavedPaidEntitlementStatus(
+  observedStatus: PaidEntitlementStatus,
+  previousStatus: SavedPaidEntitlementStatus
+): SavedPaidEntitlementStatus {
+  return observedStatus === "unavailable" && previousStatus === "valid"
+    ? "valid"
+    : observedStatus;
+}
 
 interface EntitlementResponse {
   status: number;
@@ -97,7 +107,13 @@ export async function validatePaidEntitlement(
 
 export function recordSuccessfulExportWithEntitlement(
   state: ExportReminderState,
-  entitlementStatus: PaidEntitlementStatus
-): ReturnType<typeof recordSuccessfulExport> {
-  return recordSuccessfulExport(state, entitlementStatus === "valid");
+  entitlementStatus: PaidEntitlementStatus,
+  previousValidationStatus: SavedPaidEntitlementStatus = "unchecked"
+): ReturnType<typeof recordSuccessfulExport> & { nextValidationStatus: SavedPaidEntitlementStatus } {
+  const suppressReminder = entitlementStatus === "valid"
+    || (entitlementStatus === "unavailable" && previousValidationStatus === "valid");
+  return {
+    ...recordSuccessfulExport(state, suppressReminder),
+    nextValidationStatus: resolveSavedPaidEntitlementStatus(entitlementStatus, previousValidationStatus)
+  };
 }

@@ -1,5 +1,6 @@
 import { App, Modal, PluginSettingTab, Setting, setIcon } from "obsidian";
 import type YanqiPlugin from "../main";
+import { resolveSavedPaidEntitlementStatus } from "../paidEntitlement";
 import { purchaseUrl, THEME_CUSTOMIZATION_URL } from "../support";
 import { checkPaidEntitlementManually } from "../paidEntitlementClient";
 import type { FontOption, YanqiTheme } from "../types";
@@ -475,11 +476,19 @@ export class RedSettingTab extends PluginSettingTab {
     });
     activationSetting
       .addButton((button) => button.setButtonText("Validate").onClick(async () => {
-        const current = this.plugin.settingsManager.getSettings().activationCode;
+        const currentSettings = this.plugin.settingsManager.getSettings();
+        const current = currentSettings.activationCode;
         const status = current.trim() ? await checkPaidEntitlementManually(current) : "invalid";
+        const preserveLastSuccessfulCheck = status === "unavailable"
+          && currentSettings.activationValidationStatus === "valid";
         await this.plugin.settingsManager.updateSettings({
-          activationValidationStatus: status,
-          activationLastCheckedAt: new Date().toISOString()
+          activationValidationStatus: resolveSavedPaidEntitlementStatus(
+            status,
+            currentSettings.activationValidationStatus
+          ),
+          activationLastCheckedAt: preserveLastSuccessfulCheck
+            ? currentSettings.activationLastCheckedAt
+            : new Date().toISOString()
         });
         this.display();
       }))

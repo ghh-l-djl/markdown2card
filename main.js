@@ -4073,18 +4073,6 @@ var MARKDOWN2CARD_ICON_SVG = `<path d="M53.75 9H19.5C13.149 9 8 14.149 8 20.5V79
 // src/settings/SettingTab.ts
 var import_obsidian3 = require("obsidian");
 
-// src/support.ts
-var GITHUB_URL = "https://github.com/ghh-l-djl/markdown2card";
-var THEME_CUSTOMIZATION_URL = "mailto:3340649257@qq.com?subject=markdown2card%20theme%20customization";
-function purchaseUrl(language, baseUrl = "https://ghh-l-djl.github.io/markdown2card-pay/") {
-  const url = new URL(baseUrl);
-  url.searchParams.set("lang", language);
-  return url.toString();
-}
-
-// src/paidEntitlementClient.ts
-var import_obsidian2 = require("obsidian");
-
 // src/exportReminder.ts
 var FIRST_SUPPORT_REMINDER_EXPORT = 1;
 var SUPPORT_REMINDER_INTERVAL = 2;
@@ -4106,6 +4094,9 @@ function recordSuccessfulExport(state, suppressReminder = false) {
 }
 
 // src/paidEntitlement.ts
+function resolveSavedPaidEntitlementStatus(observedStatus, previousStatus) {
+  return observedStatus === "unavailable" && previousStatus === "valid" ? "valid" : observedStatus;
+}
 function createPaidEntitlementChecks(options) {
   const validateWithTimeout = (activationCode, timeoutMs) => validatePaidEntitlement(
     activationCode,
@@ -4158,11 +4149,25 @@ async function validatePaidEntitlement(activationCode, options) {
       clearTimeout(timeoutId);
   }
 }
-function recordSuccessfulExportWithEntitlement(state, entitlementStatus) {
-  return recordSuccessfulExport(state, entitlementStatus === "valid");
+function recordSuccessfulExportWithEntitlement(state, entitlementStatus, previousValidationStatus = "unchecked") {
+  const suppressReminder = entitlementStatus === "valid" || entitlementStatus === "unavailable" && previousValidationStatus === "valid";
+  return {
+    ...recordSuccessfulExport(state, suppressReminder),
+    nextValidationStatus: resolveSavedPaidEntitlementStatus(entitlementStatus, previousValidationStatus)
+  };
+}
+
+// src/support.ts
+var GITHUB_URL = "https://github.com/ghh-l-djl/markdown2card";
+var THEME_CUSTOMIZATION_URL = "mailto:3340649257@qq.com?subject=markdown2card%20theme%20customization";
+function purchaseUrl(language, baseUrl = "https://ghh-l-djl.github.io/markdown2card-pay/") {
+  const url = new URL(baseUrl);
+  url.searchParams.set("lang", language);
+  return url.toString();
 }
 
 // src/paidEntitlementClient.ts
+var import_obsidian2 = require("obsidian");
 var paidEntitlementChecks = createPaidEntitlementChecks({
   endpoint: "https://ikjspgriynhsnjilmmds.supabase.co/functions/v1/validate-entitlement",
   request: async (options) => (0, import_obsidian2.requestUrl)(options)
@@ -4509,11 +4514,16 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       }));
     });
     activationSetting.addButton((button) => button.setButtonText("Validate").onClick(async () => {
-      const current = this.plugin.settingsManager.getSettings().activationCode;
+      const currentSettings = this.plugin.settingsManager.getSettings();
+      const current = currentSettings.activationCode;
       const status = current.trim() ? await checkPaidEntitlementManually(current) : "invalid";
+      const preserveLastSuccessfulCheck = status === "unavailable" && currentSettings.activationValidationStatus === "valid";
       await this.plugin.settingsManager.updateSettings({
-        activationValidationStatus: status,
-        activationLastCheckedAt: (/* @__PURE__ */ new Date()).toISOString()
+        activationValidationStatus: resolveSavedPaidEntitlementStatus(
+          status,
+          currentSettings.activationValidationStatus
+        ),
+        activationLastCheckedAt: preserveLastSuccessfulCheck ? currentSettings.activationLastCheckedAt : (/* @__PURE__ */ new Date()).toISOString()
       });
       this.display();
     })).addButton((button) => button.setButtonText("Clear").onClick(async () => {
@@ -7923,11 +7933,14 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
     });
     activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "\u9A8C\u8BC1" : "Validate" }).addEventListener("click", async () => {
       const value = activationInput.value;
+      const currentSettings = this.settingsManager.getSettings();
+      const previousStatus = normalizeActivationCode(currentSettings.activationCode) === normalizeActivationCode(value) ? currentSettings.activationValidationStatus : "unchecked";
       const status = value.trim() ? await checkPaidEntitlementManually(value) : "invalid";
+      const preserveLastSuccessfulCheck = status === "unavailable" && previousStatus === "valid";
       await this.settingsManager.updateSettings({
         activationCode: value,
-        activationValidationStatus: status,
-        activationLastCheckedAt: (/* @__PURE__ */ new Date()).toISOString()
+        activationValidationStatus: resolveSavedPaidEntitlementStatus(status, previousStatus),
+        activationLastCheckedAt: preserveLastSuccessfulCheck ? currentSettings.activationLastCheckedAt : (/* @__PURE__ */ new Date()).toISOString()
       });
       if (status === "valid") {
         this.close();
@@ -8884,8 +8897,15 @@ var RedView = class extends import_obsidian7.ItemView {
     const result = recordSuccessfulExportWithEntitlement({
       exportCount: settings.exportCount,
       lastSupportReminderExportCount: settings.lastSupportReminderExportCount
-    }, entitlementStatus);
-    await this.settingsManager.updateSettings(result.nextState);
+    }, entitlementStatus, settings.activationValidationStatus);
+    const preserveLastSuccessfulCheck = entitlementStatus === "unavailable" && settings.activationValidationStatus === "valid";
+    await this.settingsManager.updateSettings({
+      ...result.nextState,
+      ...settings.activationCode.trim() ? {
+        activationValidationStatus: result.nextValidationStatus,
+        activationLastCheckedAt: preserveLastSuccessfulCheck ? settings.activationLastCheckedAt : (/* @__PURE__ */ new Date()).toISOString()
+      } : {}
+    });
     if (result.shouldRemind) {
       new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
     }

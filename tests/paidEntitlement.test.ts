@@ -3,9 +3,15 @@ import test from "node:test";
 import {
   createPaidEntitlementChecks,
   normalizeActivationCode,
+  resolveSavedPaidEntitlementStatus,
   recordSuccessfulExportWithEntitlement,
   validatePaidEntitlement
 } from "../src/paidEntitlement";
+
+test("an unavailable retry does not erase a previous valid observation", () => {
+  assert.equal(resolveSavedPaidEntitlementStatus("unavailable", "valid"), "valid");
+  assert.equal(resolveSavedPaidEntitlementStatus("invalid", "valid"), "invalid");
+});
 
 test("manual validation waits longer than export validation", async () => {
   const checks = createPaidEntitlementChecks({
@@ -89,7 +95,31 @@ test("valid entitlement suppresses the reminder while retaining its cadence", ()
   });
 });
 
-test("invalid and unavailable checks use the local reminder cadence", () => {
+test("temporary unavailability preserves suppression for a previously validated code", () => {
+  const result = recordSuccessfulExportWithEntitlement({
+    exportCount: 0,
+    lastSupportReminderExportCount: 0
+  }, "unavailable", "valid");
+
+  assert.equal(result.shouldRemind, false);
+  assert.deepEqual(result.nextState, {
+    exportCount: 1,
+    lastSupportReminderExportCount: 0
+  });
+  assert.equal(result.nextValidationStatus, "valid");
+});
+
+test("authoritative invalidation replaces a previously valid observation", () => {
+  const result = recordSuccessfulExportWithEntitlement({
+    exportCount: 0,
+    lastSupportReminderExportCount: 0
+  }, "invalid", "valid");
+
+  assert.equal(result.shouldRemind, true);
+  assert.equal(result.nextValidationStatus, "invalid");
+});
+
+test("invalid and never-validated unavailable checks use the local reminder cadence", () => {
   for (const status of ["invalid", "unavailable"] as const) {
     const result = recordSuccessfulExportWithEntitlement({
       exportCount: 0,

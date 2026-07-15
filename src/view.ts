@@ -7,7 +7,13 @@ import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
 import { ClipboardManager } from "./clipboardManager";
 import { RedConverter } from "./converter";
 import { DownloadManager } from "./downloadManager";
-import { recordSuccessfulExportWithEntitlement, type PaidEntitlementStatus } from "./paidEntitlement";
+import {
+  normalizeActivationCode,
+  recordSuccessfulExportWithEntitlement,
+  resolveSavedPaidEntitlementStatus,
+  type PaidEntitlementStatus,
+  type SavedPaidEntitlementStatus
+} from "./paidEntitlement";
 import { checkPaidEntitlement, checkPaidEntitlementManually } from "./paidEntitlementClient";
 import { ImgTemplateManager } from "./imgTemplates";
 import { MARKDOWN2CARD_ICON } from "./icons";
@@ -211,11 +217,19 @@ class SupportReminderModal extends Modal {
     });
     activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "验证" : "Validate" }).addEventListener("click", async () => {
       const value = activationInput.value;
+      const currentSettings = this.settingsManager.getSettings();
+      const previousStatus: SavedPaidEntitlementStatus = normalizeActivationCode(currentSettings.activationCode)
+        === normalizeActivationCode(value)
+        ? currentSettings.activationValidationStatus
+        : "unchecked";
       const status = value.trim() ? await checkPaidEntitlementManually(value) : "invalid";
+      const preserveLastSuccessfulCheck = status === "unavailable" && previousStatus === "valid";
       await this.settingsManager.updateSettings({
         activationCode: value,
-        activationValidationStatus: status,
-        activationLastCheckedAt: new Date().toISOString()
+        activationValidationStatus: resolveSavedPaidEntitlementStatus(status, previousStatus),
+        activationLastCheckedAt: preserveLastSuccessfulCheck
+          ? currentSettings.activationLastCheckedAt
+          : new Date().toISOString()
       });
       if (status === "valid") {
         this.close();
@@ -1083,8 +1097,18 @@ export class RedView extends ItemView {
     const result = recordSuccessfulExportWithEntitlement({
       exportCount: settings.exportCount,
       lastSupportReminderExportCount: settings.lastSupportReminderExportCount
-    }, entitlementStatus);
-    await this.settingsManager.updateSettings(result.nextState);
+    }, entitlementStatus, settings.activationValidationStatus);
+    const preserveLastSuccessfulCheck = entitlementStatus === "unavailable"
+      && settings.activationValidationStatus === "valid";
+    await this.settingsManager.updateSettings({
+      ...result.nextState,
+      ...(settings.activationCode.trim() ? {
+        activationValidationStatus: result.nextValidationStatus,
+        activationLastCheckedAt: preserveLastSuccessfulCheck
+          ? settings.activationLastCheckedAt
+          : new Date().toISOString()
+      } : {})
+    });
     if (result.shouldRemind) {
       new SupportReminderModal(this.app, this.settingsManager, settings.uiLanguage).open();
     }
