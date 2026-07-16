@@ -1,7 +1,7 @@
 {
   "id": "markdown-to-card",
-  "name": "markdown2card",
-  "version": "1.1.3",
+  "name": "markdown to card",
+  "version": "1.1.4",
   "minAppVersion": "1.13.0",
   "description": "一键将 Markdown 笔记渲染为高质感多平台图文卡片，适配小红书、抖音图文和 Bilibili 图文，同时支持 AI 文案转写与一键发布.",
   "author": "hazel",

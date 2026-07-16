@@ -5,6 +5,7 @@ import test from "node:test";
 interface PluginManifest {
   description: string;
   id: string;
+  name: string;
   version: string;
 }
 
@@ -16,6 +17,10 @@ test("community plugin id follows Obsidian manifest requirements", () => {
   assert.match(manifest.id, /^[a-z]+(?:-[a-z]+)*$/);
   assert.doesNotMatch(manifest.id, /obsidian/);
   assert.equal(manifest.id.endsWith("plugin"), false);
+});
+
+test("community plugin uses the searchable display name", () => {
+  assert.equal(manifest.name, "markdown to card");
 });
 
 test("package and manifest versions stay synchronized", () => {
