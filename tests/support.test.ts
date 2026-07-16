@@ -22,6 +22,13 @@ test("support contact image preserves its original aspect ratio", () => {
   assert.match(styles, /\.red-support-contact img\s*\{[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*max-width:\s*100%;[^}]*object-fit:\s*contain;/s);
 });
 
-test("validated-user gold borders cover every button in the plugin view", () => {
-  assert.match(styles, /\.red-view-content\.red-paid-entitled button\s*,/);
+test("validated-user gold borders cover standalone buttons in the plugin view", () => {
+  assert.match(styles, /\.red-view-content\.red-paid-entitled button:not\(\.red-font-size-btn\)\s*,/);
+});
+
+test("validated-user font sizing control uses one continuous gold outline", () => {
+  assert.match(
+    styles,
+    /\.red-view-content\.red-paid-entitled \.red-font-size-group\s*\{[^}]*border:\s*1px solid #d4af37 !important;/s
+  );
 });
