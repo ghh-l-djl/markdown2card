@@ -4,11 +4,12 @@ import { resolveSavedPaidEntitlementStatus } from "../paidEntitlement";
 import { purchaseUrl, THEME_CUSTOMIZATION_URL } from "../support";
 import { checkPaidEntitlementManually } from "../paidEntitlementClient";
 import type { FontOption, YanqiTheme } from "../types";
+import { settingsText, type SettingsLanguage } from "./settingsI18n";
 
 class ConfirmModal extends Modal {
   private confirmed = false;
 
-  constructor(app: App, title: string, private message: string, private onConfirm: () => void | Promise<void>) {
+  constructor(app: App, title: string, private message: string, private onConfirm: () => void | Promise<void>, private language: SettingsLanguage) {
     super(app);
     this.titleEl.setText(title);
   }
@@ -16,8 +17,8 @@ class ConfirmModal extends Modal {
   onOpen(): void {
     this.contentEl.createEl("p", { text: this.message });
     const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-    buttons.createEl("button", { text: "Cancel" }).addEventListener("click", () => this.close());
-    buttons.createEl("button", { cls: "mod-cta", text: "Confirm" }).addEventListener("click", () => {
+    buttons.createEl("button", { text: settingsText(this.language, "Cancel") }).addEventListener("click", () => this.close());
+    buttons.createEl("button", { cls: "mod-cta", text: settingsText(this.language, "Confirm") }).addEventListener("click", () => {
       this.confirmed = true;
       this.close();
     });
@@ -32,7 +33,7 @@ class ConfirmModal extends Modal {
 class CreateFontModal extends Modal {
   private font: FontOption;
 
-  constructor(app: App, private onSubmit: (font: FontOption) => void | Promise<void>, existingFont?: FontOption) {
+  constructor(app: App, private onSubmit: (font: FontOption) => void | Promise<void>, private language: SettingsLanguage, existingFont?: FontOption) {
     super(app);
     this.font = existingFont ? { ...existingFont } : { value: "", label: "" };
   }
@@ -40,28 +41,28 @@ class CreateFontModal extends Modal {
   onOpen(): void {
     this.contentEl.empty();
     this.contentEl.addClass("red-font-modal");
-    this.contentEl.createEl("h3", { text: this.font.label ? "Edit font" : "Add font" });
-    new Setting(this.contentEl).setName("Font name").setDesc("The label shown in the font menu.").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
-    new Setting(this.contentEl).setName("Font family").setDesc("CSS font-family value.").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
+    this.contentEl.createEl("h3", { text: settingsText(this.language, this.font.label ? "Edit font" : "Add font") });
+    new Setting(this.contentEl).setName(settingsText(this.language, "Font name")).setDesc(settingsText(this.language, "The label shown in the font menu.")).addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
+    new Setting(this.contentEl).setName(settingsText(this.language, "Font family")).setDesc(settingsText(this.language, "CSS font-family value.")).addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
     new Setting(this.contentEl)
-      .addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
+      .addButton((button) => button.setButtonText(settingsText(this.language, "Save")).setCta().onClick(async () => {
         if (!this.font.label || !this.font.value) return;
         await this.onSubmit(this.font);
         this.close();
       }))
-      .addButton((button) => button.setButtonText("Cancel").onClick(() => this.close()));
+      .addButton((button) => button.setButtonText(settingsText(this.language, "Cancel")).onClick(() => this.close()));
   }
 }
 
 class ThemePreviewModal extends Modal {
-  constructor(app: App, private plugin: YanqiPlugin, private theme: YanqiTheme) {
+  constructor(app: App, private plugin: YanqiPlugin, private theme: YanqiTheme, private language: SettingsLanguage) {
     super(app);
   }
 
   onOpen(): void {
     this.contentEl.empty();
     this.contentEl.addClass("theme-preview-modal");
-    this.contentEl.createEl("h2", { text: `Theme preview: ${this.theme.name}`, cls: "red-theme-title" });
+    this.contentEl.createEl("h2", { text: `${settingsText(this.language, "Preview")}: ${this.theme.name}`, cls: "red-theme-title" });
     const container = this.contentEl.createDiv("tp-red-preview-container");
     const preview = container.createDiv("red-image-preview");
     const header = preview.createDiv("red-preview-header");
@@ -95,7 +96,7 @@ class CreateThemeModal extends Modal {
   private description = "";
   private raw = "";
 
-  constructor(app: App, private plugin: YanqiPlugin, private onSubmit: (theme: YanqiTheme) => void | Promise<void>, private existingTheme?: YanqiTheme) {
+  constructor(app: App, private plugin: YanqiPlugin, private onSubmit: (theme: YanqiTheme) => void | Promise<void>, private language: SettingsLanguage, private existingTheme?: YanqiTheme) {
     super(app);
     if (existingTheme) {
       this.name = existingTheme.name;
@@ -110,21 +111,21 @@ class CreateThemeModal extends Modal {
   onOpen(): void {
     this.contentEl.empty();
     this.contentEl.addClass("red-theme-modal");
-    this.contentEl.createEl("h2", { text: this.existingTheme ? "Edit theme" : "Create theme" });
-    new Setting(this.contentEl).setName("Theme name").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
-    new Setting(this.contentEl).setName("Theme description").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
-    new Setting(this.contentEl).setName("Styles JSON").setDesc("Use the same styles structure as built-in themes.").addTextArea((area) => {
+    this.contentEl.createEl("h2", { text: settingsText(this.language, this.existingTheme ? "Edit theme" : "Create theme") });
+    new Setting(this.contentEl).setName(settingsText(this.language, "Theme name")).addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
+    new Setting(this.contentEl).setName(settingsText(this.language, "Theme description")).addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
+    new Setting(this.contentEl).setName(settingsText(this.language, "Styles JSON")).setDesc(settingsText(this.language, "Use the same styles structure as built-in themes.")).addTextArea((area) => {
       area.setValue(this.raw).onChange((value) => this.raw = value);
       area.inputEl.addClass("custom-css-input");
       area.inputEl.rows = 18;
     });
     new Setting(this.contentEl)
-      .addButton((button) => button.setButtonText("Preview").onClick(() => {
+      .addButton((button) => button.setButtonText(settingsText(this.language, "Preview")).onClick(() => {
         const theme = this.buildTheme();
-        if (theme) new ThemePreviewModal(this.app, this.plugin, theme).open();
+        if (theme) new ThemePreviewModal(this.app, this.plugin, theme, this.language).open();
       }))
-      .addButton((button) => button.setButtonText("Cancel").onClick(() => this.close()))
-      .addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
+      .addButton((button) => button.setButtonText(settingsText(this.language, "Cancel")).onClick(() => this.close()))
+      .addButton((button) => button.setButtonText(settingsText(this.language, "Save")).setCta().onClick(async () => {
         const theme = this.buildTheme();
         if (!theme) return;
         await this.onSubmit(theme);
@@ -160,14 +161,23 @@ export class RedSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("red-settings");
-    containerEl.createEl("h2", { text: "markdown2card Settings" });
+    containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
+    containerEl.createEl("h2", { text: this.t("markdown2card Settings") });
     this.renderCommunitySettings(containerEl);
-    this.createSection(containerEl, "General", (el) => this.renderBasicSettings(el));
-    this.createSection(containerEl, "Export", (el) => this.renderExportSettings(el));
-    this.createSection(containerEl, "Themes", (el) => this.renderThemeSettings(el));
+    this.createSection(containerEl, "general", this.t("General"), (el) => this.renderBasicSettings(el));
+    this.createSection(containerEl, "export", this.t("Export"), (el) => this.renderExportSettings(el));
+    this.createSection(containerEl, "themes", this.t("Themes"), (el) => this.renderThemeSettings(el));
   }
 
-  private createSection(containerEl: HTMLElement, title: string, render: (el: HTMLElement) => void): void {
+  private get language(): SettingsLanguage {
+    return this.plugin.settingsManager.getSettings().uiLanguage === "zh" ? "zh" : "en";
+  }
+
+  private t(english: string): string {
+    return settingsText(this.language, english);
+  }
+
+  private createSection(containerEl: HTMLElement, id: string, title: string, render: (el: HTMLElement) => void): void {
     const section = containerEl.createDiv("settings-section");
     const header = section.createDiv("settings-section-header");
     const toggle = header.createSpan("settings-section-toggle");
@@ -179,20 +189,20 @@ export class RedSettingTab extends PluginSettingTab {
       const expanded = !section.hasClass("is-expanded");
       section.toggleClass("is-expanded", expanded);
       setIcon(toggle, expanded ? "chevron-down" : "chevron-right");
-      expanded ? this.expandedSections.add(title) : this.expandedSections.delete(title);
+      expanded ? this.expandedSections.add(id) : this.expandedSections.delete(id);
     });
-    if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(title)) {
+    if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(id)) {
       section.addClass("is-expanded");
       setIcon(toggle, "chevron-down");
-      this.expandedSections.add(title);
+      this.expandedSections.add(id);
     }
   }
 
   private renderBasicSettings(containerEl: HTMLElement): void {
     const settings = this.plugin.settingsManager.getSettings();
     new Setting(containerEl)
-      .setName("Interface language")
-      .setDesc("Choose the language used by the preview controls.")
+      .setName(this.t("Interface language"))
+      .setDesc(this.t("Choose the language used by the plugin interface and settings."))
       .addDropdown((dropdown) => dropdown
         .addOption("en", "English")
         .addOption("zh", "中文")
@@ -201,52 +211,52 @@ export class RedSettingTab extends PluginSettingTab {
           await this.plugin.settingsManager.updateSettings({ uiLanguage: value as "en" | "zh" });
           this.display();
         }));
-    new Setting(containerEl).setName("Show time").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
-    new Setting(containerEl).setName("Show footer").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
+    new Setting(containerEl).setName(this.t("Show time")).addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
+    new Setting(containerEl).setName(this.t("Show footer")).addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
 
-    containerEl.createEl("h4", { text: "Fonts" });
+    containerEl.createEl("h4", { text: this.t("Fonts") });
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
       const setting = new Setting(containerEl).setName(font.label).setDesc(font.value);
       if (!font.isPreset) {
         setting
-          .addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
+          .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
             new CreateFontModal(this.app, async (updated) => {
               await this.plugin.settingsManager.updateFont(font.value, updated);
               this.display();
-            }, font).open();
+            }, this.language, font).open();
           }))
-          .addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
-            new ConfirmModal(this.app, "Delete font", `Delete the "${font.label}" font configuration?`, async () => {
+          .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
+            new ConfirmModal(this.app, this.t("Delete font"), this.language === "zh" ? `删除字体“${font.label}”的配置？` : `Delete the "${font.label}" font configuration?`, async () => {
               await this.plugin.settingsManager.removeFont(font.value);
               this.display();
-            }).open();
+            }, this.language).open();
           }));
       }
     });
-    new Setting(containerEl).addButton((button) => button.setButtonText("+ Add font").setCta().onClick(() => {
+    new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Add font")).setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
         this.display();
-      }).open();
+      }, this.language).open();
     }));
   }
 
   private renderExportSettings(containerEl: HTMLElement): void {
     const settings = this.plugin.settingsManager.getSettings();
     new Setting(containerEl)
-      .setName("Export path")
-      .setDesc("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.")
+      .setName(this.t("Export path"))
+      .setDesc(this.t("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system."))
       .addText((text) => text
         .setPlaceholder("markdown2card-exports")
         .setValue(settings.exportPath)
         .onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
 
     new Setting(containerEl)
-      .setName("Export format")
-      .setDesc("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.")
+      .setName(this.t("Export format"))
+      .setDesc(this.t("Zip writes one archive. PNG folder writes each page image into a folder named after the current note."))
       .addDropdown((dropdown) => dropdown
-        .addOption("zip", "Zip archive")
-        .addOption("png-folder", "PNG folder")
+        .addOption("zip", this.t("Zip archive"))
+        .addOption("png-folder", this.t("PNG folder"))
         .setValue(settings.exportFormat)
         .onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value as "zip" | "png-folder" })));
 
@@ -406,54 +416,54 @@ export class RedSettingTab extends PluginSettingTab {
   }
 
   private renderThemeSettings(containerEl: HTMLElement): void {
-    containerEl.createEl("h4", { text: "Visible themes" });
+    containerEl.createEl("h4", { text: this.t("Visible themes") });
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
       new Setting(containerEl)
         .setName(theme.name)
-        .setDesc(theme.description || (theme.isPreset ? "Built-in theme" : "Custom theme"))
+        .setDesc(theme.description || this.t(theme.isPreset ? "Built-in theme" : "Custom theme"))
         .addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
           await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
           this.display();
         }))
-        .addExtraButton((button) => button.setIcon("eye").setTooltip("Preview").onClick(() => new ThemePreviewModal(this.app, this.plugin, theme).open()));
+        .addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Preview")).onClick(() => new ThemePreviewModal(this.app, this.plugin, theme, this.language).open()));
     });
 
-    containerEl.createEl("h4", { text: "Custom themes" });
+    containerEl.createEl("h4", { text: this.t("Custom themes") });
     this.plugin.settingsManager.getAllThemes().filter((theme) => !theme.isPreset).forEach((theme) => {
       new Setting(containerEl)
         .setName(theme.name)
         .setDesc(theme.description || "")
-        .addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
+        .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
           new CreateThemeModal(this.app, this.plugin, async (updated) => {
             await this.plugin.settingsManager.updateTheme(theme.id, updated);
             this.display();
-          }, theme).open();
+          }, this.language, theme).open();
         }))
-        .addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
-          new ConfirmModal(this.app, "Delete theme", `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
+        .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
+          new ConfirmModal(this.app, this.language === "zh" ? "删除主题" : "Delete theme", this.language === "zh" ? `删除主题“${theme.name}”？此操作无法撤销。` : `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
             await this.plugin.settingsManager.removeTheme(theme.id);
             this.display();
-          }).open();
+          }, this.language).open();
         }));
     });
-    new Setting(containerEl).addButton((button) => button.setButtonText("+ Create theme").setCta().onClick(() => {
+    new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Create theme")).setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
         this.display();
-      }).open();
+      }, this.language).open();
     }));
   }
 
   private renderCommunitySettings(containerEl: HTMLElement): void {
     const section = containerEl.createDiv("red-community-section");
-    section.createEl("h4", { text: "Community" });
+    section.createEl("h4", { text: this.t("Community") });
     section.createEl("p", {
       cls: "red-settings-note",
-      text: "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem."
+      text: this.t("markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem.")
     });
     const settings = this.plugin.settingsManager.getSettings();
     const activationSetting = new Setting(section)
-      .setName("Activation code")
+      .setName(this.t("Activation code"))
       .setDesc(this.activationStatusDescription());
     activationSetting.addText((text) => {
       text.inputEl.type = "password";
@@ -468,14 +478,14 @@ export class RedSettingTab extends PluginSettingTab {
       });
       activationSetting.addExtraButton((button) => button
         .setIcon("eye")
-        .setTooltip("Show or hide activation code")
+        .setTooltip(this.t("Show or hide activation code"))
         .onClick(() => {
           text.inputEl.type = text.inputEl.type === "password" ? "text" : "password";
           button.setIcon(text.inputEl.type === "password" ? "eye" : "eye-off");
         }));
     });
     activationSetting
-      .addButton((button) => button.setButtonText("Validate").onClick(async () => {
+      .addButton((button) => button.setButtonText(this.t("Validate")).onClick(async () => {
         const currentSettings = this.plugin.settingsManager.getSettings();
         const current = currentSettings.activationCode;
         const status = current.trim() ? await checkPaidEntitlementManually(current) : "invalid";
@@ -492,7 +502,7 @@ export class RedSettingTab extends PluginSettingTab {
         });
         this.display();
       }))
-      .addButton((button) => button.setButtonText("Clear").onClick(async () => {
+      .addButton((button) => button.setButtonText(this.t("Clear")).onClick(async () => {
         await this.plugin.settingsManager.updateSettings({
           activationCode: "",
           activationValidationStatus: "unchecked",
@@ -501,28 +511,28 @@ export class RedSettingTab extends PluginSettingTab {
         this.display();
       }));
     new Setting(section)
-      .setName("Donate")
-      .setDesc("Support ongoing development and theme maintenance.")
+      .setName(this.t("Donate"))
+      .setDesc(this.t("Support ongoing development and theme maintenance."))
       .addButton((button) => button
-        .setButtonText("Donate")
+        .setButtonText(this.language === "zh" ? "打赏" : "Donate")
         .setCta()
         .onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
     new Setting(section)
-      .setName("Custom theme")
-      .setDesc("Contact the development team for a branded card theme.")
+      .setName(this.t("Custom theme service"))
+      .setDesc(this.t("Contact the development team for a branded card theme."))
       .addButton((button) => button
-        .setButtonText("Contact")
+        .setButtonText(this.t("Contact"))
         .onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
   }
 
   private activationStatusDescription(): string {
     const settings = this.plugin.settingsManager.getSettings();
     const checkedAt = settings.activationLastCheckedAt
-      ? ` Last checked: ${new Date(settings.activationLastCheckedAt).toLocaleString()}.`
+      ? ` ${this.t("Last checked")}: ${new Date(settings.activationLastCheckedAt).toLocaleString(this.language === "zh" ? "zh-CN" : "en-US")}.`
       : "";
-    if (settings.activationValidationStatus === "valid") return `Activation code is valid.${checkedAt}`;
-    if (settings.activationValidationStatus === "invalid") return `Activation code is invalid or inactive.${checkedAt}`;
-    if (settings.activationValidationStatus === "unavailable") return `Unable to validate right now. Try again later.${checkedAt}`;
-    return "Enter the code received after supporting markdown2card.";
+    if (settings.activationValidationStatus === "valid") return `${this.t("Activation code is valid.")}${checkedAt}`;
+    if (settings.activationValidationStatus === "invalid") return `${this.t("Activation code is invalid or inactive.")}${checkedAt}`;
+    if (settings.activationValidationStatus === "unavailable") return `${this.t("Unable to validate right now. Try again later.")}${checkedAt}`;
+    return this.t("Enter the code received after supporting markdown2card.");
   }
 }

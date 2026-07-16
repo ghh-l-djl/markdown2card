@@ -24,7 +24,7 @@ import { IMAGE_CROP_HINT, calculateCoverScale, canAdjustImageLayout } from "./im
 import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
-import { GITHUB_URL, purchaseUrl } from "./support";
+import { FUNDING_URL, GITHUB_URL, purchaseUrl, SUPPORT_CONTACT_COPY } from "./support";
 import type { ImageLayoutState } from "./types";
 
 export const VIEW_TYPE_RED = "note-to-red";
@@ -190,18 +190,22 @@ class SupportReminderModal extends Modal {
     fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
 
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
-    contact.createEl("summary", {
-      text: isZh
-        ? "已经支持过了？通过小红书或邮箱联系开发者"
-        : "Already supported? Contact the developer via Xiaohongshu or email."
+    const contactSummary = contact.createEl("summary");
+    const contactCopy = SUPPORT_CONTACT_COPY[this.language];
+    contactSummary.appendText(contactCopy.before);
+    const fallbackLink = contactSummary.createEl("a", {
+      text: FUNDING_URL,
+      attr: { href: FUNDING_URL, target: "_blank", rel: "noopener noreferrer" }
     });
+    fallbackLink.addEventListener("click", (event) => event.stopPropagation());
+    contactSummary.appendText(contactCopy.after);
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshuContactImage, alt: isZh ? "Hazel 小红书联系卡" : "Hazel's Xiaohongshu contact card" }
     });
     contactImage.addEventListener("click", () => window.open(xiaohongshuContactImage, "_blank"));
 
     const activation = this.contentEl.createDiv("red-support-activation");
-    activation.createEl("h3", { text: isZh ? "已有激活码？" : "Already have an activation code?" });
+    activation.createEl("h3", { text: isZh ? "已有兔兔码？" : "Already have an activation code?" });
     const activationInput = activation.createEl("input", {
       cls: "red-support-activation-input",
       attr: {
@@ -236,7 +240,7 @@ class SupportReminderModal extends Modal {
         return;
       }
       activationStatus.setText(status === "invalid"
-        ? (isZh ? "激活码无效或已失效，请检查后重试。" : "The activation code is invalid or inactive. Check it and try again.")
+        ? (isZh ? "兔兔码无效或已失效，请检查后重试。" : "The activation code is invalid or inactive. Check it and try again.")
         : (isZh ? "暂时无法验证，请稍后重试。" : "Unable to validate right now. Try again later."));
     });
 
@@ -292,6 +296,7 @@ export class RedView extends ItemView {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.className = "red-view-content";
+    this.updatePaidUiState();
     await this.initializeToolbar(container);
     this.initializePreviewArea(container);
     this.initializeBottomBar(container);
@@ -472,8 +477,16 @@ export class RedView extends ItemView {
     const onLanguageChanged = () => this.refreshLanguageLabels();
     this.settingsManager.on("language-changed", onLanguageChanged);
     this.register(() => this.settingsManager.off("language-changed", onLanguageChanged));
+    const onEntitlementChanged = () => this.updatePaidUiState();
+    this.settingsManager.on("entitlement-changed", onEntitlementChanged);
+    this.register(() => this.settingsManager.off("entitlement-changed", onEntitlementChanged));
     this.initializeCopyButtonListener();
     this.initializeSync();
+  }
+
+  private updatePaidUiState(): void {
+    const container = this.containerEl.children[1] as HTMLElement | undefined;
+    container?.classList.toggle("red-paid-entitled", this.settingsManager.getSettings().activationValidationStatus === "valid");
   }
 
   initializeCopyButtonListener(): void {

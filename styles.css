@@ -246,6 +246,19 @@
   flex: none;
 }
 
+/* A restrained gold accent for supporters with a remotely validated code. */
+.red-view-content.red-paid-entitled button,
+.red-settings.red-paid-entitled .setting-item-control button {
+  border: 1px solid #d4af37 !important;
+  box-shadow: 0 0 0 1px rgb(212 175 55 / 16%), 0 2px 8px rgb(133 94 18 / 12%);
+}
+
+.red-view-content.red-paid-entitled button:hover,
+.red-settings.red-paid-entitled .setting-item-control button:hover {
+  border-color: #f0cc5c !important;
+  box-shadow: 0 0 0 1px rgb(240 204 92 / 24%), 0 3px 10px rgb(133 94 18 / 18%);
+}
+
 .modal:has(.red-support-modal) {
   width: min(720px, calc(100vw - 32px));
   max-width: 720px;
@@ -398,11 +411,12 @@
 
 .red-support-contact img {
   display: block;
-  width: min(100%, 280px);
-  height: min(280px, 42vh);
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 42vh;
   margin: 0 auto 2px;
-  object-fit: cover;
-  object-position: center bottom;
+  object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgb(54 39 27 / 12%);
   cursor: zoom-in;

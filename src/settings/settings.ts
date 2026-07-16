@@ -151,6 +151,7 @@ export class SettingsManager extends EventEmitter {
 
   async updateSettings(settings: Partial<YanqiSettings>): Promise<void> {
     const languageChanged = settings.uiLanguage && settings.uiLanguage !== this.settings.uiLanguage;
+    const wasEntitled = this.settings.activationValidationStatus === "valid";
     const oldLang = this.settings.uiLanguage;
     this.settings = { ...this.settings, ...settings };
 
@@ -164,6 +165,7 @@ export class SettingsManager extends EventEmitter {
 
     await this.saveSettings();
     if (languageChanged) this.emit("language-changed");
+    if (wasEntitled !== (this.settings.activationValidationStatus === "valid")) this.emit("entitlement-changed");
   }
 
   getAllThemes(): YanqiTheme[] {

@@ -4158,8 +4158,19 @@ function recordSuccessfulExportWithEntitlement(state, entitlementStatus, previou
 }
 
 // src/support.ts
+var FUNDING_URL = "https://ghh-l-djl.github.io/";
 var GITHUB_URL = "https://github.com/ghh-l-djl/markdown2card";
 var THEME_CUSTOMIZATION_URL = "mailto:3340649257@qq.com?subject=markdown2card%20theme%20customization";
+var SUPPORT_CONTACT_COPY = {
+  zh: {
+    before: "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86?\u65E0\u6CD5\u6253\u5F00\u8D5E\u52A9\u9875\u9762?\u901A\u8FC7",
+    after: "\u652F\u6301, \u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u8005\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005"
+  },
+  en: {
+    before: "Already supported, or unable to open the sponsorship page? Get support at ",
+    after: ", or contact the developer via Xiaohongshu or email."
+  }
+};
 function purchaseUrl(language, baseUrl = "https://ghh-l-djl.github.io/markdown2card-pay/") {
   const url = new URL(baseUrl);
   url.searchParams.set("lang", language);
@@ -4179,20 +4190,84 @@ function checkPaidEntitlementManually(activationCode) {
   return paidEntitlementChecks.manually(activationCode);
 }
 
+// src/settings/settingsI18n.ts
+var ZH_SETTINGS_TEXT = {
+  "markdown2card Settings": "markdown2card \u8BBE\u7F6E",
+  Community: "\u793E\u533A\u4E0E\u652F\u6301",
+  General: "\u5E38\u89C4",
+  Export: "\u5BFC\u51FA",
+  Themes: "\u4E3B\u9898",
+  "Interface language": "\u754C\u9762\u8BED\u8A00",
+  "Choose the language used by the plugin interface and settings.": "\u9009\u62E9\u63D2\u4EF6\u754C\u9762\u548C\u8BBE\u7F6E\u9875\u4F7F\u7528\u7684\u8BED\u8A00\u3002",
+  "Show time": "\u663E\u793A\u65F6\u95F4",
+  "Show footer": "\u663E\u793A\u9875\u811A",
+  Fonts: "\u5B57\u4F53",
+  Edit: "\u7F16\u8F91",
+  Delete: "\u5220\u9664",
+  "Delete font": "\u5220\u9664\u5B57\u4F53",
+  "+ Add font": "+ \u6DFB\u52A0\u5B57\u4F53",
+  "Add font": "\u6DFB\u52A0\u5B57\u4F53",
+  "Edit font": "\u7F16\u8F91\u5B57\u4F53",
+  "Font name": "\u5B57\u4F53\u540D\u79F0",
+  "The label shown in the font menu.": "\u5728\u5B57\u4F53\u83DC\u5355\u4E2D\u663E\u793A\u7684\u540D\u79F0\u3002",
+  "Font family": "\u5B57\u4F53\u65CF",
+  "CSS font-family value.": "CSS font-family \u5C5E\u6027\u503C\u3002",
+  Save: "\u4FDD\u5B58",
+  Cancel: "\u53D6\u6D88",
+  Confirm: "\u786E\u8BA4",
+  "Export path": "\u5BFC\u51FA\u8DEF\u5F84",
+  "Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.": "\u76F8\u5BF9\u8DEF\u5F84\u4F1A\u5199\u5165\u5F53\u524D\u4ED3\u5E93\uFF1B/Users/name/Exports\u3001C:\\Exports \u6216 \\\\server\\share\\Exports \u7B49\u7EDD\u5BF9\u8DEF\u5F84\u4F1A\u5199\u5165\u6587\u4EF6\u7CFB\u7EDF\u3002",
+  "Export format": "\u5BFC\u51FA\u683C\u5F0F",
+  "Zip writes one archive. PNG folder writes each page image into a folder named after the current note.": "Zip \u4F1A\u751F\u6210\u4E00\u4E2A\u538B\u7F29\u5305\uFF1BPNG \u6587\u4EF6\u5939\u4F1A\u5C06\u6BCF\u9875\u56FE\u7247\u5199\u5165\u4EE5\u5F53\u524D\u7B14\u8BB0\u547D\u540D\u7684\u6587\u4EF6\u5939\u3002",
+  "Zip archive": "Zip \u538B\u7F29\u5305",
+  "PNG folder": "PNG \u6587\u4EF6\u5939",
+  "Visible themes": "\u53EF\u89C1\u4E3B\u9898",
+  "Built-in theme": "\u5185\u7F6E\u4E3B\u9898",
+  "Custom theme": "\u81EA\u5B9A\u4E49\u4E3B\u9898",
+  Preview: "\u9884\u89C8",
+  "Custom themes": "\u81EA\u5B9A\u4E49\u4E3B\u9898",
+  "+ Create theme": "+ \u521B\u5EFA\u4E3B\u9898",
+  "Create theme": "\u521B\u5EFA\u4E3B\u9898",
+  "Edit theme": "\u7F16\u8F91\u4E3B\u9898",
+  "Theme name": "\u4E3B\u9898\u540D\u79F0",
+  "Theme description": "\u4E3B\u9898\u8BF4\u660E",
+  "Styles JSON": "\u6837\u5F0F JSON",
+  "Use the same styles structure as built-in themes.": "\u8BF7\u4F7F\u7528\u4E0E\u5185\u7F6E\u4E3B\u9898\u76F8\u540C\u7684\u6837\u5F0F\u7ED3\u6784\u3002",
+  "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem.": "markdown2card \u4F1A\u968F\u793E\u533A\u4E3B\u9898\u4E00\u8D77\u6210\u957F\u3002\u6B22\u8FCE\u901A\u8FC7 Pull Request \u63D0\u4EA4\u65B0\u4E3B\u9898\uFF0C\u5171\u540C\u4E30\u5BCC\u751F\u6001\u3002",
+  "Activation code": "\u5154\u5154\u7801",
+  "Show or hide activation code": "\u663E\u793A\u6216\u9690\u85CF\u5154\u5154\u7801",
+  Validate: "\u9A8C\u8BC1",
+  Clear: "\u6E05\u9664",
+  Donate: "\u6253\u8D4F\u7ED9\u5F00\u53D1\u8005\u4E00\u4E2A\u6BD4\u5FC3\u5154\u5154",
+  "Support ongoing development and theme maintenance.": "\u652F\u6301\u63D2\u4EF6\u6301\u7EED\u5F00\u53D1\u548C\u4E3B\u9898\u7EF4\u62A4\u3002",
+  "Custom theme service": "\u4E3B\u9898\u5B9A\u5236",
+  "Contact the development team for a branded card theme.": "\u8054\u7CFB\u5F00\u53D1\u8005\u5B9A\u5236\u54C1\u724C\u5361\u7247\u4E3B\u9898\u3002",
+  Contact: "\u8054\u7CFB",
+  "Activation code is valid.": "\u5154\u5154\u7801\u5DF2\u6FC0\u6D3B\u3002",
+  "Activation code is invalid or inactive.": "\u5154\u5154\u7801\u65E0\u6548\u6216\u5DF2\u5931\u6548\u3002",
+  "Unable to validate right now. Try again later.": "\u6682\u65F6\u65E0\u6CD5\u9A8C\u8BC1\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002",
+  "Enter the code received after supporting markdown2card.": "\u8BF7\u8F93\u5165\u652F\u6301 markdown2card \u540E\u6536\u5230\u7684\u5154\u5154\u7801\u3002",
+  "Last checked": "\u4E0A\u6B21\u68C0\u67E5"
+};
+function settingsText(language, english) {
+  return language === "zh" ? ZH_SETTINGS_TEXT[english] || english : english;
+}
+
 // src/settings/SettingTab.ts
 var ConfirmModal = class extends import_obsidian3.Modal {
-  constructor(app, title, message, onConfirm) {
+  constructor(app, title, message, onConfirm, language) {
     super(app);
     this.message = message;
     this.onConfirm = onConfirm;
+    this.language = language;
     this.confirmed = false;
     this.titleEl.setText(title);
   }
   onOpen() {
     this.contentEl.createEl("p", { text: this.message });
     const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-    buttons.createEl("button", { text: "Cancel" }).addEventListener("click", () => this.close());
-    buttons.createEl("button", { cls: "mod-cta", text: "Confirm" }).addEventListener("click", () => {
+    buttons.createEl("button", { text: settingsText(this.language, "Cancel") }).addEventListener("click", () => this.close());
+    buttons.createEl("button", { cls: "mod-cta", text: settingsText(this.language, "Confirm") }).addEventListener("click", () => {
       this.confirmed = true;
       this.close();
     });
@@ -4204,35 +4279,37 @@ var ConfirmModal = class extends import_obsidian3.Modal {
   }
 };
 var CreateFontModal = class extends import_obsidian3.Modal {
-  constructor(app, onSubmit, existingFont) {
+  constructor(app, onSubmit, language, existingFont) {
     super(app);
     this.onSubmit = onSubmit;
+    this.language = language;
     this.font = existingFont ? { ...existingFont } : { value: "", label: "" };
   }
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("red-font-modal");
-    this.contentEl.createEl("h3", { text: this.font.label ? "Edit font" : "Add font" });
-    new import_obsidian3.Setting(this.contentEl).setName("Font name").setDesc("The label shown in the font menu.").addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
-    new import_obsidian3.Setting(this.contentEl).setName("Font family").setDesc("CSS font-family value.").addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
-    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
+    this.contentEl.createEl("h3", { text: settingsText(this.language, this.font.label ? "Edit font" : "Add font") });
+    new import_obsidian3.Setting(this.contentEl).setName(settingsText(this.language, "Font name")).setDesc(settingsText(this.language, "The label shown in the font menu.")).addText((text) => text.setValue(this.font.label).onChange((value) => this.font.label = value));
+    new import_obsidian3.Setting(this.contentEl).setName(settingsText(this.language, "Font family")).setDesc(settingsText(this.language, "CSS font-family value.")).addText((text) => text.setValue(this.font.value).onChange((value) => this.font.value = value));
+    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText(settingsText(this.language, "Save")).setCta().onClick(async () => {
       if (!this.font.label || !this.font.value)
         return;
       await this.onSubmit(this.font);
       this.close();
-    })).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close()));
+    })).addButton((button) => button.setButtonText(settingsText(this.language, "Cancel")).onClick(() => this.close()));
   }
 };
 var ThemePreviewModal = class extends import_obsidian3.Modal {
-  constructor(app, plugin, theme) {
+  constructor(app, plugin, theme, language) {
     super(app);
     this.plugin = plugin;
     this.theme = theme;
+    this.language = language;
   }
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("theme-preview-modal");
-    this.contentEl.createEl("h2", { text: `Theme preview: ${this.theme.name}`, cls: "red-theme-title" });
+    this.contentEl.createEl("h2", { text: `${settingsText(this.language, "Preview")}: ${this.theme.name}`, cls: "red-theme-title" });
     const container = this.contentEl.createDiv("tp-red-preview-container");
     const preview = container.createDiv("red-image-preview");
     const header = preview.createDiv("red-preview-header");
@@ -4261,10 +4338,11 @@ var ThemePreviewModal = class extends import_obsidian3.Modal {
   }
 };
 var CreateThemeModal = class extends import_obsidian3.Modal {
-  constructor(app, plugin, onSubmit, existingTheme) {
+  constructor(app, plugin, onSubmit, language, existingTheme) {
     super(app);
     this.plugin = plugin;
     this.onSubmit = onSubmit;
+    this.language = language;
     this.existingTheme = existingTheme;
     this.name = "";
     this.description = "";
@@ -4281,19 +4359,19 @@ var CreateThemeModal = class extends import_obsidian3.Modal {
   onOpen() {
     this.contentEl.empty();
     this.contentEl.addClass("red-theme-modal");
-    this.contentEl.createEl("h2", { text: this.existingTheme ? "Edit theme" : "Create theme" });
-    new import_obsidian3.Setting(this.contentEl).setName("Theme name").addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
-    new import_obsidian3.Setting(this.contentEl).setName("Theme description").addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
-    new import_obsidian3.Setting(this.contentEl).setName("Styles JSON").setDesc("Use the same styles structure as built-in themes.").addTextArea((area) => {
+    this.contentEl.createEl("h2", { text: settingsText(this.language, this.existingTheme ? "Edit theme" : "Create theme") });
+    new import_obsidian3.Setting(this.contentEl).setName(settingsText(this.language, "Theme name")).addText((text) => text.setValue(this.name).onChange((value) => this.name = value.trim()));
+    new import_obsidian3.Setting(this.contentEl).setName(settingsText(this.language, "Theme description")).addText((text) => text.setValue(this.description).onChange((value) => this.description = value.trim()));
+    new import_obsidian3.Setting(this.contentEl).setName(settingsText(this.language, "Styles JSON")).setDesc(settingsText(this.language, "Use the same styles structure as built-in themes.")).addTextArea((area) => {
       area.setValue(this.raw).onChange((value) => this.raw = value);
       area.inputEl.addClass("custom-css-input");
       area.inputEl.rows = 18;
     });
-    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Preview").onClick(() => {
+    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText(settingsText(this.language, "Preview")).onClick(() => {
       const theme = this.buildTheme();
       if (theme)
-        new ThemePreviewModal(this.app, this.plugin, theme).open();
-    })).addButton((button) => button.setButtonText("Cancel").onClick(() => this.close())).addButton((button) => button.setButtonText("Save").setCta().onClick(async () => {
+        new ThemePreviewModal(this.app, this.plugin, theme, this.language).open();
+    })).addButton((button) => button.setButtonText(settingsText(this.language, "Cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(settingsText(this.language, "Save")).setCta().onClick(async () => {
       const theme = this.buildTheme();
       if (!theme)
         return;
@@ -4329,13 +4407,20 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("red-settings");
-    containerEl.createEl("h2", { text: "markdown2card Settings" });
+    containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
+    containerEl.createEl("h2", { text: this.t("markdown2card Settings") });
     this.renderCommunitySettings(containerEl);
-    this.createSection(containerEl, "General", (el) => this.renderBasicSettings(el));
-    this.createSection(containerEl, "Export", (el) => this.renderExportSettings(el));
-    this.createSection(containerEl, "Themes", (el) => this.renderThemeSettings(el));
+    this.createSection(containerEl, "general", this.t("General"), (el) => this.renderBasicSettings(el));
+    this.createSection(containerEl, "export", this.t("Export"), (el) => this.renderExportSettings(el));
+    this.createSection(containerEl, "themes", this.t("Themes"), (el) => this.renderThemeSettings(el));
   }
-  createSection(containerEl, title, render) {
+  get language() {
+    return this.plugin.settingsManager.getSettings().uiLanguage === "zh" ? "zh" : "en";
+  }
+  t(english) {
+    return settingsText(this.language, english);
+  }
+  createSection(containerEl, id, title, render) {
     const section = containerEl.createDiv("settings-section");
     const header = section.createDiv("settings-section-header");
     const toggle = header.createSpan("settings-section-toggle");
@@ -4347,50 +4432,50 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       const expanded = !section.hasClass("is-expanded");
       section.toggleClass("is-expanded", expanded);
       (0, import_obsidian3.setIcon)(toggle, expanded ? "chevron-down" : "chevron-right");
-      expanded ? this.expandedSections.add(title) : this.expandedSections.delete(title);
+      expanded ? this.expandedSections.add(id) : this.expandedSections.delete(id);
     });
-    if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(title)) {
+    if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(id)) {
       section.addClass("is-expanded");
       (0, import_obsidian3.setIcon)(toggle, "chevron-down");
-      this.expandedSections.add(title);
+      this.expandedSections.add(id);
     }
   }
   renderBasicSettings(containerEl) {
     const settings = this.plugin.settingsManager.getSettings();
-    new import_obsidian3.Setting(containerEl).setName("Interface language").setDesc("Choose the language used by the preview controls.").addDropdown((dropdown) => dropdown.addOption("en", "English").addOption("zh", "\u4E2D\u6587").setValue(settings.uiLanguage || "en").onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName(this.t("Interface language")).setDesc(this.t("Choose the language used by the plugin interface and settings.")).addDropdown((dropdown) => dropdown.addOption("en", "English").addOption("zh", "\u4E2D\u6587").setValue(settings.uiLanguage || "en").onChange(async (value) => {
       await this.plugin.settingsManager.updateSettings({ uiLanguage: value });
       this.display();
     }));
-    new import_obsidian3.Setting(containerEl).setName("Show time").addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
-    new import_obsidian3.Setting(containerEl).setName("Show footer").addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
-    containerEl.createEl("h4", { text: "Fonts" });
+    new import_obsidian3.Setting(containerEl).setName(this.t("Show time")).addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
+    new import_obsidian3.Setting(containerEl).setName(this.t("Show footer")).addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
+    containerEl.createEl("h4", { text: this.t("Fonts") });
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
       const setting = new import_obsidian3.Setting(containerEl).setName(font.label).setDesc(font.value);
       if (!font.isPreset) {
-        setting.addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
+        setting.addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
           new CreateFontModal(this.app, async (updated) => {
             await this.plugin.settingsManager.updateFont(font.value, updated);
             this.display();
-          }, font).open();
-        })).addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
-          new ConfirmModal(this.app, "Delete font", `Delete the "${font.label}" font configuration?`, async () => {
+          }, this.language, font).open();
+        })).addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
+          new ConfirmModal(this.app, this.t("Delete font"), this.language === "zh" ? `\u5220\u9664\u5B57\u4F53\u201C${font.label}\u201D\u7684\u914D\u7F6E\uFF1F` : `Delete the "${font.label}" font configuration?`, async () => {
             await this.plugin.settingsManager.removeFont(font.value);
             this.display();
-          }).open();
+          }, this.language).open();
         }));
       }
     });
-    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText("+ Add font").setCta().onClick(() => {
+    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Add font")).setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
         this.display();
-      }).open();
+      }, this.language).open();
     }));
   }
   renderExportSettings(containerEl) {
     const settings = this.plugin.settingsManager.getSettings();
-    new import_obsidian3.Setting(containerEl).setName("Export path").setDesc("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.").addText((text) => text.setPlaceholder("markdown2card-exports").setValue(settings.exportPath).onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
-    new import_obsidian3.Setting(containerEl).setName("Export format").setDesc("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.").addDropdown((dropdown) => dropdown.addOption("zip", "Zip archive").addOption("png-folder", "PNG folder").setValue(settings.exportFormat).onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value })));
+    new import_obsidian3.Setting(containerEl).setName(this.t("Export path")).setDesc(this.t("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.")).addText((text) => text.setPlaceholder("markdown2card-exports").setValue(settings.exportPath).onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
+    new import_obsidian3.Setting(containerEl).setName(this.t("Export format")).setDesc(this.t("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.")).addDropdown((dropdown) => dropdown.addOption("zip", this.t("Zip archive")).addOption("png-folder", this.t("PNG folder")).setValue(settings.exportFormat).onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value })));
     const isZh = settings.uiLanguage === "zh";
     new import_obsidian3.Setting(containerEl).setName(isZh ? "\u542F\u7528\u5BFC\u51FA\u540E\u7F6E\u64CD\u4F5C" : "Post-export actions").setDesc(
       isZh ? "\u5BFC\u51FA\u540E\u81EA\u52A8\u5728\u6E90\u6587\u4EF6\u540C\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A\u53D1\u5E03\u7248MD\u6587\u4EF6" : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
@@ -4460,43 +4545,43 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     }
   }
   renderThemeSettings(containerEl) {
-    containerEl.createEl("h4", { text: "Visible themes" });
+    containerEl.createEl("h4", { text: this.t("Visible themes") });
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
-      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || (theme.isPreset ? "Built-in theme" : "Custom theme")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
+      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || this.t(theme.isPreset ? "Built-in theme" : "Custom theme")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
         await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
         this.display();
-      })).addExtraButton((button) => button.setIcon("eye").setTooltip("Preview").onClick(() => new ThemePreviewModal(this.app, this.plugin, theme).open()));
+      })).addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Preview")).onClick(() => new ThemePreviewModal(this.app, this.plugin, theme, this.language).open()));
     });
-    containerEl.createEl("h4", { text: "Custom themes" });
+    containerEl.createEl("h4", { text: this.t("Custom themes") });
     this.plugin.settingsManager.getAllThemes().filter((theme) => !theme.isPreset).forEach((theme) => {
-      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip("Edit").onClick(() => {
+      new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
         new CreateThemeModal(this.app, this.plugin, async (updated) => {
           await this.plugin.settingsManager.updateTheme(theme.id, updated);
           this.display();
-        }, theme).open();
-      })).addExtraButton((button) => button.setIcon("trash").setTooltip("Delete").onClick(() => {
-        new ConfirmModal(this.app, "Delete theme", `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
+        }, this.language, theme).open();
+      })).addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
+        new ConfirmModal(this.app, this.language === "zh" ? "\u5220\u9664\u4E3B\u9898" : "Delete theme", this.language === "zh" ? `\u5220\u9664\u4E3B\u9898\u201C${theme.name}\u201D\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002` : `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
           await this.plugin.settingsManager.removeTheme(theme.id);
           this.display();
-        }).open();
+        }, this.language).open();
       }));
     });
-    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText("+ Create theme").setCta().onClick(() => {
+    new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Create theme")).setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
         this.display();
-      }).open();
+      }, this.language).open();
     }));
   }
   renderCommunitySettings(containerEl) {
     const section = containerEl.createDiv("red-community-section");
-    section.createEl("h4", { text: "Community" });
+    section.createEl("h4", { text: this.t("Community") });
     section.createEl("p", {
       cls: "red-settings-note",
-      text: "markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem."
+      text: this.t("markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem.")
     });
     const settings = this.plugin.settingsManager.getSettings();
-    const activationSetting = new import_obsidian3.Setting(section).setName("Activation code").setDesc(this.activationStatusDescription());
+    const activationSetting = new import_obsidian3.Setting(section).setName(this.t("Activation code")).setDesc(this.activationStatusDescription());
     activationSetting.addText((text) => {
       text.inputEl.type = "password";
       text.setPlaceholder("M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX");
@@ -4508,12 +4593,12 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
           activationLastCheckedAt: ""
         });
       });
-      activationSetting.addExtraButton((button) => button.setIcon("eye").setTooltip("Show or hide activation code").onClick(() => {
+      activationSetting.addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Show or hide activation code")).onClick(() => {
         text.inputEl.type = text.inputEl.type === "password" ? "text" : "password";
         button.setIcon(text.inputEl.type === "password" ? "eye" : "eye-off");
       }));
     });
-    activationSetting.addButton((button) => button.setButtonText("Validate").onClick(async () => {
+    activationSetting.addButton((button) => button.setButtonText(this.t("Validate")).onClick(async () => {
       const currentSettings = this.plugin.settingsManager.getSettings();
       const current = currentSettings.activationCode;
       const status = current.trim() ? await checkPaidEntitlementManually(current) : "invalid";
@@ -4526,7 +4611,7 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
         activationLastCheckedAt: preserveLastSuccessfulCheck ? currentSettings.activationLastCheckedAt : (/* @__PURE__ */ new Date()).toISOString()
       });
       this.display();
-    })).addButton((button) => button.setButtonText("Clear").onClick(async () => {
+    })).addButton((button) => button.setButtonText(this.t("Clear")).onClick(async () => {
       await this.plugin.settingsManager.updateSettings({
         activationCode: "",
         activationValidationStatus: "unchecked",
@@ -4534,19 +4619,19 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       });
       this.display();
     }));
-    new import_obsidian3.Setting(section).setName("Donate").setDesc("Support ongoing development and theme maintenance.").addButton((button) => button.setButtonText("Donate").setCta().onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
-    new import_obsidian3.Setting(section).setName("Custom theme").setDesc("Contact the development team for a branded card theme.").addButton((button) => button.setButtonText("Contact").onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
+    new import_obsidian3.Setting(section).setName(this.t("Donate")).setDesc(this.t("Support ongoing development and theme maintenance.")).addButton((button) => button.setButtonText(this.language === "zh" ? "\u6253\u8D4F" : "Donate").setCta().onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
+    new import_obsidian3.Setting(section).setName(this.t("Custom theme service")).setDesc(this.t("Contact the development team for a branded card theme.")).addButton((button) => button.setButtonText(this.t("Contact")).onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
   }
   activationStatusDescription() {
     const settings = this.plugin.settingsManager.getSettings();
-    const checkedAt = settings.activationLastCheckedAt ? ` Last checked: ${new Date(settings.activationLastCheckedAt).toLocaleString()}.` : "";
+    const checkedAt = settings.activationLastCheckedAt ? ` ${this.t("Last checked")}: ${new Date(settings.activationLastCheckedAt).toLocaleString(this.language === "zh" ? "zh-CN" : "en-US")}.` : "";
     if (settings.activationValidationStatus === "valid")
-      return `Activation code is valid.${checkedAt}`;
+      return `${this.t("Activation code is valid.")}${checkedAt}`;
     if (settings.activationValidationStatus === "invalid")
-      return `Activation code is invalid or inactive.${checkedAt}`;
+      return `${this.t("Activation code is invalid or inactive.")}${checkedAt}`;
     if (settings.activationValidationStatus === "unavailable")
-      return `Unable to validate right now. Try again later.${checkedAt}`;
-    return "Enter the code received after supporting markdown2card.";
+      return `${this.t("Unable to validate right now. Try again later.")}${checkedAt}`;
+    return this.t("Enter the code received after supporting markdown2card.");
   }
 };
 
@@ -5497,6 +5582,7 @@ var SettingsManager = class extends import_events.EventEmitter {
   }
   async updateSettings(settings) {
     const languageChanged = settings.uiLanguage && settings.uiLanguage !== this.settings.uiLanguage;
+    const wasEntitled = this.settings.activationValidationStatus === "valid";
     const oldLang = this.settings.uiLanguage;
     this.settings = { ...this.settings, ...settings };
     if (languageChanged) {
@@ -5509,6 +5595,8 @@ var SettingsManager = class extends import_events.EventEmitter {
     await this.saveSettings();
     if (languageChanged)
       this.emit("language-changed");
+    if (wasEntitled !== (this.settings.activationValidationStatus === "valid"))
+      this.emit("entitlement-changed");
   }
   getAllThemes() {
     return [...this.settings.themes, ...this.settings.customThemes];
@@ -7909,15 +7997,21 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
     });
     fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
-    contact.createEl("summary", {
-      text: isZh ? "\u5DF2\u7ECF\u652F\u6301\u8FC7\u4E86\uFF1F\u901A\u8FC7\u5C0F\u7EA2\u4E66\u6216\u90AE\u7BB1\u8054\u7CFB\u5F00\u53D1\u8005" : "Already supported? Contact the developer via Xiaohongshu or email."
+    const contactSummary = contact.createEl("summary");
+    const contactCopy = SUPPORT_CONTACT_COPY[this.language];
+    contactSummary.appendText(contactCopy.before);
+    const fallbackLink = contactSummary.createEl("a", {
+      text: FUNDING_URL,
+      attr: { href: FUNDING_URL, target: "_blank", rel: "noopener noreferrer" }
     });
+    fallbackLink.addEventListener("click", (event) => event.stopPropagation());
+    contactSummary.appendText(contactCopy.after);
     const contactImage = contact.createEl("img", {
       attr: { src: xiaohongshu_contact_default, alt: isZh ? "Hazel \u5C0F\u7EA2\u4E66\u8054\u7CFB\u5361" : "Hazel's Xiaohongshu contact card" }
     });
     contactImage.addEventListener("click", () => window.open(xiaohongshu_contact_default, "_blank"));
     const activation = this.contentEl.createDiv("red-support-activation");
-    activation.createEl("h3", { text: isZh ? "\u5DF2\u6709\u6FC0\u6D3B\u7801\uFF1F" : "Already have an activation code?" });
+    activation.createEl("h3", { text: isZh ? "\u5DF2\u6709\u5154\u5154\u7801\uFF1F" : "Already have an activation code?" });
     const activationInput = activation.createEl("input", {
       cls: "red-support-activation-input",
       attr: {
@@ -7946,7 +8040,7 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
         this.close();
         return;
       }
-      activationStatus.setText(status === "invalid" ? isZh ? "\u6FC0\u6D3B\u7801\u65E0\u6548\u6216\u5DF2\u5931\u6548\uFF0C\u8BF7\u68C0\u67E5\u540E\u91CD\u8BD5\u3002" : "The activation code is invalid or inactive. Check it and try again." : isZh ? "\u6682\u65F6\u65E0\u6CD5\u9A8C\u8BC1\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002" : "Unable to validate right now. Try again later.");
+      activationStatus.setText(status === "invalid" ? isZh ? "\u5154\u5154\u7801\u65E0\u6548\u6216\u5DF2\u5931\u6548\uFF0C\u8BF7\u68C0\u67E5\u540E\u91CD\u8BD5\u3002" : "The activation code is invalid or inactive. Check it and try again." : isZh ? "\u6682\u65F6\u65E0\u6CD5\u9A8C\u8BC1\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002" : "Unable to validate right now. Try again later.");
     });
     const footer = this.contentEl.createDiv("red-support-footer");
     footer.createEl("span", { text: isZh ? "\u8C22\u8C22\u4F60\u8BA9\u72EC\u7ACB\u521B\u4F5C\u8D70\u5F97\u66F4\u8FDC\u3002" : "Thank you for helping independent work go further." });
@@ -7993,6 +8087,7 @@ var RedView = class extends import_obsidian7.ItemView {
     const container = this.containerEl.children[1];
     container.empty();
     container.className = "red-view-content";
+    this.updatePaidUiState();
     await this.initializeToolbar(container);
     this.initializePreviewArea(container);
     this.initializeBottomBar(container);
@@ -8169,8 +8264,15 @@ var RedView = class extends import_obsidian7.ItemView {
     const onLanguageChanged = () => this.refreshLanguageLabels();
     this.settingsManager.on("language-changed", onLanguageChanged);
     this.register(() => this.settingsManager.off("language-changed", onLanguageChanged));
+    const onEntitlementChanged = () => this.updatePaidUiState();
+    this.settingsManager.on("entitlement-changed", onEntitlementChanged);
+    this.register(() => this.settingsManager.off("entitlement-changed", onEntitlementChanged));
     this.initializeCopyButtonListener();
     this.initializeSync();
+  }
+  updatePaidUiState() {
+    const container = this.containerEl.children[1];
+    container == null ? void 0 : container.classList.toggle("red-paid-entitled", this.settingsManager.getSettings().activationValidationStatus === "valid");
   }
   initializeCopyButtonListener() {
     const handler = async (event) => {
