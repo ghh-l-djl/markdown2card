@@ -23,9 +23,6 @@ export class AiManager {
     baseUrl = baseUrl.replace(/\/+$/, "");
     const url = `${baseUrl}/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
-    const maskedKey = geminiApiKey.length > 8 ? `${geminiApiKey.substring(0, 6)}...${geminiApiKey.substring(geminiApiKey.length - 4)}` : "invalid_key";
-    console.log(`[markdown2card] Requesting Gemini API URL: ${url.replace(geminiApiKey, maskedKey)}`);
-
     try {
       const response = await requestUrl({
         url,
@@ -50,20 +47,37 @@ export class AiManager {
         throw new Error(`Gemini API returned status ${response.status}: ${response.text}`);
       }
 
-      const json = response.json;
-      const generatedText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const json: unknown = response.json;
+      const generatedText = this.extractGeneratedText(json);
 
       if (!generatedText) {
         throw new Error("Gemini API returned an empty response structure");
       }
 
       return generatedText.trim();
-    } catch (error: any) {
-      console.error("Gemini request failed:", error);
-      const errMsg = (error.status !== undefined || error.text !== undefined)
-        ? `Status ${error.status}: ${error.text || error.message || ""}`
-        : (error.message || String(error));
-      throw new Error(errMsg);
+    } catch (error: unknown) {
+      throw new Error(this.describeError(error));
     }
+  }
+
+  private static extractGeneratedText(value: unknown): string | null {
+    if (!this.isRecord(value) || !Array.isArray(value.candidates)) return null;
+    const candidate: unknown = value.candidates[0];
+    if (!this.isRecord(candidate) || !this.isRecord(candidate.content) || !Array.isArray(candidate.content.parts)) return null;
+    const part: unknown = candidate.content.parts[0];
+    return this.isRecord(part) && typeof part.text === "string" ? part.text.trim() : null;
+  }
+
+  private static describeError(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (!this.isRecord(error)) return typeof error === "string" ? error : "Gemini request failed";
+    const status = typeof error.status === "number" ? String(error.status) : "";
+    const text = typeof error.text === "string" ? error.text : "";
+    const message = typeof error.message === "string" ? error.message : "";
+    return status ? `Status ${status}: ${text || message}` : message || text || "Gemini request failed";
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
   }
 }

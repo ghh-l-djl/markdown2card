@@ -1,7 +1,17 @@
-import { loadMermaid, type App } from "obsidian";
+import { loadMermaid, setIcon, type App } from "obsidian";
 import type YanqiPlugin from "./main";
 import { calculateContainSize, createImageLayoutKey, resolveLayoutBox, shouldUseStandalonePage } from "./imageLayout";
 import { pairBlocksWithSourceLines, parseSourceLine, type SourceSectionLike } from "./sourceLineMap";
+
+interface MermaidRenderResult {
+  svg: string;
+  bindFunctions?: (element: HTMLElement) => void;
+}
+
+interface MermaidApi {
+  parse?: (source: string) => unknown;
+  render: (id: string, source: string) => string | MermaidRenderResult | Promise<string | MermaidRenderResult>;
+}
 
 export class RedConverter {
   private static app: App;
@@ -26,7 +36,8 @@ export class RedConverter {
       if (!blocks.length) return;
 
       try {
-        const mermaid = await loadMermaid();
+        const mermaid: unknown = await loadMermaid();
+        if (!this.isMermaidApi(mermaid)) return;
         for (const { container, source } of blocks) {
           await this.renderMermaidBlock(mermaid, container, source);
         }
@@ -42,7 +53,7 @@ export class RedConverter {
     const sourceChildren = this.getRenderableSourceChildren(element);
     if (!this.hasRenderableContent(element)) {
       element.empty();
-      element.createEl("div", {
+      element.createDiv({
         cls: "red-empty-message",
         text: "温馨提示\n当前文档还没有可生成卡片的内容\n现在编辑文档，实时预览效果"
       });
@@ -57,24 +68,24 @@ export class RedConverter {
       block.dataset.sourceLine = String(sourceLine);
     });
 
-    const previewContainer = document.createElement("div");
+    const previewContainer = createDiv();
     previewContainer.className = "red-preview-container";
-    const imagePreview = document.createElement("div");
+    const imagePreview = createDiv();
     imagePreview.className = "red-image-preview";
-    const copyButton = document.createElement("button");
+    const copyButton = createEl("button");
     copyButton.className = "red-copy-button";
     copyButton.title = "复制图片";
     copyButton.setAttribute("aria-label", "复制图片到剪贴板");
-    copyButton.innerHTML = `<svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 12.4316V7.8125C13 6.2592 14.2592 5 15.8125 5H40.1875C41.7408 5 43 6.2592 43 7.8125V32.1875C43 33.7408 41.7408 35 40.1875 35H35.5163" stroke="#9b9b9b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M32.1875 13H7.8125C6.2592 13 5 14.2592 5 15.8125V40.1875C5 41.7408 6.2592 43 7.8125 43H32.1875C33.7408 43 35 41.7408 35 40.1875V15.8125C35 14.2592 33.7408 13 32.1875 13Z" fill="none" stroke="#9b9b9b" stroke-width="4" stroke-linejoin="round"/></svg>`;
+    setIcon(copyButton, "copy");
     previewContainer.appendChild(copyButton);
 
-    const headerArea = document.createElement("div");
+    const headerArea = createDiv();
     headerArea.className = "red-preview-header";
-    const contentArea = document.createElement("div");
+    const contentArea = createDiv();
     contentArea.className = "red-preview-content markdown-preview-view markdown-rendered";
-    const footerArea = document.createElement("div");
+    const footerArea = createDiv();
     footerArea.className = "red-preview-footer";
-    const contentContainer = document.createElement("div");
+    const contentContainer = createDiv();
     contentContainer.className = "red-content-container";
 
     const section = this.createSectionsFromParts(sourceChildren.map((el) => el.cloneNode(true) as HTMLElement), 0, true);
@@ -173,7 +184,7 @@ export class RedConverter {
         contentWidth,
         pageContentHeight
       );
-      const figure = document.createElement("figure");
+      const figure = createEl("figure");
       figure.className = `red-content-image ${standalone ? "red-image-standalone" : "red-image-inline"} red-image-mode-contain`;
       figure.dataset.imageMode = "contain";
       figure.dataset.imageLayout = standalone ? "standalone" : "inline";
@@ -182,7 +193,7 @@ export class RedConverter {
       if (sourceLine !== null) figure.dataset.sourceLine = String(sourceLine);
       figure.dataset.naturalWidth = String(img.naturalWidth);
       figure.dataset.naturalHeight = String(img.naturalHeight);
-      const viewport = document.createElement("div");
+      const viewport = createDiv();
       viewport.className = "red-content-image-viewport";
       viewport.style.width = standalone ? `${contentWidth}px` : `${size.width}px`;
       viewport.style.height = standalone ? `${pageContentHeight}px` : `${size.height}px`;
@@ -206,7 +217,7 @@ export class RedConverter {
     const nodes = Array.from(paragraph.childNodes);
     const index = nodes.indexOf(figure);
     const createParagraph = (items: Node[]): HTMLElement | null => {
-      if (!items.some((node) => node.textContent?.trim() || node instanceof HTMLElement)) return null;
+      if (!items.some((node) => node.textContent?.trim() || node.instanceOf(HTMLElement))) return null;
       const clone = paragraph.cloneNode(false) as HTMLElement;
       items.forEach((node) => clone.appendChild(node));
       return clone;
@@ -241,7 +252,7 @@ export class RedConverter {
     });
 
     if (pages.length === 1 && !renderableContent.some((el) => this.isManualPageBreak(el))) {
-      const section = document.createElement("section");
+      const section = createEl("section");
       section.className = "red-content-section";
       section.dataset.index = String(index);
       if (isFirstCard) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
@@ -250,10 +261,10 @@ export class RedConverter {
       return section;
     }
 
-    const fragment = document.createDocumentFragment();
+    const fragment = createFragment();
     pages.forEach((pageContent, pageIndex) => {
       if (pageContent.length === 0) return;
-      const section = document.createElement("section");
+      const section = createEl("section");
       section.className = "red-content-section";
       section.dataset.index = `${index}-${pageIndex}`;
       if (isFirstCard && pageIndex === 0) section.classList.add("red-cover", settings?.coverStyle || "cover-classic");
@@ -356,7 +367,7 @@ export class RedConverter {
         if (this.isListBlock(block)) {
           const splitBlocks = this.splitOversizedListBlock(block, current, probe);
           if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
-            current.appendChild(splitBlocks.shift()!);
+            current.appendChild(splitBlocks.shift());
             pages.push(current);
             current = makePage(false);
             pending.unshift(...splitBlocks);
@@ -367,7 +378,7 @@ export class RedConverter {
         if (this.isCodeBlock(block)) {
           const splitBlocks = this.splitOversizedCodeBlock(block, current, probe);
           if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
-            current.appendChild(splitBlocks.shift()!);
+            current.appendChild(splitBlocks.shift());
             pages.push(current);
             current = makePage(false);
             pending.unshift(...splitBlocks);
@@ -378,7 +389,7 @@ export class RedConverter {
         if (this.endsWithHeading(current)) {
           const splitBlocks = this.splitOversizedTextBlock(block, current, probe);
           if (splitBlocks.length > 1 && fits(current, splitBlocks[0])) {
-            current.appendChild(splitBlocks.shift()!);
+            current.appendChild(splitBlocks.shift());
             pages.push(current);
             current = makePage(false);
             pending.unshift(...splitBlocks);
@@ -444,22 +455,16 @@ export class RedConverter {
   private static createMeasureSection(section: HTMLElement, contentContainer: HTMLElement): HTMLElement {
     const probe = section.cloneNode(false) as HTMLElement;
     probe.classList.add("red-section-active", "red-pagination-measure");
-    probe.style.setProperty("display", "block", "important");
-    probe.style.setProperty("position", "absolute", "important");
-    probe.style.setProperty("visibility", "hidden", "important");
-    probe.style.setProperty("pointer-events", "none", "important");
-    probe.style.setProperty("z-index", "-1", "important");
-    probe.style.setProperty("left", "0", "important");
-    probe.style.setProperty("top", "0", "important");
     const style = window.getComputedStyle(section);
     const marginLeft = parseFloat(style.marginLeft) || 0;
     const marginRight = parseFloat(style.marginRight) || 0;
     const borderLeft = parseFloat(style.borderLeftWidth) || 0;
     const borderRight = parseFloat(style.borderRightWidth) || 0;
     const computedWidth = contentContainer.clientWidth - marginLeft - marginRight - borderLeft - borderRight;
-    probe.style.setProperty("width", `${Math.max(1, computedWidth)}px`, "important");
-    probe.style.setProperty("height", `${Math.max(1, contentContainer.clientHeight)}px`, "important");
-    probe.style.setProperty("overflow", "hidden", "important");
+    probe.setCssProps({
+      width: `${Math.max(1, computedWidth)}px`,
+      height: `${Math.max(1, contentContainer.clientHeight)}px`
+    });
     contentContainer.appendChild(probe);
     return probe;
   }
@@ -613,7 +618,7 @@ export class RedConverter {
         const parts = text.split(/\r?\n/);
         for (let i = 0; i < parts.length; i++) {
           if (i > 0) {
-            const lineContainer = document.createElement("div");
+            const lineContainer = createDiv();
             lineContainer.className = "red-code-line";
             currentLineNodes.forEach(n => lineContainer.appendChild(n));
             lines.push(lineContainer);
@@ -639,7 +644,7 @@ export class RedConverter {
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const el = node as HTMLElement;
         if (el.tagName.toLowerCase() === "br") {
-          const lineContainer = document.createElement("div");
+          const lineContainer = createDiv();
           lineContainer.className = "red-code-line";
           currentLineNodes.forEach(n => lineContainer.appendChild(n));
           lines.push(lineContainer);
@@ -659,7 +664,7 @@ export class RedConverter {
     }
 
     if (currentLineNodes.length > 0 || lines.length === 0) {
-      const lineContainer = document.createElement("div");
+      const lineContainer = createDiv();
       lineContainer.className = "red-code-line";
       currentLineNodes.forEach(n => lineContainer.appendChild(n));
       lines.push(lineContainer);
@@ -720,12 +725,14 @@ export class RedConverter {
 
   private static measureLineMetrics(block: HTMLElement, probe: HTMLElement): { lineHeight: number; paddingHeight: number } {
     const clone1 = block.cloneNode(true) as HTMLElement;
-    clone1.innerHTML = "A";
+    clone1.setText("A");
     probe.replaceChildren(clone1);
     const h1 = clone1.clientHeight;
 
     const clone2 = block.cloneNode(true) as HTMLElement;
-    clone2.innerHTML = "A<br>A";
+    clone2.setText("A");
+    clone2.createEl("br");
+    clone2.appendText("A");
     probe.replaceChildren(clone2);
     const h2 = clone2.clientHeight;
 
@@ -883,13 +890,13 @@ export class RedConverter {
           const precedingText = blocks[preTextIdx];
           const lines = this.countTextLines(precedingText, probe);
           if (lines === 2) {
-            const pageBreak = document.createElement("div");
+            const pageBreak = createDiv();
             pageBreak.className = "red-page-break";
             blocks.splice(preTextIdx, 0, pageBreak);
             i += 1;
           } else if (lines > 2) {
             const [prefix, suffix] = this.splitTextBlockToLastNLines(precedingText, 2, probe);
-            const pageBreak = document.createElement("div");
+            const pageBreak = createDiv();
             pageBreak.className = "red-page-break";
             blocks.splice(preTextIdx, 1, prefix, pageBreak, suffix);
             i += 2;
@@ -901,7 +908,7 @@ export class RedConverter {
             const lines = this.countTextLines(succeedingText, probe);
             if (lines > 2) {
               const [prefix, suffix] = this.splitTextBlockToFirstNLines(succeedingText, 2, probe);
-              const pageBreak = document.createElement("div");
+              const pageBreak = createDiv();
               pageBreak.className = "red-page-break";
               blocks.splice(succTextIdx, 1, prefix, pageBreak, suffix);
             }
@@ -939,13 +946,11 @@ export class RedConverter {
     if (mermaidIdx === -1) return null;
 
     let textBlockCount = 0;
-    let headingsCount = 0;
     let hasOneLineText = false;
     
     for (let i = 0; i < mermaidIdx; i++) {
       const el = pending[i];
       if (this.isHeadingBlock(el)) {
-        headingsCount++;
         continue;
       }
       if (this.isSplittableTextBlock(el)) {
@@ -979,13 +984,13 @@ export class RedConverter {
 
   private static endsWithHeading(page: HTMLElement): boolean {
     const last = page.lastElementChild;
-    return last instanceof HTMLElement && this.isHeadingBlock(last);
+    return last.instanceOf(HTMLElement) && this.isHeadingBlock(last);
   }
 
   private static takeTrailingHeadings(page: HTMLElement): HTMLElement[] {
     const headings: HTMLElement[] = [];
     while (this.endsWithHeading(page)) {
-      headings.unshift(page.removeChild(page.lastElementChild!) as HTMLElement);
+      headings.unshift(page.removeChild(page.lastElementChild) as HTMLElement);
     }
     return headings;
   }
@@ -1004,7 +1009,7 @@ export class RedConverter {
 
   private static hasRenderableContent(element: HTMLElement): boolean {
     return Array.from(element.children).some((child) => {
-      return child instanceof HTMLElement && this.isRenderableElement(child);
+      return child.instanceOf(HTMLElement) && this.isRenderableElement(child);
     });
   }
 
@@ -1065,21 +1070,44 @@ export class RedConverter {
     }
   }
 
-  private static async renderMermaidBlock(mermaid: any, container: HTMLElement, source: string): Promise<void> {
-    if (typeof mermaid?.render !== "function") return;
+  private static async renderMermaidBlock(mermaid: MermaidApi, container: HTMLElement, source: string): Promise<void> {
     try {
-      if (typeof mermaid?.parse === "function") await mermaid.parse(source);
+      if (mermaid.parse) await mermaid.parse(source);
       const id = `red-mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const result = await mermaid.render(id, source);
-      const svg = typeof result === "string" ? result : result?.svg;
+      const svg = typeof result === "string" ? result : result.svg;
       if (!svg || /Syntax error in text/i.test(svg)) return;
+      const svgElement = this.parseSafeSvg(svg, container.ownerDocument);
+      if (!svgElement) return;
       container.className = "mermaid red-mermaid";
       container.removeAttribute("style");
-      container.innerHTML = svg;
-      if (typeof result?.bindFunctions === "function") result.bindFunctions(container);
+      container.replaceChildren(svgElement);
+      if (typeof result !== "string" && result.bindFunctions) result.bindFunctions(container);
     } catch (error) {
       console.error("Mermaid 代码块渲染失败:", error);
     }
+  }
+
+  private static isMermaidApi(value: unknown): value is MermaidApi {
+    if (typeof value !== "object" || value === null || !("render" in value)) return false;
+    return typeof value.render === "function";
+  }
+
+  private static parseSafeSvg(source: string, targetDocument: Document): SVGSVGElement | null {
+    const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+    const root = parsed.documentElement;
+    if (root.tagName.toLowerCase() !== "svg" || root.querySelector("parsererror")) return null;
+    root.querySelectorAll("script").forEach((script) => script.remove());
+    root.querySelectorAll("*").forEach((element) => {
+      Array.from(element.attributes).forEach((attribute) => {
+        const name = attribute.name.toLowerCase();
+        const value = attribute.value.trim().toLowerCase();
+        if (name.startsWith("on") || ((name === "href" || name === "xlink:href") && value.startsWith("javascript:"))) {
+          element.removeAttribute(attribute.name);
+        }
+      });
+    });
+    return targetDocument.importNode(root, true) as unknown as SVGSVGElement;
   }
 
   private static async waitForImages(element: HTMLElement): Promise<void> {
@@ -1127,7 +1155,7 @@ export class RedConverter {
       let precedingText: HTMLElement | null = null;
       let precedingHeadingsCount = 0;
       let prev = block.previousElementSibling;
-      while (prev instanceof HTMLElement) {
+      while (prev.instanceOf(HTMLElement)) {
         if (prev.classList.contains("mermaid") || prev.tagName === "HR") {
           break;
         }
@@ -1159,7 +1187,7 @@ export class RedConverter {
         // Scenario 4: look at succeeding text block
         let succeedingText: HTMLElement | null = null;
         let next = block.nextElementSibling;
-        while (next instanceof HTMLElement) {
+        while (next.instanceOf(HTMLElement)) {
           if (next.classList.contains("mermaid") || next.tagName === "HR" || this.isHeadingBlock(next)) {
             break;
           }
@@ -1189,10 +1217,7 @@ export class RedConverter {
       block.style.setProperty("--red-mermaid-width", `${Math.ceil(width * scale)}px`);
       block.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
       if (scale < 1) block.classList.add("red-mermaid-scaled");
-      svg.style.width = "var(--red-mermaid-width)";
-      svg.style.height = "var(--red-mermaid-height)";
-      svg.style.maxWidth = "100%";
-      svg.style.display = "block";
+      svg.classList.add("red-mermaid-svg");
     });
 
     tempProbe.remove();
@@ -1247,10 +1272,7 @@ export class RedConverter {
           mermaidBlock.style.setProperty("--red-mermaid-height", `${Math.ceil(height * scale)}px`);
           if (scale < 1) mermaidBlock.classList.add("red-mermaid-scaled");
           else mermaidBlock.classList.remove("red-mermaid-scaled");
-          svg.style.width = "var(--red-mermaid-width)";
-          svg.style.height = "var(--red-mermaid-height)";
-          svg.style.maxWidth = "100%";
-          svg.style.display = "block";
+          svg.classList.add("red-mermaid-svg");
         }
       }
     }
@@ -1259,10 +1281,10 @@ export class RedConverter {
 
   private static previousContentIsHeading(block: HTMLElement): boolean {
     let previous = block.previousElementSibling;
-    while (previous instanceof HTMLElement && !this.isRenderableElement(previous)) {
+    while (previous.instanceOf(HTMLElement) && !this.isRenderableElement(previous)) {
       previous = previous.previousElementSibling;
     }
-    return previous instanceof HTMLElement && this.isHeadingBlock(previous);
+    return previous.instanceOf(HTMLElement) && this.isHeadingBlock(previous);
   }
 
   private static processElements(container: HTMLElement): void {
@@ -1283,17 +1305,17 @@ export class RedConverter {
       pre.classList.add("red-pre");
       if (pre.classList.contains("red-pre-continued")) {
         if (!pre.querySelector(".red-code-continued-label")) {
-          const label = document.createElement("div");
+          const label = createDiv();
           label.className = "red-code-continued-label";
           label.textContent = "Continued";
           pre.insertBefore(label, pre.firstChild);
         }
       } else {
         if (!pre.querySelector(".red-code-dots")) {
-          const dots = document.createElement("div");
+          const dots = createDiv();
           dots.className = "red-code-dots";
           ["red", "yellow", "green"].forEach((color) => {
-            const dot = document.createElement("span");
+            const dot = createSpan();
             dot.className = `red-code-dot red-code-dot-${color}`;
             dots.appendChild(dot);
           });
@@ -1318,7 +1340,7 @@ export class RedConverter {
       const file = this.app.metadataCache.getFirstLinkpathDest(linktext, "");
       if (!file) return;
       const absolutePath = this.app.vault.adapter.getResourcePath(file.path);
-      const img = document.createElement("img");
+      const img = createEl("img");
       img.src = absolutePath;
       if (alt) img.alt = alt;
       img.className = "red-image";

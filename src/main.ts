@@ -25,7 +25,7 @@ export default class YanqiPlugin extends Plugin {
     this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
     this.addCommand({
       id: "open-mp-preview",
-      name: "open markdown2card preview",
+      name: "Open card preview",
       callback: () => this.activateView()
     });
     this.addRibbonIcon(MARKDOWN2CARD_ICON, "打开 markdown2card 预览", () => this.activateView());
@@ -46,14 +46,14 @@ export default class YanqiPlugin extends Plugin {
         activationValidationStatus: "valid",
         activationLastCheckedAt: new Date().toISOString()
       });
-      new Notice("Markdown2Card activated successfully.");
+      new Notice("Markdown2card activated successfully.");
     });
   }
 
   async activateView(): Promise<void> {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);
     if (leaves.length > 0) {
-      this.app.workspace.revealLeaf(leaves[0]);
+      await this.app.workspace.revealLeaf(leaves[0]);
       return;
     }
     const rightLeaf = this.app.workspace.getRightLeaf(false);

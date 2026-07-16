@@ -4,17 +4,17 @@ import { builtinBackgrounds } from "./assets/backgrounds";
 
 export class BackgroundManager {
   applyBackgroundStyles(element: HTMLElement, settings: BackgroundSettings): void {
+    element.addClass("red-custom-background");
     element.style.backgroundImage = `url(${settings.imageUrl})`;
     element.style.backgroundSize = `${settings.scale * 100}%`;
     element.style.backgroundPosition = `${settings.position.x}px ${settings.position.y}px`;
-    element.style.backgroundRepeat = "no-repeat";
   }
 
   clearBackgroundStyles(element: HTMLElement): void {
-    element.style.backgroundImage = "";
-    element.style.backgroundSize = "";
-    element.style.backgroundPosition = "";
-    element.style.backgroundRepeat = "";
+    element.removeClass("red-custom-background");
+    ["background-image", "background-size", "background-position"].forEach((property) => {
+      element.style.removeProperty(property);
+    });
   }
 }
 
@@ -43,9 +43,9 @@ export class BackgroundSettingModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
-    const container = contentEl.createEl("div", { cls: "red-background-container" });
+    const container = contentEl.createDiv({ cls: "red-background-container" });
     container.createEl("h3", { text: "背景图片", cls: "red-background-title" });
-    const builtins = container.createEl("div", { cls: "red-background-builtins" });
+    const builtins = container.createDiv({ cls: "red-background-builtins" });
     builtinBackgrounds.forEach((src) => {
       const thumb = builtins.createEl("img", { cls: "red-bg-thumb", attr: { src } });
       if (src === this.imageUrl) thumb.addClass("selected");
@@ -59,13 +59,13 @@ export class BackgroundSettingModal extends Modal {
         this.initDrag();
       });
     });
-    const previewArea = container.createEl("div", { cls: "red-background-preview" });
-    this.previewImage = previewArea.createEl("div", { cls: "red-background-preview-image" });
+    const previewArea = container.createDiv({ cls: "red-background-preview" });
+    this.previewImage = previewArea.createDiv({ cls: "red-background-preview-image" });
     if (this.imageUrl) {
       this.backgroundManager.applyBackgroundStyles(this.previewImage, this.getSettings());
       this.initDrag();
     }
-    const controls = container.createEl("div", { cls: "red-background-controls" });
+    const controls = container.createDiv({ cls: "red-background-controls" });
     new Setting(controls)
       .addButton((button) => button.setButtonText("选择图片").onClick(() => this.handleImageUpload()))
       .addButton((button) => button.setButtonText("清除图片").onClick(() => this.handleClearImage()));
@@ -88,7 +88,7 @@ export class BackgroundSettingModal extends Modal {
   }
 
   private handleImageUpload(): void {
-    const input = document.createElement("input");
+    const input = createEl("input");
     input.type = "file";
     input.accept = "image/*";
     input.onchange = () => {
@@ -96,7 +96,8 @@ export class BackgroundSettingModal extends Modal {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (event) => {
-        this.imageUrl = String(event.target?.result || "");
+        const result = event.target?.result;
+        this.imageUrl = typeof result === "string" ? result : "";
         this.scale = 1;
         this.position = { x: 0, y: 0 };
         this.applyPreview();
@@ -111,10 +112,10 @@ export class BackgroundSettingModal extends Modal {
     this.imageUrl = "";
     this.scale = 1;
     this.position = { x: 0, y: 0 };
-    if (this.previewImage) this.previewImage.setAttribute("style", "");
+    if (this.previewImage) this.backgroundManager.clearBackgroundStyles(this.previewImage);
     const target = this.targetPreviewEl.querySelector<HTMLElement>(".red-image-preview");
     if (target) this.backgroundManager.clearBackgroundStyles(target);
-    this.onSubmit(this.getSettings());
+    void this.onSubmit(this.getSettings());
   }
 
   private applyPreview(): void {

@@ -1,19 +1,40 @@
 export interface ThemeStyles {
   imagePreview: string;
-  header: any;
-  footer: any;
-  title: any;
+  header: {
+    avatar?: { container?: string; image?: string; placeholder?: string };
+    container?: string;
+    nameContainer?: string;
+    postTime?: string;
+    userId?: string;
+    userInfo?: string;
+    userLeft?: string;
+    userName?: string;
+    verifiedIcon?: string;
+  };
+  footer: { container?: string; separator?: string; text?: string };
+  title: {
+    base?: ThemeTitleStyle;
+    h1?: ThemeTitleStyle;
+    h2?: ThemeTitleStyle;
+    h3?: ThemeTitleStyle;
+  };
   paragraph: string;
-  emphasis: any;
-  list: any;
-  code: any;
+  emphasis: { del?: string; em?: string; strong?: string };
+  list: { container?: string; item?: string; taskList?: string };
+  code: { block?: string; inline?: string };
   quote: string;
   image: string;
   link: string;
-  table: any;
+  table: { cell?: string; container?: string; header?: string };
   hr: string;
-  footnote: any;
+  footnote: { backref?: string; ref?: string };
   highlight?: string;
+}
+
+export interface ThemeTitleStyle {
+  after?: string;
+  base?: string;
+  content?: string;
 }
 
 export interface YanqiTheme {

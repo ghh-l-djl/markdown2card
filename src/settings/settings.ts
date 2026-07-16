@@ -113,7 +113,8 @@ export class SettingsManager extends EventEmitter {
   }
 
   async loadSettings(): Promise<void> {
-    const savedData = (await this.plugin.loadData()) || {};
+    const loaded: unknown = await this.plugin.loadData();
+    const savedData = (this.isRecord(loaded) ? loaded : {}) as Partial<YanqiSettings>;
     if (!savedData.themes || savedData.themes.length === 0) {
       savedData.themes = Object.values(templates).map((theme) => ({
         ...theme,
@@ -139,6 +140,10 @@ export class SettingsManager extends EventEmitter {
         ...(savedData.backgroundSettings || {})
       }
     };
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
   }
 
   getSettings(): YanqiSettings {

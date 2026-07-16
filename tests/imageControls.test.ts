@@ -8,7 +8,7 @@ const viewSource = readFileSync(new URL("../src/view.ts", import.meta.url), "utf
 test("image controls are anchored to the visible image viewport", () => {
   assert.match(
     viewSource,
-    /const controls = viewport\.createEl\("div", \{ cls: "red-image-controls red-editor-only" \}\)/
+    /const controls = viewport\.createDiv\(\{ cls: "red-image-controls red-editor-only" \}\)/
   );
 });
 

@@ -1,10 +1,20 @@
-import { App, Modal, PluginSettingTab, Setting, setIcon } from "obsidian";
+import { App, Modal, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type YanqiPlugin from "../main";
 import { resolveSavedPaidEntitlementStatus } from "../paidEntitlement";
 import { purchaseUrl, THEME_CUSTOMIZATION_URL } from "../support";
 import { checkPaidEntitlementManually } from "../paidEntitlementClient";
-import type { FontOption, YanqiTheme } from "../types";
+import type { FontOption, ThemeStyles, YanqiTheme } from "../types";
 import { settingsText, type SettingsLanguage } from "./settingsI18n";
+
+const TECHNICAL_PLACEHOLDERS = {
+  activationCode: "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX",
+  agyExecutable: "agy",
+  apiKey: "AIzaSy...",
+  exportPath: "markdown2card-exports",
+  model: "gemini-3.5-flash",
+  noProxy: "localhost,127.0.0.1,::1",
+  proxyUrl: "http://127.0.0.1:7890"
+} as const;
 
 class ConfirmModal extends Modal {
   private confirmed = false;
@@ -24,9 +34,9 @@ class ConfirmModal extends Modal {
     });
   }
 
-  async onClose(): Promise<void> {
+  onClose(): void {
     this.contentEl.empty();
-    if (this.confirmed) await this.onConfirm();
+    if (this.confirmed) void this.onConfirm();
   }
 }
 
@@ -67,26 +77,27 @@ class ThemePreviewModal extends Modal {
     const preview = container.createDiv("red-image-preview");
     const header = preview.createDiv("red-preview-header");
     const settings = this.plugin.settingsManager.getSettings();
-    const userInfo = header.createEl("div", { cls: "red-user-info" });
-    const userLeft = userInfo.createEl("div", { cls: "red-user-left" });
-    const avatar = userLeft.createEl("div", { cls: "red-user-avatar" });
+    const userInfo = header.createDiv({ cls: "red-user-info" });
+    const userLeft = userInfo.createDiv({ cls: "red-user-left" });
+    const avatar = userLeft.createDiv({ cls: "red-user-avatar" });
     avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
-    const meta = userLeft.createEl("div", { cls: "red-user-meta" });
-    const name = meta.createEl("div", { cls: "red-user-name-container" });
-    name.createEl("div", { cls: "red-user-name", text: settings.userName });
-    meta.createEl("div", { cls: "red-user-id", text: settings.userId });
-    userInfo.createEl("div", { cls: "red-user-right" }).createEl("div", { cls: "red-post-time", text: "2025/4/20" });
+    const meta = userLeft.createDiv({ cls: "red-user-meta" });
+    const name = meta.createDiv({ cls: "red-user-name-container" });
+    name.createDiv({ cls: "red-user-name", text: settings.userName });
+    meta.createDiv({ cls: "red-user-id", text: settings.userId });
+    userInfo.createDiv({ cls: "red-user-right" }).createDiv({ cls: "red-post-time", text: "2025/4/20" });
     const content = preview.createDiv("red-preview-content markdown-preview-view markdown-rendered");
     content.createEl("h2", { text: "Explore markdown2card" });
     const p = content.createEl("p");
     p.appendText("Create polished");
-    p.createEl("strong", { text: " social cards " });
+    const emphasizedText = " social cards ";
+    p.createEl("strong", { text: emphasizedText });
     p.appendText("from your notes.");
     const list = content.createEl("ul");
     list.createEl("li", { text: "Customize card themes" });
     list.createEl("li", { text: "Preview changes instantly" });
     content.createEl("blockquote").createEl("p", { text: "Turn notes into publishable images." });
-    preview.createDiv("red-preview-footer").createEl("div", { cls: "red-footer-text", text: settings.footerLeftText });
+    preview.createDiv("red-preview-footer").createDiv({ cls: "red-footer-text", text: settings.footerLeftText });
     this.plugin.themeManager.applyTheme(container, this.theme);
   }
 }
@@ -136,11 +147,13 @@ class CreateThemeModal extends Modal {
   private buildTheme(): YanqiTheme | null {
     if (!this.name) return null;
     try {
+      const parsedStyles: unknown = JSON.parse(this.raw);
+      if (typeof parsedStyles !== "object" || parsedStyles === null) return null;
       return {
         id: this.existingTheme?.id || this.name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "") || `theme-${Date.now()}`,
         name: this.name,
         description: this.description,
-        styles: JSON.parse(this.raw),
+        styles: parsedStyles as ThemeStyles,
         isPreset: false,
         isVisible: true
       };
@@ -151,22 +164,42 @@ class CreateThemeModal extends Modal {
 }
 
 export class RedSettingTab extends PluginSettingTab {
-  private expandedSections = new Set<string>();
-
   constructor(app: App, public plugin: YanqiPlugin) {
     super(app, plugin);
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass("red-settings");
-    containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
-    containerEl.createEl("h2", { text: this.t("markdown2card Settings") });
-    this.renderCommunitySettings(containerEl);
-    this.createSection(containerEl, "general", this.t("General"), (el) => this.renderBasicSettings(el));
-    this.createSection(containerEl, "export", this.t("Export"), (el) => this.renderExportSettings(el));
-    this.createSection(containerEl, "themes", this.t("Themes"), (el) => this.renderThemeSettings(el));
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      this.createSearchableSection(
+        this.t("Community"),
+        [this.t("Activation code"), this.t("Donate"), this.t("Sponsor")],
+        (containerEl) => this.renderCommunitySettings(containerEl)
+      ),
+      this.createSearchableSection(
+        this.t("General"),
+        [this.t("Interface language"), this.t("Show time"), this.t("Show footer"), this.t("Fonts"), this.t("+ Add font")],
+        (containerEl) => this.renderBasicSettings(containerEl)
+      ),
+      this.createSearchableSection(
+        this.t("Export"),
+        [
+          this.t("Export path"),
+          this.t("Export format"),
+          this.t("Enable post-export actions"),
+          "AI provider",
+          "Gemini API key",
+          "Gemini API URL",
+          "Gemini model",
+          "AI prompt"
+        ],
+        (containerEl) => this.renderExportSettings(containerEl)
+      ),
+      this.createSearchableSection(
+        this.t("Themes"),
+        [this.t("Visible themes"), this.t("Custom themes"), this.t("+ Create theme")],
+        (containerEl) => this.renderThemeSettings(containerEl)
+      )
+    ];
   }
 
   private get language(): SettingsLanguage {
@@ -177,25 +210,23 @@ export class RedSettingTab extends PluginSettingTab {
     return settingsText(this.language, english);
   }
 
-  private createSection(containerEl: HTMLElement, id: string, title: string, render: (el: HTMLElement) => void): void {
-    const section = containerEl.createDiv("settings-section");
-    const header = section.createDiv("settings-section-header");
-    const toggle = header.createSpan("settings-section-toggle");
-    setIcon(toggle, "chevron-right");
-    header.createEl("h4", { text: title });
-    const content = section.createDiv("settings-section-content");
-    render(content);
-    header.addEventListener("click", () => {
-      const expanded = !section.hasClass("is-expanded");
-      section.toggleClass("is-expanded", expanded);
-      setIcon(toggle, expanded ? "chevron-down" : "chevron-right");
-      expanded ? this.expandedSections.add(id) : this.expandedSections.delete(id);
-    });
-    if (!containerEl.querySelector(".settings-section") || this.expandedSections.has(id)) {
-      section.addClass("is-expanded");
-      setIcon(toggle, "chevron-down");
-      this.expandedSections.add(id);
-    }
+  private createSearchableSection(
+    name: string,
+    aliases: string[],
+    render: (containerEl: HTMLElement) => void
+  ): SettingDefinitionItem {
+    return {
+      name,
+      aliases,
+      render: (setting) => {
+        const containerEl = setting.settingEl;
+        containerEl.empty();
+        containerEl.addClass("red-settings");
+        containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
+        new Setting(containerEl).setName(name).setHeading();
+        render(containerEl);
+      }
+    };
   }
 
   private renderBasicSettings(containerEl: HTMLElement): void {
@@ -209,12 +240,12 @@ export class RedSettingTab extends PluginSettingTab {
         .setValue(settings.uiLanguage || "en")
         .onChange(async (value) => {
           await this.plugin.settingsManager.updateSettings({ uiLanguage: value as "en" | "zh" });
-          this.display();
+          this.update();
         }));
     new Setting(containerEl).setName(this.t("Show time")).addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
     new Setting(containerEl).setName(this.t("Show footer")).addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
 
-    containerEl.createEl("h4", { text: this.t("Fonts") });
+    new Setting(containerEl).setName(this.t("Fonts")).setHeading();
     this.plugin.settingsManager.getFontOptions().forEach((font) => {
       const setting = new Setting(containerEl).setName(font.label).setDesc(font.value);
       if (!font.isPreset) {
@@ -222,13 +253,13 @@ export class RedSettingTab extends PluginSettingTab {
           .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
             new CreateFontModal(this.app, async (updated) => {
               await this.plugin.settingsManager.updateFont(font.value, updated);
-              this.display();
+              this.update();
             }, this.language, font).open();
           }))
           .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
             new ConfirmModal(this.app, this.t("Delete font"), this.language === "zh" ? `删除字体“${font.label}”的配置？` : `Delete the "${font.label}" font configuration?`, async () => {
               await this.plugin.settingsManager.removeFont(font.value);
-              this.display();
+              this.update();
             }, this.language).open();
           }));
       }
@@ -236,7 +267,7 @@ export class RedSettingTab extends PluginSettingTab {
     new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Add font")).setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
-        this.display();
+        this.update();
       }, this.language).open();
     }));
   }
@@ -247,7 +278,7 @@ export class RedSettingTab extends PluginSettingTab {
       .setName(this.t("Export path"))
       .setDesc(this.t("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system."))
       .addText((text) => text
-        .setPlaceholder("markdown2card-exports")
+        .setPlaceholder(TECHNICAL_PLACEHOLDERS.exportPath)
         .setValue(settings.exportPath)
         .onChange((value) => this.plugin.settingsManager.updateSettings({ exportPath: value.trim() || "markdown2card-exports" })));
 
@@ -271,12 +302,12 @@ export class RedSettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(settings.enablePostExportActions)
         .onChange((value) => {
-          this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
-          this.display(); // Refresh to show/hide AI settings dynamically
+          void this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
+          this.update();
         }));
 
     if (settings.enablePostExportActions) {
-      containerEl.createEl("h3", { text: isZh ? "AI 总结与重写设置" : "AI Summary & Rewrite Settings" });
+      new Setting(containerEl).setName(isZh ? "AI 总结与重写设置" : "AI summary and rewrite settings").setHeading();
 
       new Setting(containerEl)
         .setName(isZh ? "启用 AI 智能重写" : "Enable AI Rewrite")
@@ -287,8 +318,8 @@ export class RedSettingTab extends PluginSettingTab {
         .addToggle((toggle) => toggle
           .setValue(settings.enableAiSummary)
           .onChange((value) => {
-            this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
-            this.display();
+            void this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
+            this.update();
           }));
 
       if (settings.enableAiSummary) {
@@ -301,7 +332,7 @@ export class RedSettingTab extends PluginSettingTab {
             .setValue(settings.aiProvider || "gemini")
             .onChange(async (value) => {
               await this.plugin.settingsManager.updateSettings({ aiProvider: value as "gemini" | "agy" });
-              this.display();
+              this.update();
             }));
 
         if (settings.aiProvider === "agy") {
@@ -311,10 +342,10 @@ export class RedSettingTab extends PluginSettingTab {
               ? "agy 可执行文件的路径或命令名；插件将以“agy -p 提示词”方式调用"
               : "Executable path or command name; the plugin invokes it as agy -p prompt")
             .addText((text) => text
-              .setPlaceholder("agy")
+              .setPlaceholder(TECHNICAL_PLACEHOLDERS.agyExecutable)
               .setValue(settings.agyCommandPath || "agy")
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
+                void this.plugin.settingsManager.updateSettings({ agyCommandPath: value.trim() || "agy" });
               }));
 
           new Setting(containerEl)
@@ -323,10 +354,10 @@ export class RedSettingTab extends PluginSettingTab {
               ? "可选。调用 agy 时同时设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY，例如 http://127.0.0.1:7890"
               : "Optional. Sets HTTP_PROXY, HTTPS_PROXY, and ALL_PROXY for agy, for example http://127.0.0.1:7890")
             .addText((text) => text
-              .setPlaceholder("http://127.0.0.1:7890")
+              .setPlaceholder(TECHNICAL_PLACEHOLDERS.proxyUrl)
               .setValue(settings.agyProxyUrl || "")
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ agyProxyUrl: value.trim() });
+                void this.plugin.settingsManager.updateSettings({ agyProxyUrl: value.trim() });
               }));
 
           new Setting(containerEl)
@@ -335,26 +366,26 @@ export class RedSettingTab extends PluginSettingTab {
               ? "可选。无需代理的主机列表，以逗号分隔"
               : "Optional. Comma-separated hosts that should bypass the proxy")
             .addText((text) => text
-              .setPlaceholder("localhost,127.0.0.1,::1")
+              .setPlaceholder(TECHNICAL_PLACEHOLDERS.noProxy)
               .setValue(settings.agyNoProxy || "")
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ agyNoProxy: value.trim() });
+                void this.plugin.settingsManager.updateSettings({ agyNoProxy: value.trim() });
               }));
         }
 
         if (settings.aiProvider !== "agy") {
           new Setting(containerEl)
-            .setName("Gemini API Key")
+            .setName("Gemini API key")
             .setDesc(isZh
               ? "输入您的 Gemini API 密钥 (从 Google AI Studio 获取)"
               : "Enter your Gemini API key (obtained from Google AI Studio)"
             )
             .addText((text) => {
               text.inputEl.type = "password";
-              text.setPlaceholder("AIzaSy...")
+              text.setPlaceholder(TECHNICAL_PLACEHOLDERS.apiKey)
                 .setValue(settings.geminiApiKey)
                 .onChange((value) => {
-                  this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
+                  void this.plugin.settingsManager.updateSettings({ geminiApiKey: value.trim() });
                 });
             });
 
@@ -368,7 +399,7 @@ export class RedSettingTab extends PluginSettingTab {
               .setPlaceholder("https://generativelanguage.googleapis.com")
               .setValue(settings.geminiApiUrl || "")
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
+                void this.plugin.settingsManager.updateSettings({ geminiApiUrl: value.trim() });
               }));
 
           new Setting(containerEl)
@@ -378,10 +409,10 @@ export class RedSettingTab extends PluginSettingTab {
               : "Enter the Gemini model name to use for rewriting (e.g. gemini-3.5-flash)"
             )
             .addText((text) => text
-              .setPlaceholder("gemini-3.5-flash")
+              .setPlaceholder(TECHNICAL_PLACEHOLDERS.model)
               .setValue(settings.geminiModel)
               .onChange((value) => {
-                this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
+                void this.plugin.settingsManager.updateSettings({ geminiModel: value.trim() });
               }));
         }
 
@@ -409,26 +440,26 @@ export class RedSettingTab extends PluginSettingTab {
             .setPlaceholder(isZh ? "输入 AI Prompt..." : "Enter AI Prompt...")
             .setValue(settings.aiPromptTemplate)
             .onChange((value) => {
-              this.plugin.settingsManager.updateSettings({ aiPromptTemplate: value });
+              void this.plugin.settingsManager.updateSettings({ aiPromptTemplate: value });
             }));
       }
     }
   }
 
   private renderThemeSettings(containerEl: HTMLElement): void {
-    containerEl.createEl("h4", { text: this.t("Visible themes") });
+    new Setting(containerEl).setName(this.t("Visible themes")).setHeading();
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
       new Setting(containerEl)
         .setName(theme.name)
         .setDesc(theme.description || this.t(theme.isPreset ? "Built-in theme" : "Custom theme"))
         .addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
           await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
-          this.display();
+          this.update();
         }))
         .addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Preview")).onClick(() => new ThemePreviewModal(this.app, this.plugin, theme, this.language).open()));
     });
 
-    containerEl.createEl("h4", { text: this.t("Custom themes") });
+    new Setting(containerEl).setName(this.t("Custom themes")).setHeading();
     this.plugin.settingsManager.getAllThemes().filter((theme) => !theme.isPreset).forEach((theme) => {
       new Setting(containerEl)
         .setName(theme.name)
@@ -436,27 +467,27 @@ export class RedSettingTab extends PluginSettingTab {
         .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
           new CreateThemeModal(this.app, this.plugin, async (updated) => {
             await this.plugin.settingsManager.updateTheme(theme.id, updated);
-            this.display();
+            this.update();
           }, this.language, theme).open();
         }))
         .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
           new ConfirmModal(this.app, this.language === "zh" ? "删除主题" : "Delete theme", this.language === "zh" ? `删除主题“${theme.name}”？此操作无法撤销。` : `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
             await this.plugin.settingsManager.removeTheme(theme.id);
-            this.display();
+            this.update();
           }, this.language).open();
         }));
     });
     new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Create theme")).setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
-        this.display();
+        this.update();
       }, this.language).open();
     }));
   }
 
   private renderCommunitySettings(containerEl: HTMLElement): void {
     const section = containerEl.createDiv("red-community-section");
-    section.createEl("h4", { text: this.t("Community") });
+    new Setting(section).setName(this.t("Community")).setHeading();
     section.createEl("p", {
       cls: "red-settings-note",
       text: this.t("markdown2card grows through community themes. Please submit a pull request with new theme styles to help enrich the ecosystem.")
@@ -467,7 +498,7 @@ export class RedSettingTab extends PluginSettingTab {
       .setDesc(this.activationStatusDescription());
     activationSetting.addText((text) => {
       text.inputEl.type = "password";
-      text.setPlaceholder("M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX");
+      text.setPlaceholder(TECHNICAL_PLACEHOLDERS.activationCode);
       text.setValue(settings.activationCode);
       text.onChange(async (value) => {
         await this.plugin.settingsManager.updateSettings({
@@ -500,7 +531,7 @@ export class RedSettingTab extends PluginSettingTab {
             ? currentSettings.activationLastCheckedAt
             : new Date().toISOString()
         });
-        this.display();
+        this.update();
       }))
       .addButton((button) => button.setButtonText(this.t("Clear")).onClick(async () => {
         await this.plugin.settingsManager.updateSettings({
@@ -508,7 +539,7 @@ export class RedSettingTab extends PluginSettingTab {
           activationValidationStatus: "unchecked",
           activationLastCheckedAt: ""
         });
-        this.display();
+        this.update();
       }));
     new Setting(section)
       .setName(this.t("Donate"))

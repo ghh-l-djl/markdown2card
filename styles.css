@@ -2892,3 +2892,83 @@
 .red-image-preview button:active {
   transform: scale(0.98) !important;
 }
+.red-mermaid-export-root {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+  visibility: visible;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.red-pagination-measure {
+  display: block !important;
+  position: absolute !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  left: 0 !important;
+  top: 0 !important;
+  overflow: hidden !important;
+}
+
+.red-mermaid-svg {
+  width: var(--red-mermaid-width);
+  height: var(--red-mermaid-height);
+  max-width: 100%;
+  display: block;
+}
+.red-custom-background {
+  background-repeat: no-repeat;
+}
+
+.red-mermaid-export-clone,
+.red-mermaid-export-svg {
+  max-width: none;
+  display: block;
+}
+.red-code-contrast,
+.red-code-contrast code {
+  color: var(--red-code-contrast-color) !important;
+  text-shadow: none !important;
+}
+
+.red-code-contrast code {
+  background-color: transparent !important;
+}
+
+.red-mermaid-hardened {
+  color: var(--red-mermaid-text) !important;
+  background-color: var(--red-mermaid-label-background) !important;
+  text-shadow: none !important;
+}
+
+.red-mermaid-hardened :is(foreignObject, foreignObject *, .label, .label *, .nodeLabel, .nodeLabel *, .edgeLabel, .edgeLabel *) {
+  color: var(--red-mermaid-text) !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: var(--red-mermaid-text) !important;
+}
+
+.red-mermaid-hardened :is(text, tspan) {
+  fill: var(--red-mermaid-text) !important;
+  color: var(--red-mermaid-text) !important;
+  text-shadow: none !important;
+}
+
+.red-mermaid-hardened :is(.edgePath path, .flowchart-link) {
+  stroke: var(--red-mermaid-edge) !important;
+}
+
+.red-mermaid-hardened marker path {
+  fill: var(--red-mermaid-edge) !important;
+  stroke: var(--red-mermaid-edge) !important;
+}
+
+.red-mermaid-hardened :is(.node rect, .node circle, .node ellipse, .node polygon) {
+  fill: var(--red-mermaid-node-fill) !important;
+  stroke: var(--red-mermaid-node-stroke) !important;
+}
+
+.red-mermaid-hardened :is(.edgeLabel rect, .labelBkg, .label-container) {
+  fill: var(--red-mermaid-label-background) !important;
+}

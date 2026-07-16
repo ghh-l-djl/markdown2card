@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
-import { App, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
+import { App, type Editor, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import supportHeroImage from "./assets/support-hero.jpg";
 import xiaohongshuContactImage from "./assets/xiaohongshu-contact.png";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
@@ -150,6 +150,18 @@ const TEMPLATE_LABEL_KEYS: Record<string, string> = {
   signature: "signature"
 };
 
+const ACTIVATION_CODE_PLACEHOLDER = "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Unknown error";
+}
+
 class SupportReminderModal extends Modal {
   constructor(app: App, private settingsManager: SettingsManager, private language: UiLanguage) {
     super(app);
@@ -165,7 +177,7 @@ class SupportReminderModal extends Modal {
       attr: { src: supportHeroImage, alt: isZh ? "独立开发者的生产力工具创作工坊" : "An independent developer's productivity-tool workshop" }
     });
     const copy = hero.createDiv("red-support-copy");
-    copy.createEl("span", { cls: "red-support-eyebrow", text: isZh ? "INDEPENDENT MAKER · 独立开发者" : "INDEPENDENT MAKER" });
+    copy.createSpan({ cls: "red-support-eyebrow", text: isZh ? "INDEPENDENT MAKER · 独立开发者" : "INDEPENDENT MAKER" });
     copy.createEl("h2", { text: isZh ? "让好工具持续生长" : "Keep useful tools growing" });
     copy.createEl("p", {
       text: isZh
@@ -210,7 +222,7 @@ class SupportReminderModal extends Modal {
       cls: "red-support-activation-input",
       attr: {
         type: "password",
-        placeholder: "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+        placeholder: ACTIVATION_CODE_PLACEHOLDER
       }
     });
     activationInput.value = this.settingsManager.getSettings().activationCode;
@@ -219,7 +231,8 @@ class SupportReminderModal extends Modal {
     activationButtons.createEl("button", { text: isZh ? "显示/隐藏" : "Show/hide" }).addEventListener("click", () => {
       activationInput.type = activationInput.type === "password" ? "text" : "password";
     });
-    activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "验证" : "Validate" }).addEventListener("click", async () => {
+    activationButtons.createEl("button", { cls: "mod-cta", text: isZh ? "验证" : "Validate" }).addEventListener("click", () => {
+      void (async () => {
       const value = activationInput.value;
       const currentSettings = this.settingsManager.getSettings();
       const previousStatus: SavedPaidEntitlementStatus = normalizeActivationCode(currentSettings.activationCode)
@@ -239,13 +252,14 @@ class SupportReminderModal extends Modal {
         this.close();
         return;
       }
-      activationStatus.setText(status === "invalid"
-        ? (isZh ? "兔兔码无效或已失效，请检查后重试。" : "The activation code is invalid or inactive. Check it and try again.")
-        : (isZh ? "暂时无法验证，请稍后重试。" : "Unable to validate right now. Try again later."));
+        activationStatus.setText(status === "invalid"
+          ? (isZh ? "兔兔码无效或已失效，请检查后重试。" : "The activation code is invalid or inactive. Check it and try again.")
+          : (isZh ? "暂时无法验证，请稍后重试。" : "Unable to validate right now. Try again later."));
+      })();
     });
 
     const footer = this.contentEl.createDiv("red-support-footer");
-    footer.createEl("span", { text: isZh ? "谢谢你让独立创作走得更远。" : "Thank you for helping independent work go further." });
+    footer.createSpan({ text: isZh ? "谢谢你让独立创作走得更远。" : "Thank you for helping independent work go further." });
     footer.createEl("button", { text: isZh ? "稍后再说" : "Maybe later" }).addEventListener("click", () => this.close());
   }
 }
@@ -285,11 +299,11 @@ export class RedView extends ItemView {
 
   constructor(leaf: WorkspaceLeaf, private themeManager: ThemeManager, private settingsManager: SettingsManager) {
     super(leaf);
-    this.imgTemplateManager = new ImgTemplateManager(settingsManager, this.updatePreview.bind(this), themeManager);
+    this.imgTemplateManager = new ImgTemplateManager(settingsManager, () => this.updatePreview(), themeManager);
   }
 
   getViewType(): string { return VIEW_TYPE_RED; }
-  getDisplayText(): string { return "markdown2card"; }
+  getDisplayText(): string { return "Markdown2card"; }
   getIcon(): string { return MARKDOWN2CARD_ICON; }
 
   async onOpen(): Promise<void> {
@@ -306,8 +320,8 @@ export class RedView extends ItemView {
   }
 
   async initializeToolbar(container: HTMLElement): Promise<void> {
-    const toolbar = container.createEl("div", { cls: "red-toolbar" });
-    const controls = toolbar.createEl("div", { cls: "red-controls-group" });
+    const toolbar = container.createDiv({ cls: "red-toolbar" });
+    const controls = toolbar.createDiv({ cls: "red-controls-group" });
     this.initializeLockButton(controls);
     this.customTemplateSelect = this.createCustomSelect(controls, "red-template-select", this.getTemplateOptions());
     this.customTemplateSelect.id = "template-select";
@@ -340,11 +354,11 @@ export class RedView extends ItemView {
   initializeLockButton(parent: HTMLElement): void {
     this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
     setIcon(this.lockButton, "lock");
-    this.lockButton.addEventListener("click", () => this.togglePreviewLock());
+    this.lockButton.addEventListener("click", () => { void this.togglePreviewLock(); });
   }
 
   initializeFontSizeControls(parent: HTMLElement): void {
-    const group = parent.createEl("div", { cls: "red-font-size-group" });
+    const group = parent.createDiv({ cls: "red-font-size-group" });
     const dec = group.createEl("button", { cls: "red-font-size-btn", text: "-" });
     this.fontSizeSelect = group.createEl("input", { cls: "red-font-size-input", type: "text", value: "16" });
     const inc = group.createEl("button", { cls: "red-font-size-btn", text: "+" });
@@ -359,48 +373,50 @@ export class RedView extends ItemView {
       const current = Number.parseFloat(this.fontSizeSelect.value);
       if (current > 12) {
         this.fontSizeSelect.value = String(current - 0.5);
-        update();
+        void update();
       }
     });
     inc.addEventListener("click", () => {
       const current = Number.parseFloat(this.fontSizeSelect.value);
       if (current < 30) {
         this.fontSizeSelect.value = String(current + 0.5);
-        update();
+        void update();
       }
     });
-    this.fontSizeSelect.addEventListener("change", update);
+    this.fontSizeSelect.addEventListener("change", () => { void update(); });
   }
 
   initializeThemeStrip(parent: HTMLElement): void {
     const themes = this.settingsManager.getVisibleThemes();
     if (!themes.length) return;
-    const strip = parent.createEl("div", { cls: "red-theme-strip" });
+    const strip = parent.createDiv({ cls: "red-theme-strip" });
     const active = this.settingsManager.getSettings().themeId;
     themes.forEach((theme) => {
-      const chip = strip.createEl("div", { cls: "red-theme-chip", attr: { title: theme.name } });
+      const chip = strip.createDiv({ cls: "red-theme-chip", attr: { title: theme.name } });
       chip.dataset.themeId = theme.id;
       if (theme.id === active) chip.addClass("red-theme-chip-active");
-      const swatch = chip.createEl("div", { cls: "red-theme-chip-swatch" });
+      const swatch = chip.createDiv({ cls: "red-theme-chip-swatch" });
       swatch.style.background = this.pickColor(theme.styles.imagePreview, "#ffffff");
-      swatch.createEl("div", { cls: "red-theme-chip-bar" }).style.background = this.pickColor(theme.styles.title?.h2?.content, "#222222");
-      swatch.createEl("div", { cls: "red-theme-chip-dot" }).style.background = this.pickColor(theme.styles.emphasis?.strong, "#888888");
-      chip.createEl("div", { cls: "red-theme-chip-name", text: this.translateThemeName(theme.id, theme.name) });
-      chip.addEventListener("click", async () => {
-        this.themeManager.setCurrentTheme(theme.id);
-        await this.settingsManager.updateSettings({ themeId: theme.id });
-        this.themeManager.applyTheme(this.previewEl);
-        await this.restoreThemeSettings(theme.id);
+      swatch.createDiv({ cls: "red-theme-chip-bar" }).style.background = this.pickColor(theme.styles.title?.h2?.content, "#222222");
+      swatch.createDiv({ cls: "red-theme-chip-dot" }).style.background = this.pickColor(theme.styles.emphasis?.strong, "#888888");
+      chip.createDiv({ cls: "red-theme-chip-name", text: this.translateThemeName(theme.id, theme.name) });
+      chip.addEventListener("click", () => {
+        void (async () => {
+          this.themeManager.setCurrentTheme(theme.id);
+          await this.settingsManager.updateSettings({ themeId: theme.id });
+          this.themeManager.applyTheme(this.previewEl);
+          await this.restoreThemeSettings(theme.id);
+        })();
       });
     });
   }
 
   initializePreviewArea(container: HTMLElement): void {
-    const wrapper = container.createEl("div", { cls: "red-preview-wrapper" });
-    this.previewEl = wrapper.createEl("div", { cls: "red-preview-container" });
-    const nav = wrapper.createEl("div", { cls: "red-nav-container" });
+    const wrapper = container.createDiv({ cls: "red-preview-wrapper" });
+    this.previewEl = wrapper.createDiv({ cls: "red-preview-container" });
+    const nav = wrapper.createDiv({ cls: "red-nav-container" });
     const prev = nav.createEl("button", { cls: "red-nav-button", text: "←" });
-    const indicator = nav.createEl("span", { cls: "red-page-indicator", text: "1/1" });
+    const indicator = nav.createSpan({ cls: "red-page-indicator", text: "1/1" });
     const next = nav.createEl("button", { cls: "red-nav-button", text: "→" });
     this.navigationButtons = { prev, next, indicator };
     prev.addEventListener("click", () => this.navigateImages("prev"));
@@ -408,8 +424,8 @@ export class RedView extends ItemView {
   }
 
   initializeBottomBar(container: HTMLElement): void {
-    const bottom = container.createEl("div", { cls: "red-bottom-bar" });
-    const controls = bottom.createEl("div", { cls: "red-controls-group" });
+    const bottom = container.createDiv({ cls: "red-bottom-bar" });
+    const controls = bottom.createDiv({ cls: "red-controls-group" });
     this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
     this.initializeFooterToggleButton(controls);
@@ -420,7 +436,7 @@ export class RedView extends ItemView {
   initializeHelpButton(parent: HTMLElement): void {
     const help = parent.createEl("button", { cls: "red-help-button", attr: { "aria-label": this.t("guide") } });
     setIcon(help, "help");
-    parent.createEl("div", {
+    parent.createDiv({
       cls: "red-help-tooltip",
       text: this.t("guideText")
     });
@@ -442,11 +458,13 @@ export class RedView extends ItemView {
     this.footerToggleButton = parent.createEl("button", { cls: "red-footer-toggle-button" });
     setIcon(this.footerToggleButton, "panel-bottom");
     this.updateFooterToggleButtonState();
-    this.footerToggleButton.addEventListener("click", async () => {
-      const showFooter = this.settingsManager.getSettings().showFooter === false;
-      await this.settingsManager.updateSettings({ showFooter });
-      this.updateFooterToggleButtonState();
-      await this.updatePreview();
+    this.footerToggleButton.addEventListener("click", () => {
+      void (async () => {
+        const showFooter = this.settingsManager.getSettings().showFooter === false;
+        await this.settingsManager.updateSettings({ showFooter });
+        this.updateFooterToggleButtonState();
+        await this.updatePreview();
+      })();
     });
   }
 
@@ -460,20 +478,20 @@ export class RedView extends ItemView {
 
   initializeExportButtons(parent: HTMLElement): void {
     const single = parent.createEl("button", { cls: "red-export-button", text: this.t("downloadCurrent") });
-    single.addEventListener("click", async () => {
+    single.addEventListener("click", () => {
       if (!this.previewEl) return;
-      await this.withButtonState(single, this.t("exporting"), this.t("downloadCurrent"), () => this.exportToVault(false));
+      void this.withButtonState(single, this.t("exporting"), this.t("downloadCurrent"), () => this.exportToVault(false));
     });
     this.copyButton = parent.createEl("button", { cls: "red-export-button red-export-primary", text: this.t("exportAll") });
-    this.copyButton.addEventListener("click", async () => {
+    this.copyButton.addEventListener("click", () => {
       if (!this.previewEl) return;
-      await this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
+      void this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
   }
 
   initializeEventListeners(): void {
-    this.registerEvent(this.app.workspace.on("file-open", this.onFileOpen.bind(this)));
-    this.registerEvent(this.app.vault.on("modify", this.onFileModify.bind(this)));
+    this.registerEvent(this.app.workspace.on("file-open", (file) => { void this.onFileOpen(file); }));
+    this.registerEvent(this.app.vault.on("modify", (file) => { this.onFileModify(file); }));
     const onLanguageChanged = () => this.refreshLanguageLabels();
     this.settingsManager.on("language-changed", onLanguageChanged);
     this.register(() => this.settingsManager.off("language-changed", onLanguageChanged));
@@ -490,11 +508,12 @@ export class RedView extends ItemView {
   }
 
   initializeCopyButtonListener(): void {
-    const handler: EventListener = async (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { copyButton } = customEvent.detail || {};
-      if (!copyButton) return;
-      copyButton.addEventListener("click", async () => {
+    const handler: EventListener = (event: Event) => {
+      const customEvent = event as CustomEvent<{ copyButton?: HTMLElement }>;
+      const copyButton = customEvent.detail?.copyButton;
+      if (!copyButton?.instanceOf(HTMLButtonElement)) return;
+      copyButton.addEventListener("click", () => {
+        void (async () => {
         copyButton.disabled = true;
         try {
           const ok = await ClipboardManager.copyImageToClipboard(this.previewEl);
@@ -502,6 +521,7 @@ export class RedView extends ItemView {
         } finally {
           window.setTimeout(() => { copyButton.disabled = false; }, 1000);
         }
+        })();
       });
     };
     this.containerEl.addEventListener("copy-button-added", handler);
@@ -569,7 +589,8 @@ export class RedView extends ItemView {
     await this.waitForWorkspaceLayout();
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
-    if (fonts?.ready) await fonts.ready.catch(() => undefined);
+    const fontsReady = fonts?.ready;
+    if (fontsReady !== undefined) await fontsReady.catch(() => undefined);
     await this.waitForPreviewStyles();
     await this.waitForContentBox();
   }
@@ -603,10 +624,10 @@ export class RedView extends ItemView {
   }
 
   private scheduleSettledRetry(renderId: number): void {
-    window.setTimeout(async () => {
+    window.setTimeout(() => {
       if (renderId !== this.previewRenderId || !this.currentFile) return;
       const issue = this.detectSettledRenderIssue();
-      if (issue.needsRerender) await this.updatePreview({ settleRetry: true });
+      if (issue.needsRerender) void this.updatePreview({ settleRetry: true });
     }, 900);
   }
 
@@ -628,14 +649,14 @@ export class RedView extends ItemView {
     const footer = imagePreview.querySelector<HTMLElement>(":scope > .red-preview-footer");
     if (!footer) {
       imagePreview.classList.add("red-no-footer");
-      imagePreview.style.setProperty("--red-footer-height", "0px");
+      imagePreview.setCssProps({ "--red-footer-height": "0px" });
       return;
     }
 
     imagePreview.classList.remove("red-no-footer");
-    imagePreview.style.setProperty("--red-footer-height", "0px");
+    imagePreview.setCssProps({ "--red-footer-height": "0px" });
     const footerHeight = Math.ceil(Math.max(footer.getBoundingClientRect().height, footer.scrollHeight, 28));
-    imagePreview.style.setProperty("--red-footer-height", `${footerHeight}px`);
+    imagePreview.setCssProps({ "--red-footer-height": `${footerHeight}px` });
   }
 
   async onFileOpen(file: TFile | null): Promise<void> {
@@ -644,7 +665,7 @@ export class RedView extends ItemView {
     this.currentImageIndex = 0;
     if (!file || file.extension !== "md") {
       this.previewEl?.empty();
-      this.previewEl?.createEl("div", { cls: "red-empty-state", text: this.t("markdownOnly") });
+      this.previewEl.createDiv({ cls: "red-empty-state", text: this.t("markdownOnly") });
       this.updateControlsState(false);
       return;
     }
@@ -655,10 +676,10 @@ export class RedView extends ItemView {
     resetPreviewScroll(this.previewEl);
   }
 
-  async onFileModify(file: TAbstractFile): Promise<void> {
+  onFileModify(file: TAbstractFile): void {
     if (file !== this.currentFile || this.isPreviewLocked) return;
     if (this.updateTimer) window.clearTimeout(this.updateTimer);
-    this.updateTimer = window.setTimeout(() => this.updatePreview(), 500);
+    this.updateTimer = window.setTimeout(() => { void this.updatePreview(); }, 500);
   }
 
   async togglePreviewLock(): Promise<void> {
@@ -693,9 +714,9 @@ export class RedView extends ItemView {
     const modal = new Modal(this.app);
     modal.modalEl.addClass("red-overview-modal");
     modal.titleEl.setText(this.t("overviewTitle").replace("{count}", String(sections.length)));
-    const grid = modal.contentEl.createEl("div", { cls: "red-overview-grid" });
+    const grid = modal.contentEl.createDiv({ cls: "red-overview-grid" });
     sections.forEach((_, index) => {
-      const cell = grid.createEl("div", { cls: "red-overview-cell" });
+      const cell = grid.createDiv({ cls: "red-overview-cell" });
       const clone = preview.cloneNode(true) as HTMLElement;
       clone.querySelectorAll<HTMLElement>(".red-content-section").forEach((section, sectionIndex) => {
         const active = sectionIndex === index;
@@ -703,7 +724,7 @@ export class RedView extends ItemView {
         section.style.display = active ? "block" : "none";
       });
       cell.appendChild(clone);
-      cell.createEl("div", { cls: "red-overview-num", text: String(index + 1) });
+      cell.createDiv({ cls: "red-overview-num", text: String(index + 1) });
     });
     modal.open();
   }
@@ -715,32 +736,32 @@ export class RedView extends ItemView {
     let timer: number | null = null;
     const persist = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => this.settingsManager.updateSettings({ tableScales: store }), 400);
+      timer = window.setTimeout(() => { void this.settingsManager.updateSettings({ tableScales: store }); }, 400);
     };
     this.previewEl.querySelectorAll<HTMLTableElement>(".red-content-section table").forEach((table) => {
       if (table.dataset.redTableInit === "1" || !table.parentElement) return;
       const key = this.tableKey(table);
       const st = store[key] || { s: 1 };
       store[key] = st;
-      const wrap = document.createElement("div");
+      const wrap = createDiv();
       wrap.className = "red-table-wrap";
       table.parentElement.insertBefore(wrap, table);
       wrap.appendChild(table);
       table.dataset.redTableInit = "1";
       const apply = () => wrap.querySelectorAll<HTMLElement>("th, td").forEach((cell) => { cell.style.fontSize = `${(base * st.s).toFixed(2)}px`; });
       apply();
-      const ctrl = wrap.createEl("div", { cls: "red-table-ctrl" });
+      const ctrl = wrap.createDiv({ cls: "red-table-ctrl" });
       const mk = (text: string, fn: () => void) => ctrl.createEl("button", { cls: "red-table-btn", text }).addEventListener("click", (event) => {
         event.preventDefault(); event.stopPropagation(); fn(); apply(); persist();
       });
       mk("−", () => { st.s = Math.max(0.5, +(st.s - 0.05).toFixed(2)); });
       mk("+", () => { st.s = Math.min(1.6, +(st.s + 0.05).toFixed(2)); });
       mk("↺", () => { st.s = 1; });
-      const handle = wrap.createEl("div", { cls: "red-table-resize", attr: { title: "拖拽缩放表格" } });
+      const handle = wrap.createDiv({ cls: "red-table-resize", attr: { title: "拖拽缩放表格" } });
       let resizing = false, start = 0, s0 = 1;
       handle.addEventListener("pointerdown", (event) => { resizing = true; start = event.clientX + event.clientY; s0 = st.s; handle.setPointerCapture(event.pointerId); event.preventDefault(); event.stopPropagation(); });
       handle.addEventListener("pointermove", (event) => { if (!resizing) return; st.s = Math.max(0.5, Math.min(1.6, +(s0 + (event.clientX + event.clientY - start) / 300).toFixed(2))); apply(); });
-      const end = (event: PointerEvent) => { if (!resizing) return; resizing = false; persist(); try { handle.releasePointerCapture(event.pointerId); } catch {} };
+      const end = (event: PointerEvent) => { if (!resizing) return; resizing = false; persist(); try { handle.releasePointerCapture(event.pointerId); } catch { /* Pointer capture may already be released. */ } };
       handle.addEventListener("pointerup", end);
       handle.addEventListener("pointercancel", end);
     });
@@ -752,7 +773,7 @@ export class RedView extends ItemView {
     let timer: number | null = null;
     const persist = () => {
       if (timer) window.clearTimeout(timer);
-      timer = window.setTimeout(() => this.settingsManager.updateSettings({ imageLayouts: store }), 400);
+      timer = window.setTimeout(() => { void this.settingsManager.updateSettings({ imageLayouts: store }); }, 400);
     };
     this.previewEl.querySelectorAll<HTMLElement>(".red-content-image").forEach((figure) => {
       const img = figure.querySelector<HTMLImageElement>("img");
@@ -773,7 +794,7 @@ export class RedView extends ItemView {
         if (st.mode === "contain") {
           img.style.removeProperty("width");
           img.style.removeProperty("height");
-          img.style.transform = "none";
+          img.style.removeProperty("transform");
           img.title = "";
           return;
         }
@@ -783,7 +804,7 @@ export class RedView extends ItemView {
         img.style.transform = `translate(${st.offsetX}px, ${st.offsetY}px) scale(${st.scale})`;
         img.title = "拖动图片调整裁剪区域";
       };
-      const controls = viewport.createEl("div", { cls: "red-image-controls red-editor-only" });
+      const controls = viewport.createDiv({ cls: "red-image-controls red-editor-only" });
       const mk = (text: string, title: string, fn: () => void): HTMLButtonElement => {
         const button = controls.createEl("button", {
           cls: "red-image-control-button",
@@ -817,7 +838,7 @@ export class RedView extends ItemView {
         st.offsetY = oy + event.clientY - sy;
         apply();
       });
-      const end = (event: PointerEvent) => { if (!dragging) return; dragging = false; persist(); try { img.releasePointerCapture(event.pointerId); } catch {} };
+      const end = (event: PointerEvent) => { if (!dragging) return; dragging = false; persist(); try { img.releasePointerCapture(event.pointerId); } catch { /* Pointer capture may already be released. */ } };
       img.addEventListener("pointerup", end);
       img.addEventListener("pointercancel", end);
       apply();
@@ -862,20 +883,20 @@ export class RedView extends ItemView {
   async restoreSelect(container: HTMLElement, value: string, options: CustomSelectOption[]): Promise<void> {
     const selected = options.find((option) => option.value === value);
     if (!selected || !container) return;
-    container.querySelector<HTMLElement>(".red-select-text")!.textContent = selected.label;
+    container.querySelector<HTMLElement>(".red-select-text").textContent = selected.label;
     const select = container.querySelector<HTMLElement>(".red-select");
     if (select) select.dataset.value = selected.value;
     container.querySelectorAll<HTMLElement>(".red-select-item").forEach((item) => item.classList.toggle("red-selected", item.dataset.value === value));
   }
 
   createCustomSelect(parent: HTMLElement, className: string, options: CustomSelectOption[]): HTMLElement {
-    const container = parent.createEl("div", { cls: `red-select-container ${className}` });
-    const select = container.createEl("div", { cls: "red-select" });
-    const selectedText = select.createEl("span", { cls: "red-select-text" });
-    select.createEl("span", { cls: "red-select-arrow", text: "▾" });
-    const dropdown = container.createEl("div", { cls: "red-select-dropdown" });
+    const container = parent.createDiv({ cls: `red-select-container ${className}` });
+    const select = container.createDiv({ cls: "red-select" });
+    const selectedText = select.createSpan({ cls: "red-select-text" });
+    select.createSpan({ cls: "red-select-arrow", text: "▾" });
+    const dropdown = container.createDiv({ cls: "red-select-dropdown" });
     options.forEach((option) => {
-      const item = dropdown.createEl("div", { cls: "red-select-item", text: option.label });
+      const item = dropdown.createDiv({ cls: "red-select-item", text: option.label });
       item.dataset.value = option.value;
       item.addEventListener("click", () => {
         dropdown.querySelectorAll(".red-select-item").forEach((el) => el.removeClass("red-selected"));
@@ -899,7 +920,7 @@ export class RedView extends ItemView {
   onSelectChange(container: HTMLElement, callback: (value: string) => void | Promise<void>): void {
     container.querySelector(".red-select")?.addEventListener("change", (event: Event) => {
       const customEvent = event as CustomEvent<{ value: string }>;
-      return callback(customEvent.detail.value);
+      void callback(customEvent.detail.value);
     });
   }
 
@@ -1031,7 +1052,7 @@ export class RedView extends ItemView {
     return resolvePageLineMap(pageSourceLines, fallbackMap);
   }
 
-  private getFileEditorLeaf(): { leaf: WorkspaceLeaf; editor: any } | null {
+  private getFileEditorLeaf(): { leaf: WorkspaceLeaf; editor: Editor } | null {
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       const view = leaf.view as MarkdownView;
       if (view?.file === this.currentFile && view.editor) return { leaf, editor: view.editor };
@@ -1043,10 +1064,18 @@ export class RedView extends ItemView {
     const target = this.getFileEditorLeaf();
     if (!target) return;
     const line = this.buildLineMap()[index] || 0;
-    this.app.workspace.revealLeaf(target.leaf);
-    target.editor.focus();
-    target.editor.setCursor({ line, ch: 0 });
-    try { target.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true); } catch {}
+    void this.revealEditorLine(target.leaf, target.editor, line);
+  }
+
+  private async revealEditorLine(leaf: WorkspaceLeaf, editor: Editor, line: number): Promise<void> {
+    await this.app.workspace.revealLeaf(leaf);
+    editor.focus();
+    editor.setCursor({ line, ch: 0 });
+    try {
+      editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+    } catch {
+      // Some editor implementations do not expose scrollIntoView.
+    }
   }
 
   private syncPreviewFromEditor(): void {
@@ -1193,8 +1222,8 @@ export class RedView extends ItemView {
       try {
         body = removeMarkdownImages(await AiManager.rewriteContent(body, settings));
         new Notice(this.t("aiRewriteSuccess"));
-      } catch (error: any) {
-        new Notice(`${this.t("aiRewriteFailed")} (${error.message || String(error)})`);
+      } catch (error: unknown) {
+        new Notice(`${this.t("aiRewriteFailed")} (${describeError(error)})`);
       }
     }
 
@@ -1212,16 +1241,18 @@ export class RedView extends ItemView {
     }
 
     await this.app.fileManager.processFrontMatter(sourceFile, (frontmatter) => {
-      if (frontmatter.content_role !== "source_material") {
-        frontmatter.content_role = "source_material";
+      const data = frontmatter as unknown as Record<string, unknown>;
+      if (data.content_role !== "source_material") {
+        data.content_role = "source_material";
       }
-      const current = Array.isArray(frontmatter.derived_to)
-        ? frontmatter.derived_to
-        : frontmatter.derived_to
-          ? [frontmatter.derived_to]
+      const derivedTo = data.derived_to;
+      const current = Array.isArray(derivedTo)
+        ? derivedTo.filter((value): value is string => typeof value === "string")
+        : typeof derivedTo === "string"
+          ? [derivedTo]
           : [];
       if (!current.includes(publishPath)) current.push(publishPath);
-      frontmatter.derived_to = current;
+      data.derived_to = current;
     });
   }
 
@@ -1258,9 +1289,10 @@ export class RedView extends ItemView {
   }
 
   private getPublishTitle(file: TFile): string {
-    const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
-    const sourceTitle = typeof frontmatter?.title === "string" ? frontmatter.title.trim() : "";
-    const rawAlternativeTitles = frontmatter?.alternative_titles;
+    const rawFrontmatter: unknown = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    const frontmatter = isRecord(rawFrontmatter) ? rawFrontmatter : {};
+    const sourceTitle = typeof frontmatter.title === "string" ? frontmatter.title.trim() : "";
+    const rawAlternativeTitles = frontmatter.alternative_titles;
     const alternativeTitles = (Array.isArray(rawAlternativeTitles) ? rawAlternativeTitles : [rawAlternativeTitles])
       .filter((value): value is string => typeof value === "string")
       .map(value => value.trim())
@@ -1275,9 +1307,9 @@ export class RedView extends ItemView {
   private extractAndRemoveTags(text: string): { cleanText: string; tags: string[] } {
     const tags: string[] = [];
     const seen = new Set<string>();
-    const regex = /#([^\s#.,;:!?"'()\[\]{}+=~`|<>\\\/]+)/g;
+    const regex = /#([^\s#.,;:!?"'()\x5b\x5d{}+=~`|<>\\\x2f]+)/g;
     
-    const cleanText = text.replace(regex, (match, tag) => {
+    const cleanText = text.replace(regex, (match: string, tag: string) => {
       const trimmedTag = tag.trim();
       if (trimmedTag && !/^\d+$/.test(trimmedTag)) {
         if (!seen.has(trimmedTag)) {

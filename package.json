@@ -1,12 +1,14 @@
 {
   "name": "markdown2card",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Obsidian plugin for rendering Markdown notes as card images.",
   "main": "main.js",
   "scripts": {
     "build": "node esbuild.config.mjs production",
     "build:local": "node esbuild.config.mjs local",
     "dev": "node esbuild.config.mjs",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts"
   },
   "keywords": [
@@ -18,15 +20,19 @@
   "author": "markdown2card",
   "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
+    "@eslint/js": "^9.30.1",
     "@types/node": "^20.11.30",
-    "builtin-modules": "^3.3.0",
+    "@typescript-eslint/parser": "^8.35.1",
     "esbuild": "^0.20.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-obsidianmd": "^0.4.1",
     "obsidian": "^1.5.12",
     "tsx": "^4.23.0",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "typescript-eslint": "^8.35.1"
   },
   "dependencies": {
-    "html-to-image": "^1.11.11",
-    "jszip": "^3.10.1"
+    "fflate": "^0.8.3",
+    "html-to-image": "^1.11.11"
   }
 }

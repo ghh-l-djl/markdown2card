@@ -17,7 +17,7 @@ export class ClipboardManager {
     try {
       const imageElement = element.querySelector<HTMLElement>(".red-image-preview");
       if (!imageElement) throw new Error("找不到预览区域");
-      await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+      await new Promise((resolve) => window.setTimeout(resolve, EXPORT_SETTLE_MS));
       let blob = await toBlob(imageElement, this.getExportConfig());
       if (!(blob instanceof Blob)) {
         const canvas = await toCanvas(imageElement, this.getExportConfig());

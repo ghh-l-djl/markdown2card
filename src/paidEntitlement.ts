@@ -76,9 +76,9 @@ export async function validatePaidEntitlement(
   if (!normalizedCode) return "invalid";
 
   const timeoutMs = options.timeoutMs ?? 1500;
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timeoutId: number | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error("entitlement request timed out")), timeoutMs);
+    timeoutId = window.setTimeout(() => reject(new Error("entitlement request timed out")), timeoutMs);
   });
 
   try {
@@ -101,7 +101,7 @@ export async function validatePaidEntitlement(
   } catch {
     return "unavailable";
   } finally {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
   }
 }
 

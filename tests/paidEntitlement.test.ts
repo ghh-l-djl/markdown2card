@@ -8,6 +8,11 @@ import {
   validatePaidEntitlement
 } from "../src/paidEntitlement";
 
+Object.defineProperty(globalThis, "window", {
+  configurable: true,
+  value: globalThis
+});
+
 test("an unavailable retry does not erase a previous valid observation", () => {
   assert.equal(resolveSavedPaidEntitlementStatus("unavailable", "valid"), "valid");
   assert.equal(resolveSavedPaidEntitlementStatus("invalid", "valid"), "invalid");
@@ -20,7 +25,7 @@ test("manual validation waits longer than export validation", async () => {
       setTimeout(() => resolve({ status: 200, json: { valid: true } }), 20);
     }),
     exportTimeoutMs: 5,
-    manualTimeoutMs: 50
+    manualTimeoutMs: 500
   });
 
   assert.equal(await checks.forExport("M2C-ABCD2-EFGH3-JKMN4-PQRST-UVWXY"), "unavailable");

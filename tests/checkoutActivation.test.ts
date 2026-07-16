@@ -38,3 +38,9 @@ test("published plugin bundle contains no activation-code credential", async () 
     /M2C-(?:[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}-){4}[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}/,
   );
 });
+
+test("published plugin bundle does not create dynamic script elements", async () => {
+  const bundle = await readFile("main.js", "utf8");
+
+  assert.doesNotMatch(bundle, /createElement\(["']script["']\)/);
+});

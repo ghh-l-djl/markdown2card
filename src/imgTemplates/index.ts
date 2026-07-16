@@ -3,7 +3,7 @@ import type { ImgTemplate, YanqiSettings } from "../types";
 import type { SettingsManager } from "../settings/settings";
 import type { ThemeManager } from "../themeManager";
 
-const VERIFIED_ICON = `<svg viewBox="0 0 22 22"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"></path></g></svg>`;
+const VERIFIED_ICON_PATH = "M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z";
 
 export class DefaultTemplate implements ImgTemplate {
   id = "default";
@@ -25,32 +25,32 @@ export class DefaultTemplate implements ImgTemplate {
   createHeaderContent(headerArea: HTMLElement): void {
     headerArea.empty();
     const settings = this.settingsManager.getSettings();
-    const userInfo = headerArea.createEl("div", { cls: "red-user-info" });
-    const userLeft = userInfo.createEl("div", { cls: "red-user-left" });
+    const userInfo = headerArea.createDiv({ cls: "red-user-info" });
+    const userLeft = userInfo.createDiv({ cls: "red-user-left" });
     this.createAvatarSection(userLeft, settings);
     this.createUserMetaSection(userLeft, settings);
-    const userRight = userInfo.createEl("div", { cls: "red-user-right" });
-    userRight.createEl("div", { cls: "red-header-more", text: "...", attr: { "aria-label": "更多" } });
+    const userRight = userInfo.createDiv({ cls: "red-user-right" });
+    userRight.createDiv({ cls: "red-header-more", text: "...", attr: { "aria-label": "更多" } });
   }
 
   createFooterContent(footerArea: HTMLElement): void {
     footerArea.empty();
     const settings = this.settingsManager.getSettings();
-    const left = footerArea.createEl("div", { cls: "red-footer-text", text: settings.footerLeftText, attr: { title: "点击编辑文本" } });
-    footerArea.createEl("div", { cls: "red-footer-separator", text: "|" });
-    const right = footerArea.createEl("div", { cls: "red-footer-text", text: settings.footerRightText, attr: { title: "点击编辑文本" } });
-    left.addEventListener("click", () => this.handleFooterTextEdit(left, "left"));
-    right.addEventListener("click", () => this.handleFooterTextEdit(right, "right"));
+    const left = footerArea.createDiv({ cls: "red-footer-text", text: settings.footerLeftText, attr: { title: "点击编辑文本" } });
+    footerArea.createDiv({ cls: "red-footer-separator", text: "|" });
+    const right = footerArea.createDiv({ cls: "red-footer-text", text: settings.footerRightText, attr: { title: "点击编辑文本" } });
+    left.addEventListener("click", () => { void this.handleFooterTextEdit(left, "left"); });
+    right.addEventListener("click", () => { void this.handleFooterTextEdit(right, "right"); });
   }
 
   private createAvatarSection(parent: HTMLElement, settings: YanqiSettings): void {
-    const avatar = parent.createEl("div", { cls: "red-user-avatar", attr: { title: "点击上传头像" } });
+    const avatar = parent.createDiv({ cls: "red-user-avatar", attr: { title: "点击上传头像" } });
     if (settings.userAvatar) {
       avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
     } else {
-      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.avatarInitial(settings) });
+      avatar.createDiv({ cls: "red-avatar-placeholder" }).createSpan({ cls: "red-avatar-upload-icon", text: this.avatarInitial(settings) });
     }
-    avatar.addEventListener("click", () => this.handleAvatarClick());
+    avatar.addEventListener("click", () => { void this.handleAvatarClick(); });
   }
 
   private avatarInitial(settings: YanqiSettings): string {
@@ -59,17 +59,19 @@ export class DefaultTemplate implements ImgTemplate {
   }
 
   private createUserMetaSection(parent: HTMLElement, settings: YanqiSettings): void {
-    const userMeta = parent.createEl("div", { cls: "red-user-meta" });
-    const userNameContainer = userMeta.createEl("div", { cls: "red-user-name-container" });
-    const userName = userNameContainer.createEl("div", { cls: "red-user-name", text: settings.userName, attr: { title: "点击编辑用户名" } });
-    userNameContainer.createEl("span", { cls: "red-verified-icon", attr: { role: "img" } }).innerHTML = VERIFIED_ICON;
-    const userId = userMeta.createEl("div", { cls: "red-user-id", text: settings.userId, attr: { title: "点击编辑用户ID" } });
-    userName.addEventListener("click", () => this.handleUserNameEdit(userName));
-    userId.addEventListener("click", () => this.handleUserIdEdit(userId));
+    const userMeta = parent.createDiv({ cls: "red-user-meta" });
+    const userNameContainer = userMeta.createDiv({ cls: "red-user-name-container" });
+    const userName = userNameContainer.createDiv({ cls: "red-user-name", text: settings.userName, attr: { title: "点击编辑用户名" } });
+    const verified = userNameContainer.createSpan({ cls: "red-verified-icon", attr: { role: "img" } });
+    const verifiedSvg = verified.createSvg("svg", { attr: { viewBox: "0 0 22 22" } });
+    verifiedSvg.createSvg("path", { attr: { d: VERIFIED_ICON_PATH } });
+    const userId = userMeta.createDiv({ cls: "red-user-id", text: settings.userId, attr: { title: "点击编辑用户ID" } });
+    userName.addEventListener("click", () => { void this.handleUserNameEdit(userName); });
+    userId.addEventListener("click", () => { void this.handleUserIdEdit(userId); });
   }
 
   async handleAvatarClick(): Promise<void> {
-    const input = document.createElement("input");
+    const input = createEl("input");
     input.type = "file";
     input.accept = "image/*";
     input.addEventListener("change", () => {
@@ -77,7 +79,8 @@ export class DefaultTemplate implements ImgTemplate {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async (event) => {
-        await this.settingsManager.updateSettings({ userAvatar: String(event.target?.result || "") });
+        const result = event.target?.result;
+        await this.settingsManager.updateSettings({ userAvatar: typeof result === "string" ? result : "" });
         await this.onSettingsUpdate();
       };
       reader.onerror = () => new Notice("头像更新失败");
@@ -107,7 +110,7 @@ export class DefaultTemplate implements ImgTemplate {
   }
 
   protected async editText(element: HTMLElement, placeholder: string, save: (value: string) => Promise<void>, className = "red-user-edit-input"): Promise<void> {
-    const input = document.createElement("input");
+    const input = createEl("input");
     input.value = element.textContent || "";
     input.className = className;
     input.placeholder = placeholder;
@@ -117,7 +120,7 @@ export class DefaultTemplate implements ImgTemplate {
       await save(input.value.trim());
       await this.onSettingsUpdate();
     };
-    input.addEventListener("blur", commit, { once: true });
+    input.addEventListener("blur", () => { void commit(); }, { once: true });
     input.addEventListener("keypress", (event) => {
       if (event.key === "Enter") input.blur();
     });
@@ -134,15 +137,15 @@ class NotesTemplate extends DefaultTemplate {
     if (header) {
       header.empty();
       header.addClass("red-notes-header");
-      const bar = header.createEl("div", { cls: "red-notes-bar" });
-      const title = bar.createEl("div", { cls: "red-notes-title", text: this.settingsManager.getSettings().notesTitle || "备忘录", attr: { title: "点击编辑标题" } });
-      title.addEventListener("click", () => this.editText(title, "请输入标题", async (value) => {
+      const bar = header.createDiv({ cls: "red-notes-bar" });
+      const title = bar.createDiv({ cls: "red-notes-title", text: this.settingsManager.getSettings().notesTitle || "备忘录", attr: { title: "点击编辑标题" } });
+      title.addEventListener("click", () => { void this.editText(title, "请输入标题", async (value) => {
         await this.settingsManager.updateSettings({ notesTitle: value || "备忘录" });
-      }, "red-notes-edit-input"));
-      const cycles = bar.createEl("div", { cls: "red-notes-cycle-buttons" });
-      cycles.createEl("div", { cls: "red-notes-cycle-left" });
-      cycles.createEl("div", { cls: "red-notes-cycle-right" });
-      bar.createEl("div", { cls: "red-notes-actions" });
+      }, "red-notes-edit-input"); });
+      const cycles = bar.createDiv({ cls: "red-notes-cycle-buttons" });
+      cycles.createDiv({ cls: "red-notes-cycle-left" });
+      cycles.createDiv({ cls: "red-notes-cycle-right" });
+      bar.createDiv({ cls: "red-notes-actions" });
     }
     const footer = element.querySelector<HTMLElement>(".red-preview-footer");
     if (footer) {
@@ -203,8 +206,8 @@ class RedTemplateBase extends DefaultTemplate {
   }
 
   editableName(parent: HTMLElement, settings: YanqiSettings, cls = ""): HTMLElement {
-    const el = parent.createEl("div", { cls: `red-user-name ${cls}`, text: settings.userName, attr: { title: "点击编辑" } });
-    el.addEventListener("click", () => this.handleUserNameEdit(el));
+    const el = parent.createDiv({ cls: `red-user-name ${cls}`, text: settings.userName, attr: { title: "点击编辑" } });
+    el.addEventListener("click", () => { void this.handleUserNameEdit(el); });
     return el;
   }
 }
@@ -213,8 +216,8 @@ class XhsTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "xhs", "小红书笔记", "red-tpl-xhs"); }
   buildFooter(footer: HTMLElement): void {
     [["♡", "点赞"], ["☆", "收藏"], ["○", "评论"]].forEach(([icon, text]) => {
-      const item = footer.createEl("div", { cls: "red-xhs-act" });
-      item.createEl("span", { cls: "red-xhs-ico", text: icon });
+      const item = footer.createDiv({ cls: "red-xhs-act" });
+      item.createSpan({ cls: "red-xhs-ico", text: icon });
       item.createSpan({ text });
     });
   }
@@ -238,30 +241,30 @@ class WeiboTemplate extends RedTemplateBase {
   }
 
   buildHeader(header: HTMLElement, settings: YanqiSettings): void {
-    const shell = header.createEl("div", { cls: "red-weibo-head" });
-    const left = shell.createEl("div", { cls: "red-weibo-left" });
+    const shell = header.createDiv({ cls: "red-weibo-head" });
+    const left = shell.createDiv({ cls: "red-weibo-left" });
     this.createWeiboAvatar(left, settings);
-    const meta = left.createEl("div", { cls: "red-weibo-meta" });
+    const meta = left.createDiv({ cls: "red-weibo-meta" });
     this.editableName(meta, settings, "red-weibo-name");
-    const sub = meta.createEl("div", { cls: "red-weibo-sub" });
+    const sub = meta.createDiv({ cls: "red-weibo-sub" });
     sub.createSpan({ text: this.formatWeiboTime(new Date()) });
     sub.createSpan({ text: "发布于" });
-    const location = sub.createEl("span", { cls: "red-weibo-location", text: settings.weiboLocation || "湖北", attr: { title: "点击编辑地址" } });
-    location.addEventListener("click", () => this.editText(location, "请输入发布地址", async (value) => {
+    const location = sub.createSpan({ cls: "red-weibo-location", text: settings.weiboLocation || "湖北", attr: { title: "点击编辑地址" } });
+    location.addEventListener("click", () => { void this.editText(location, "请输入发布地址", async (value) => {
       await this.settingsManager.updateSettings({ weiboLocation: value || "湖北" });
-    }, "red-weibo-location-input"));
+    }, "red-weibo-location-input"); });
     shell.createEl("button", { cls: "red-weibo-follow", text: "+关注" });
   }
 
   private createWeiboAvatar(parent: HTMLElement, settings: YanqiSettings): void {
-    const avatar = parent.createEl("div", { cls: "red-user-avatar red-weibo-avatar", attr: { title: "点击上传头像" } });
+    const avatar = parent.createDiv({ cls: "red-user-avatar red-weibo-avatar", attr: { title: "点击上传头像" } });
     if (settings.userAvatar) {
       avatar.createEl("img", { attr: { src: settings.userAvatar, alt: "用户头像" } });
     } else {
-      avatar.createEl("div", { cls: "red-avatar-placeholder" }).createEl("span", { cls: "red-avatar-upload-icon", text: this.weiboInitial(settings) });
+      avatar.createDiv({ cls: "red-avatar-placeholder" }).createSpan({ cls: "red-avatar-upload-icon", text: this.weiboInitial(settings) });
     }
-    avatar.createEl("span", { cls: "red-weibo-v", text: "V" });
-    avatar.addEventListener("click", () => this.handleAvatarClick());
+    avatar.createSpan({ cls: "red-weibo-v", text: "V" });
+    avatar.addEventListener("click", () => { void this.handleAvatarClick(); });
   }
 
   private weiboInitial(settings: YanqiSettings): string {
@@ -279,16 +282,16 @@ class WechatTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "wechat", "公众号卡", "red-tpl-wechat"); }
   buildFooter(footer: HTMLElement): void {
     footer.createSpan({ text: "阅读原文" });
-    footer.createEl("span", { cls: "red-wechat-arrow", text: "›" });
+    footer.createSpan({ cls: "red-wechat-arrow", text: "›" });
   }
 }
 
 class NewspaperTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "newspaper", "报纸报头", "red-tpl-news"); }
   buildHeader(header: HTMLElement, settings: YanqiSettings): void {
-    const bar = header.createEl("div", { cls: "red-news-masthead" });
+    const bar = header.createDiv({ cls: "red-news-masthead" });
     this.editableName(bar, settings, "red-news-name");
-    const meta = bar.createEl("div", { cls: "red-news-meta" });
+    const meta = bar.createDiv({ cls: "red-news-meta" });
     meta.createSpan({ text: settings.userId || "" });
     if (settings.showTime) meta.createSpan({ text: new Date().toLocaleDateString(settings.timeFormat) });
   }
@@ -299,28 +302,28 @@ class NewspaperTemplate extends RedTemplateBase {
 
 class QuoteTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "quote", "语录卡", "red-tpl-quote"); }
-  buildHeader(header: HTMLElement): void { header.createEl("div", { cls: "red-quote-mark", text: "❝" }); }
+  buildHeader(header: HTMLElement): void { header.createDiv({ cls: "red-quote-mark", text: "❝" }); }
   buildFooter(footer: HTMLElement, settings: YanqiSettings): void { this.editableName(footer, settings, "red-quote-sign"); }
 }
 
 class TerminalTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "terminal", "终端窗口", "red-tpl-term"); }
   buildHeader(header: HTMLElement, settings: YanqiSettings): void {
-    const bar = header.createEl("div", { cls: "red-term-bar" });
-    ["red", "yellow", "green"].forEach((c) => bar.createEl("span", { cls: `red-code-dot red-code-dot-${c}` }));
+    const bar = header.createDiv({ cls: "red-term-bar" });
+    ["red", "yellow", "green"].forEach((c) => bar.createSpan({ cls: `red-code-dot red-code-dot-${c}` }));
     this.editableName(bar, settings, "red-term-path");
   }
   buildFooter(footer: HTMLElement): void {
-    footer.createEl("span", { text: "$ " });
-    footer.createEl("span", { cls: "red-term-cursor", text: "█" });
+    footer.createSpan({ text: "$ " });
+    footer.createSpan({ cls: "red-term-cursor", text: "█" });
   }
 }
 
 class GithubTemplate extends RedTemplateBase {
   constructor(sm: SettingsManager, cb: () => Promise<void> | void) { super(sm, cb, "github", "GitHub 卡", "red-tpl-github"); }
   buildHeader(header: HTMLElement, settings: YanqiSettings): void {
-    const top = header.createEl("div", { cls: "red-gh-head" });
-    top.createEl("span", { cls: "red-gh-oct", text: "GitHub" });
+    const top = header.createDiv({ cls: "red-gh-head" });
+    top.createSpan({ cls: "red-gh-oct", text: "GitHub" });
     this.editableName(top, settings, "red-gh-repo");
   }
   buildFooter(footer: HTMLElement): void {

@@ -63,15 +63,21 @@ export class ThemeManager {
     ["h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
       element.querySelectorAll<HTMLElement>(tag).forEach((el) => {
         if (!el.querySelector(".content")) {
-          const content = document.createElement("span");
+          const content = createSpan();
           content.className = "content";
           while (el.firstChild) content.appendChild(el.firstChild);
           el.appendChild(content);
-          const after = document.createElement("span");
+          const after = createSpan();
           after.className = "after";
           el.appendChild(after);
         }
-        const styleKey = tag === "h1" ? "h1" : tag === "h4" || tag === "h5" || tag === "h6" ? "base" : tag;
+        const styleKey: "h1" | "h2" | "h3" | "base" = tag === "h1"
+          ? "h1"
+          : tag === "h2"
+            ? "h2"
+            : tag === "h3"
+              ? "h3"
+              : "base";
         const titleStyle = styles.title?.[styleKey] || (tag === "h1" ? styles.title?.h2 : undefined) || styles.title?.base;
         this.applyInlineStyle(el, `${titleStyle?.base || ""}; font-family: ${this.currentFont};`);
         this.applyInlineStyle(el.querySelector<HTMLElement>(".content"), titleStyle?.content);
@@ -95,7 +101,7 @@ export class ThemeManager {
     element.querySelectorAll<HTMLElement>("code:not(pre code)").forEach((el) => {
       this.applyInlineStyle(el, `${styles.code?.inline || ""}; font-size: ${this.currentFontSize}px;`);
       const color = this.getReadableCodeColor(getComputedStyle(el).backgroundColor, getComputedStyle(el).color);
-      el.style.color = color;
+      el.setCssProps({ color });
     });
     element.querySelectorAll<HTMLElement>("a").forEach((el) => this.applyInlineStyle(el, styles.link));
     element.querySelectorAll<HTMLElement>("strong").forEach((el) => this.applyInlineStyle(el, styles.emphasis?.strong));
@@ -258,13 +264,8 @@ export class ThemeManager {
   private hardenCodeContrast(pre: HTMLElement): void {
     const computed = getComputedStyle(pre);
     const color = this.getReadableCodeColor(computed.backgroundColor, computed.color);
-    pre.style.color = color;
-    pre.style.textShadow = "none";
-    pre.querySelectorAll<HTMLElement>("code").forEach((code) => {
-      code.style.color = color;
-      code.style.backgroundColor = "transparent";
-      code.style.textShadow = "none";
-    });
+    pre.addClass("red-code-contrast");
+    pre.setCssProps({ "--red-code-contrast-color": color });
   }
 
   private hardenMermaidContrast(container: HTMLElement): void {
@@ -274,42 +275,33 @@ export class ThemeManager {
     const nodeStroke = "#8b5cf6";
     const labelBackground = "#f8fafc";
 
-    container.style.setProperty("color", textColor, "important");
-    container.style.setProperty("background-color", labelBackground, "important");
-    container.style.setProperty("text-shadow", "none", "important");
-
-    container.querySelectorAll<HTMLElement>("foreignObject, foreignObject *, .label, .label *, .nodeLabel, .nodeLabel *, .edgeLabel, .edgeLabel *").forEach((el) => {
-      el.style.setProperty("color", textColor, "important");
-      el.style.setProperty("text-shadow", "none", "important");
-      el.style.setProperty("-webkit-text-fill-color", textColor, "important");
+    container.addClass("red-mermaid-hardened");
+    container.setCssProps({
+      "--red-mermaid-text": textColor,
+      "--red-mermaid-edge": edgeColor,
+      "--red-mermaid-node-fill": nodeFill,
+      "--red-mermaid-node-stroke": nodeStroke,
+      "--red-mermaid-label-background": labelBackground
     });
 
     container.querySelectorAll<SVGElement>("text, tspan").forEach((el) => {
       el.setAttribute("fill", textColor);
-      el.style.setProperty("fill", textColor, "important");
-      el.style.setProperty("color", textColor, "important");
-      el.style.setProperty("text-shadow", "none", "important");
     });
 
     container.querySelectorAll<SVGElement>(".edgePath path, .flowchart-link, marker path").forEach((el) => {
       el.setAttribute("stroke", edgeColor);
-      el.style.setProperty("stroke", edgeColor, "important");
       if (el.tagName.toLowerCase() === "path" && el.closest("marker")) {
         el.setAttribute("fill", edgeColor);
-        el.style.setProperty("fill", edgeColor, "important");
       }
     });
 
     container.querySelectorAll<SVGElement>(".node rect, .node circle, .node ellipse, .node polygon").forEach((el) => {
       el.setAttribute("fill", nodeFill);
       el.setAttribute("stroke", nodeStroke);
-      el.style.setProperty("fill", nodeFill, "important");
-      el.style.setProperty("stroke", nodeStroke, "important");
     });
 
     container.querySelectorAll<SVGElement>(".edgeLabel rect, .labelBkg, .label-container").forEach((el) => {
       el.setAttribute("fill", labelBackground);
-      el.style.setProperty("fill", labelBackground, "important");
     });
   }
 }

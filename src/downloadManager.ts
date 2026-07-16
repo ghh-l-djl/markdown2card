@@ -1,4 +1,4 @@
-import JSZip from "jszip";
+import { zipSync, type Zippable } from "fflate";
 import { toBlob, toCanvas } from "html-to-image";
 import { isExportableNode } from "./imageLayout";
 
@@ -35,7 +35,7 @@ export class DownloadManager {
   static async renderCurrentPageImages(element: HTMLElement, baseName: string): Promise<ExportedImage[]> {
     const imageElement = this.getImageElement(element);
     if (!imageElement) throw new Error("找不到预览区域");
-    await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+    await new Promise((resolve) => window.setTimeout(resolve, EXPORT_SETTLE_MS));
     const images: ExportedImage[] = [{ filename: `${baseName}.png`, blob: await this.renderBlob(imageElement) }];
     const mermaidBlobs = await this.renderOversizedMermaidBlobs(imageElement);
     mermaidBlobs.forEach((mermaid, index) => {
@@ -64,7 +64,7 @@ export class DownloadManager {
         });
         sections[i].classList.remove("red-section-hidden");
         sections[i].classList.add("red-section-visible", "red-section-active");
-        await new Promise((resolve) => setTimeout(resolve, EXPORT_SETTLE_MS));
+        await new Promise((resolve) => window.setTimeout(resolve, EXPORT_SETTLE_MS));
         const imageElement = this.getImageElement(element);
         if (!imageElement) continue;
         try {
@@ -100,9 +100,12 @@ export class DownloadManager {
   }
 
   private static async renderImagesZip(images: ExportedImage[]): Promise<Blob> {
-    const zip = new JSZip();
-    images.forEach((image) => zip.file(image.filename, image.blob));
-    return zip.generateAsync({ type: "blob", compression: "STORE" });
+    const files: Zippable = {};
+    for (const image of images) {
+      files[image.filename] = new Uint8Array(await image.blob.arrayBuffer());
+    }
+    const archive = zipSync(files, { level: 0 });
+    return new Blob([archive], { type: "application/zip" });
   }
 
   private static getPreviewContainer(element: HTMLElement): HTMLElement | null {
@@ -171,31 +174,23 @@ export class DownloadManager {
     const sourceSize = this.getMermaidOriginalSize(block, sourceSvg);
     if (!sourceSize) return null;
 
-    const wrapper = document.createElement("div");
+    const wrapper = createDiv();
     wrapper.className = "red-content-section red-mermaid-export-root";
-    wrapper.style.position = "fixed";
-    wrapper.style.left = "-100000px";
-    wrapper.style.top = "0";
-    wrapper.style.visibility = "visible";
-    wrapper.style.pointerEvents = "none";
-    wrapper.style.zIndex = "-1";
 
     const clone = block.cloneNode(true) as HTMLElement;
     const cloneSvg = clone.querySelector<SVGSVGElement>("svg");
     if (!cloneSvg) return null;
 
     clone.classList.remove("red-mermaid-scaled");
+    clone.classList.add("red-mermaid-export-clone");
     clone.style.removeProperty("--red-mermaid-scale");
     clone.style.removeProperty("--red-mermaid-width");
     clone.style.removeProperty("--red-mermaid-height");
     clone.style.width = `${sourceSize.width + 30}px`;
-    clone.style.maxWidth = "none";
-    clone.style.display = "block";
 
+    cloneSvg.classList.add("red-mermaid-export-svg");
     cloneSvg.style.width = `${sourceSize.width}px`;
     cloneSvg.style.height = `${sourceSize.height}px`;
-    cloneSvg.style.maxWidth = "none";
-    cloneSvg.style.display = "block";
     if (!cloneSvg.getAttribute("viewBox")) cloneSvg.setAttribute("viewBox", `0 0 ${sourceSize.width} ${sourceSize.height}`);
 
     wrapper.appendChild(clone);
@@ -234,7 +229,7 @@ export class DownloadManager {
 
   private static downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = createEl("a");
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
