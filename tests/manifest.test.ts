@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 interface PluginManifest {
+  description: string;
   id: string;
   version: string;
 }
@@ -23,4 +24,9 @@ test("package and manifest versions stay synchronized", () => {
   ) as { version: string };
 
   assert.equal(packageJson.version, manifest.version);
+});
+
+test("community plugin description follows Obsidian requirements", () => {
+  assert.doesNotMatch(manifest.description, /obsidian/i);
+  assert.match(manifest.description, /[.!?]$/);
 });
