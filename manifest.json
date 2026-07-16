@@ -3,7 +3,7 @@
   "name": "markdown2card",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "把你的思考，变成影响力 —— 一键将 Obsidian 笔记渲染为高质感多平台图文卡片，适配小红书、抖音图文、Bilibili 图文等平台。",
+  "description": "一键将 Obsidian 笔记渲染为高质感多平台图文卡片，适配小红书、抖音图文、Bilibili 图文等平台,同时支持ai文案转写,一键内容即可发布。",
   "author": "hazel",
   "fundingUrl": "https://ghh-l-djl.github.io/",
   "isDesktopOnly": true
