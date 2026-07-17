@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import path from "node:path";
 
 export interface AgyCommandOptions {
   proxyUrl?: string;
@@ -10,6 +11,8 @@ export async function runAgyCommand(executablePath: string, prompt: string, opti
   if (!executable) throw new Error("agy executable path is not configured");
 
   const env = { ...process.env };
+  const userLocalBin = env.HOME && path.join(env.HOME, ".local", "bin");
+  env.PATH = [userLocalBin, env.PATH].filter(Boolean).join(path.delimiter);
   const proxyUrl = options.proxyUrl?.trim();
   const noProxy = options.noProxy?.trim();
   if (proxyUrl) {

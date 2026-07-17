@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -53,4 +53,24 @@ test("agy receives configured proxy environment variables", async () => {
       "localhost,127.0.0.1"
     ].join("|")
   );
+});
+
+test("agy resolves from the user-local bin when the app PATH omits it", async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), "markdown2card-home-"));
+  const bin = path.join(home, ".local", "bin");
+  const executable = path.join(bin, "agy");
+  await mkdir(bin, { recursive: true });
+  await writeFile(executable, "#!/bin/sh\nprintf '%s' \"$2\"\n", "utf8");
+  await chmod(executable, 0o755);
+
+  const originalHome = process.env.HOME;
+  const originalPath = process.env.PATH;
+  process.env.HOME = home;
+  process.env.PATH = "/usr/bin:/bin";
+  try {
+    assert.equal(await runAgyCommand("agy", "prompt"), "prompt");
+  } finally {
+    process.env.HOME = originalHome;
+    process.env.PATH = originalPath;
+  }
 });
