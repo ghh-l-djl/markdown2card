@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "fs/promises";
 import { dirname as nodeDirname, join as nodeJoin, normalize as nodeNormalize, posix, win32 } from "path";
-import { App, type Editor, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
+import { App, type Editor, ItemView, MarkdownRenderer, MarkdownView, Modal, Notice, Platform, Setting, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import supportHeroImage from "./assets/support-hero.jpg";
 import xiaohongshuContactImage from "./assets/xiaohongshu-contact.png";
 import { BackgroundManager, BackgroundSettingModal } from "./backgroundManager";
@@ -25,12 +25,15 @@ import { removeMarkdownImages } from "./markdownContent";
 import { resetPreviewScroll } from "./previewScroll";
 import { parseSourceLine, resolvePageLineMap } from "./sourceLineMap";
 import { FUNDING_URL, GITHUB_URL, purchaseUrl, SUPPORT_CONTACT_COPY } from "./support";
-import type { ImageLayoutState } from "./types";
+import type { BrowserPublishPlatform, ImageLayoutState } from "./types";
+import { type BrowserPublishMode, buildArticlePublishPackage, buildCardImagePublishPackage } from "./browserPublishPackage";
+import type { BrowserPublishBridge } from "./browserPublishBridge";
 
 export const VIEW_TYPE_RED = "note-to-red";
 
 type CustomSelectOption = { value: string; label: string };
 type UiLanguage = "en" | "zh";
+type Markdown2CardPlugin = { ensureBrowserPublishBridge?: () => Promise<BrowserPublishBridge | null> };
 
 const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
   en: {
@@ -81,7 +84,14 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     yahei: "Microsoft YaHei",
     aiRewriting: "Calling AI to rewrite Xiaohongshu marketing copy...",
     aiRewriteSuccess: "AI marketing copy generated successfully!",
-    aiRewriteFailed: "AI rewriting failed. Exporting using original text."
+    aiRewriteFailed: "AI rewriting failed. Exporting using original text.",
+    publishToBrowser: "Publish",
+    browserPublishDesktopOnly: "Browser publishing is only available on desktop.",
+    browserPublishDisabled: "Enable browser publishing in settings first.",
+    browserPublishNoPlatforms: "Select at least one platform.",
+    browserPublishUpgrade: "The Chrome extension must be upgraded to support card-image publishing.",
+    browserPublishQueued: "Sent to browser extension.",
+    browserPublishReady: "Browser publish status updated."
   },
   zh: {
     templateLabel: "骨架模板",
@@ -131,7 +141,14 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     yahei: "雅黑",
     aiRewriting: "正在调用 AI 重写小红书营销文案...",
     aiRewriteSuccess: "AI 营销文案生成成功！",
-    aiRewriteFailed: "AI 重写失败，将使用文章原文作为正文导出。"
+    aiRewriteFailed: "AI 重写失败，将使用文章原文作为正文导出。",
+    publishToBrowser: "发布",
+    browserPublishDesktopOnly: "浏览器插件发布仅支持桌面端。",
+    browserPublishDisabled: "请先在设置中启用浏览器插件发布。",
+    browserPublishNoPlatforms: "至少选择一个发布平台。",
+    browserPublishUpgrade: "Chrome 扩展需要升级后才支持图文卡片包发布。",
+    browserPublishQueued: "已发送到浏览器插件。",
+    browserPublishReady: "浏览器发布状态已更新。"
   }
 };
 
@@ -154,6 +171,10 @@ const ACTIVATION_CODE_PLACEHOLDER = "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isBrowserPublishPendingStatus(status: string): boolean {
+  return !status || ["pending", "queued", "queueing", "syncing", "running", "publishing", "processing"].includes(status);
 }
 
 function describeError(error: unknown): string {
@@ -181,8 +202,8 @@ class SupportReminderModal extends Modal {
     copy.createEl("h2", { text: isZh ? "让好工具持续生长" : "Keep useful tools growing" });
     copy.createEl("p", {
       text: isZh
-        ? "我是 Hazel，一名独立开发者，持续创作能让思考、写作和发布更顺手的生产力工具。"
-        : "I'm Hazel, an independent developer creating productivity tools for clearer thinking, writing, and publishing."
+        ? "我是 Hazel，一名独立开发者，持续创作能让思考、写作和发布更顺手的生产力工具；付费捐助可解锁小红书一键发布能力。"
+        : "I'm Hazel, an independent developer creating productivity tools for clearer thinking, writing, and publishing. Paid support unlocks Xiaohongshu one-click publishing."
     });
 
     const actions = this.contentEl.createDiv("red-support-actions");
@@ -197,7 +218,7 @@ class SupportReminderModal extends Modal {
     setIcon(fundingIcon, "heart-handshake");
     fundingButton.createSpan({
       cls: "red-support-action-text",
-      text: isZh ? "赞助创作 · 了解支持方式" : "Sponsor · Learn how to support"
+      text: isZh ? "赞助创作 · 解锁小红书一键发布" : "Sponsor · Unlock Xiaohongshu publishing"
     });
     fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
 
@@ -265,39 +286,53 @@ class SupportReminderModal extends Modal {
 }
 
 const EN_THEME_LABELS: Record<string, string> = {
-  default: "Default theme",
-  elegant: "Elegant dark",
-  cyber: "Cyberpunk",
-  yueling: "Warm brown",
-  starry: "Starry dream",
-  ocean: "Deep ocean",
-  warm: "Warm literary",
-  forest: "Forest morning",
-  metal: "Metal tech",
-  minimal: "Minimal theme",
-  sakura: "Sakura"
+  default: "Black + blue",
+  elegant: "Dark purple",
+  cyber: "White neon",
+  yueling: "Black + brown",
+  starry: "Dark violet",
+  ocean: "Deep blue",
+  warm: "Cream + brown",
+  forest: "Dark green",
+  metal: "Tech blue",
+  minimal: "White + gray",
+  sakura: "Dark pink"
+};
+
+const ZH_THEME_LABELS: Record<string, string> = {
+  default: "黑底蓝色",
+  minimal: "白底灰色",
+  elegant: "暗色紫色",
+  cyber: "白底霓虹",
+  warm: "米色棕色",
+  forest: "深绿清爽",
+  ocean: "深蓝冷色",
+  sakura: "暗色粉色",
+  starry: "暗色紫粉",
+  metal: "科技蓝黑",
+  yueling: "黑底棕色"
 };
 
 export class RedView extends ItemView {
   currentFile: TFile | null = null;
   updateTimer: number | null = null;
-  isPreviewLocked = false;
   currentImageIndex = 0;
   previewEl: HTMLElement;
   copyButton: HTMLButtonElement;
-  lockButton: HTMLButtonElement;
+  browserPublishButton: HTMLButtonElement;
   footerToggleButton: HTMLButtonElement;
   fontSizeSelect: HTMLInputElement;
   navigationButtons: { prev: HTMLButtonElement; next: HTMLButtonElement; indicator: HTMLElement };
   customTemplateSelect: HTMLElement;
   customCoverSelect: HTMLElement;
   customFontSelect: HTMLElement;
+  customThemeSelect: HTMLElement;
   imgTemplateManager: ImgTemplateManager;
   backgroundManager = new BackgroundManager();
   private syncInitialized = false;
   private previewRenderId = 0;
 
-  constructor(leaf: WorkspaceLeaf, private themeManager: ThemeManager, private settingsManager: SettingsManager) {
+  constructor(leaf: WorkspaceLeaf, private themeManager: ThemeManager, private settingsManager: SettingsManager, private plugin?: Markdown2CardPlugin) {
     super(leaf);
     this.imgTemplateManager = new ImgTemplateManager(settingsManager, () => this.updatePreview(), themeManager);
   }
@@ -322,7 +357,7 @@ export class RedView extends ItemView {
   async initializeToolbar(container: HTMLElement): Promise<void> {
     const toolbar = container.createDiv({ cls: "red-toolbar" });
     const controls = toolbar.createDiv({ cls: "red-controls-group" });
-    this.initializeLockButton(controls);
+    this.initializeHelpButton(controls);
     this.customTemplateSelect = this.createCustomSelect(controls, "red-template-select", this.getTemplateOptions());
     this.customTemplateSelect.id = "template-select";
     this.customTemplateSelect.dataset.label = this.t("templateLabel");
@@ -338,6 +373,15 @@ export class RedView extends ItemView {
       await this.settingsManager.updateSettings({ coverStyle: value });
       await this.updatePreview();
     });
+    this.customThemeSelect = this.createCustomSelect(controls, "red-theme-select", this.getThemeOptions());
+    this.customThemeSelect.id = "theme-select";
+    this.customThemeSelect.dataset.label = this.getLanguage() === "zh" ? "主题风格" : "Theme";
+    this.onSelectChange(this.customThemeSelect, async (value) => {
+      this.themeManager.setCurrentTheme(value);
+      await this.settingsManager.updateSettings({ themeId: value });
+      this.themeManager.applyTheme(this.previewEl);
+      await this.restoreThemeSettings(value);
+    });
     this.customFontSelect = this.createCustomSelect(controls, "red-font-select", this.getFontOptions());
     this.customFontSelect.id = "font-select";
     this.customFontSelect.dataset.label = this.t("fontLabel");
@@ -347,14 +391,7 @@ export class RedView extends ItemView {
       this.themeManager.applyTheme(this.previewEl);
     });
     this.initializeFontSizeControls(controls);
-    this.initializeThemeStrip(toolbar);
     await this.restoreSettings();
-  }
-
-  initializeLockButton(parent: HTMLElement): void {
-    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
-    setIcon(this.lockButton, "lock");
-    this.lockButton.addEventListener("click", () => { void this.togglePreviewLock(); });
   }
 
   initializeFontSizeControls(parent: HTMLElement): void {
@@ -415,9 +452,9 @@ export class RedView extends ItemView {
     const wrapper = container.createDiv({ cls: "red-preview-wrapper" });
     this.previewEl = wrapper.createDiv({ cls: "red-preview-container" });
     const nav = wrapper.createDiv({ cls: "red-nav-container" });
-    const prev = nav.createEl("button", { cls: "red-nav-button", text: "←" });
+    const prev = nav.createEl("button", { cls: "red-nav-button red-nav-prev", text: "←" });
     const indicator = nav.createSpan({ cls: "red-page-indicator", text: "1/1" });
-    const next = nav.createEl("button", { cls: "red-nav-button", text: "→" });
+    const next = nav.createEl("button", { cls: "red-nav-button red-nav-next", text: "→" });
     this.navigationButtons = { prev, next, indicator };
     prev.addEventListener("click", () => this.navigateImages("prev"));
     next.addEventListener("click", () => this.navigateImages("next"));
@@ -426,7 +463,6 @@ export class RedView extends ItemView {
   initializeBottomBar(container: HTMLElement): void {
     const bottom = container.createDiv({ cls: "red-bottom-bar" });
     const controls = bottom.createDiv({ cls: "red-controls-group" });
-    this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
     this.initializeFooterToggleButton(controls);
     controls.createEl("button", { cls: "red-overview-button", text: this.t("overview") }).addEventListener("click", () => this.openOverviewModal());
@@ -487,6 +523,9 @@ export class RedView extends ItemView {
       if (!this.previewEl) return;
       void this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
+    this.browserPublishButton = parent.createEl("button", { cls: "red-browser-publish-button", text: this.t("publishToBrowser") });
+    this.browserPublishButton.addEventListener("click", () => this.openBrowserPublishModal());
+    this.updateBrowserPublishButtonVisibility();
   }
 
   initializeEventListeners(): void {
@@ -504,7 +543,17 @@ export class RedView extends ItemView {
 
   private updatePaidUiState(): void {
     const container = this.containerEl.children[1] as HTMLElement | undefined;
-    container?.classList.toggle("red-paid-entitled", this.settingsManager.getSettings().activationValidationStatus === "valid");
+    container?.classList.toggle("red-paid-entitled", this.hasValidActivationCode());
+    this.updateBrowserPublishButtonVisibility();
+  }
+
+  private hasValidActivationCode(): boolean {
+    return this.settingsManager.getSettings().activationValidationStatus === "valid";
+  }
+
+  private updateBrowserPublishButtonVisibility(): void {
+    if (!this.browserPublishButton) return;
+    this.browserPublishButton.toggleClass("red-hidden", !this.hasValidActivationCode());
   }
 
   initializeCopyButtonListener(): void {
@@ -670,23 +719,18 @@ export class RedView extends ItemView {
       return;
     }
     this.updateControlsState(true);
-    this.isPreviewLocked = false;
-    setIcon(this.lockButton, "unlock");
     await this.updatePreview();
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing" && typeof frontmatter.publish_task_id === "string") {
+      void this.reconcileBrowserPublishTask(file, frontmatter.publish_task_id, 0);
+    }
     resetPreviewScroll(this.previewEl);
   }
 
   onFileModify(file: TAbstractFile): void {
-    if (file !== this.currentFile || this.isPreviewLocked) return;
+    if (file !== this.currentFile) return;
     if (this.updateTimer) window.clearTimeout(this.updateTimer);
     this.updateTimer = window.setTimeout(() => { void this.updatePreview(); }, 500);
-  }
-
-  async togglePreviewLock(): Promise<void> {
-    this.isPreviewLocked = !this.isPreviewLocked;
-    setIcon(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
-    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
-    if (!this.isPreviewLocked) await this.updatePreview();
   }
 
   updateNavigationState(): void {
@@ -846,8 +890,7 @@ export class RedView extends ItemView {
   }
 
   updateControlsState(enabled: boolean): void {
-    if (this.lockButton) this.lockButton.disabled = !enabled;
-    [this.customTemplateSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
+    [this.customTemplateSelect, this.customThemeSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
       const select = container?.querySelector<HTMLElement>(".red-select");
       if (!select) return;
       select.classList.toggle("disabled", !enabled);
@@ -858,6 +901,202 @@ export class RedView extends ItemView {
     this.containerEl.querySelectorAll<HTMLButtonElement>(".red-font-size-btn").forEach((button) => button.disabled = !enabled);
     if (this.copyButton) this.copyButton.disabled = !enabled;
     this.containerEl.querySelectorAll<HTMLButtonElement>(".red-export-button").forEach((button) => button.disabled = !enabled);
+  }
+
+  private openBrowserPublishModal(): void {
+    if (!this.currentFile) {
+      new Notice(this.t("markdownOnly"));
+      return;
+    }
+    if (Platform.isMobile) {
+      new Notice(this.t("browserPublishDesktopOnly"));
+      return;
+    }
+    const settings = this.settingsManager.getSettings();
+    const platforms = settings.browserPublishCachedPlatforms?.length ? settings.browserPublishCachedPlatforms : this.defaultBrowserPublishPlatforms();
+    const selected = new Set(settings.browserPublishDefaultPlatforms || []);
+    let mode: BrowserPublishMode = "card-image";
+    const modal = new Modal(this.app);
+    modal.modalEl.addClass("red-browser-publish-modal");
+    const isZh = this.getLanguage() === "zh";
+    modal.titleEl.setText(isZh ? "发布到浏览器插件" : "Publish to browser extension");
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing" && typeof frontmatter.publish_task_id === "string") {
+      const taskId = frontmatter.publish_task_id;
+      new Setting(modal.contentEl)
+        .setName(isZh ? "当前任务正在发布" : "Current task is publishing")
+        .setDesc(frontmatter.publish_task_id)
+        .addButton((button) => button.setButtonText(isZh ? "打开任务详情" : "Open task").onClick(async () => {
+          try {
+            const bridge = await this.getBrowserPublishBridge();
+            await bridge?.openSyncTask(taskId);
+          } catch (error) {
+            new Notice(error instanceof Error ? error.message : String(error));
+          }
+        }));
+    }
+    new Setting(modal.contentEl)
+      .setName(isZh ? "发布模式" : "Publish mode")
+      .addDropdown((dropdown) => dropdown
+        .addOption("card-image", isZh ? "图文卡片包" : "Card images")
+        .addOption("article", isZh ? "文章模式" : "Article")
+        .setValue(mode)
+        .onChange((value) => { mode = value as BrowserPublishMode; }));
+    const platformGrid = modal.contentEl.createDiv({ cls: "red-browser-platform-grid" });
+    for (const platform of platforms) {
+      const card = platformGrid.createEl("button", { cls: "red-browser-platform-card" });
+      card.type = "button";
+      const checkbox = card.createSpan({ cls: "red-browser-platform-check" });
+      const text = card.createDiv({ cls: "red-browser-platform-text" });
+      text.createDiv({ cls: "red-browser-platform-name", text: platform.name || platform.id });
+      text.createDiv({ cls: "red-browser-platform-status", text: this.describeBrowserPlatform(platform) });
+      const syncState = () => {
+        const checked = selected.has(platform.id);
+        card.toggleClass("is-selected", checked);
+        checkbox.setText(checked ? "✓" : "");
+      };
+      syncState();
+      card.addEventListener("click", () => {
+        if (selected.has(platform.id)) selected.delete(platform.id);
+        else selected.add(platform.id);
+        syncState();
+      });
+    }
+    new Setting(modal.contentEl)
+      .addButton((button) => button.setButtonText(isZh ? "取消" : "Cancel").onClick(() => modal.close()))
+      .addButton((button) => button.setButtonText(isZh ? "发送到浏览器插件" : "Send to browser extension").setCta().onClick(async () => {
+        button.setDisabled(true);
+        try {
+          await this.publishCurrentFileToBrowser(mode, Array.from(selected));
+          modal.close();
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error), 8000);
+        } finally {
+          button.setDisabled(false);
+        }
+      }));
+    modal.open();
+  }
+
+  private async publishCurrentFileToBrowser(mode: BrowserPublishMode, platforms: string[]): Promise<void> {
+    if (!this.currentFile) throw new Error("No active markdown file");
+    if (!platforms.length) throw new Error(this.t("browserPublishNoPlatforms"));
+    const bridge = await this.getBrowserPublishBridge();
+    if (!bridge) throw new Error(this.t("browserPublishDisabled"));
+    const health = await bridge.health();
+    const capabilities = isRecord(health.capabilities) ? health.capabilities : bridge.getStatus().capabilities;
+    if (mode === "card-image" && capabilities.cardImagePublishing !== true) throw new Error(this.t("browserPublishUpgrade"));
+
+    const content = await this.app.vault.cachedRead(this.currentFile);
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing") throw new Error(this.getLanguage() === "zh" ? "当前笔记正在发布中。" : "This note is already publishing.");
+    const taskPackage = mode === "card-image"
+      ? await buildCardImagePublishPackage(content, frontmatter)
+      : await buildArticlePublishPackage(content, frontmatter, this.currentFile.basename);
+
+    await this.settingsManager.updateSettings({ browserPublishDefaultPlatforms: platforms });
+    const result = await bridge.enqueueSyncArticle({
+      platforms,
+      source: `markdown2card:${mode}`,
+      article: {
+        title: taskPackage.title,
+        markdown: taskPackage.markdown,
+        content: mode === "card-image" ? "" : taskPackage.content,
+        body: taskPackage.body,
+        cover: taskPackage.cover,
+        assets: taskPackage.assets,
+        publishMode: taskPackage.mode,
+        tags: taskPackage.tags
+      }
+    });
+    const syncId = typeof result.syncId === "string" ? result.syncId : "";
+    if (!syncId) throw new Error("浏览器插件未返回任务 ID");
+    await this.markBrowserPublishStarted(this.currentFile, syncId);
+    new Notice(this.t("browserPublishQueued"));
+    this.scheduleBrowserPublishReconcile(this.currentFile, syncId);
+  }
+
+  private async getBrowserPublishBridge(): Promise<BrowserPublishBridge | null> {
+    return await this.plugin?.ensureBrowserPublishBridge?.() || null;
+  }
+
+  private scheduleBrowserPublishReconcile(file: TFile, syncId: string): void {
+    window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, 0), 5000);
+  }
+
+  private async reconcileBrowserPublishTask(file: TFile, syncId: string, attempt: number): Promise<void> {
+    try {
+      const bridge = await this.getBrowserPublishBridge();
+      if (!bridge) return;
+      const task = await bridge.getSyncTask(syncId);
+      const status = typeof task.status === "string" ? task.status : "";
+      if (isBrowserPublishPendingStatus(status)) {
+        if (attempt < 120) window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, attempt + 1), 5000);
+        return;
+      }
+      const { successes, failures } = this.extractBrowserPublishResults(task);
+      await this.markBrowserPublishFinished(file, successes, failures);
+      new Notice(this.t("browserPublishReady"));
+    } catch (error) {
+      console.warn("Browser publish reconciliation failed", error);
+    }
+  }
+
+  private async markBrowserPublishStarted(file: TFile, syncId: string): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      const data = frontmatter as Record<string, unknown>;
+      data.publish_status = "publishing";
+      data.publish_task_id = syncId;
+    });
+  }
+
+  private async markBrowserPublishFinished(file: TFile, successes: string[], failures: string[]): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      const data = frontmatter as Record<string, unknown>;
+      const oldSuccesses = Array.isArray(data.published_platforms) ? data.published_platforms.filter((item): item is string => typeof item === "string") : [];
+      const mergedSuccesses = Array.from(new Set([...oldSuccesses, ...successes]));
+      const successSet = new Set(mergedSuccesses);
+      const oldFailures = Array.isArray(data.publish_failed_platforms) ? data.publish_failed_platforms.filter((item): item is string => typeof item === "string") : [];
+      data.published_platforms = mergedSuccesses;
+      data.publish_failed_platforms = Array.from(new Set([...oldFailures, ...failures])).filter((platform) => !successSet.has(platform));
+      data.publish_status = mergedSuccesses.length ? "published" : "ready";
+    });
+  }
+
+  private extractBrowserPublishResults(task: Record<string, unknown>): { successes: string[]; failures: string[] } {
+    const states = Array.isArray(task.platformStates) ? task.platformStates : Array.isArray(task.results) ? task.results : [];
+    const successes: string[] = [];
+    const failures: string[] = [];
+    for (const item of states) {
+      if (!isRecord(item)) continue;
+      const platform = String(item.platform || item.id || "");
+      if (!platform) continue;
+      const status = String(item.status || "");
+      if (item.success === true || status === "success") successes.push(platform);
+      if (item.success === false || status === "failed") failures.push(platform);
+    }
+    return { successes, failures };
+  }
+
+  private getCurrentFrontmatter(): Record<string, unknown> {
+    const rawFrontmatter: unknown = this.currentFile ? this.app.metadataCache.getFileCache(this.currentFile)?.frontmatter : {};
+    return isRecord(rawFrontmatter) ? rawFrontmatter : {};
+  }
+
+  private describeBrowserPlatform(platform: BrowserPublishPlatform): string {
+    if (platform.isAuthenticated) return `${this.getLanguage() === "zh" ? "上次可用" : "Last available"}${platform.username ? ` · ${platform.username}` : ""}`;
+    if (platform.authKnown) return platform.error || (this.getLanguage() === "zh" ? "需登录" : "Login required");
+    return this.getLanguage() === "zh" ? "未检测" : "Unchecked";
+  }
+
+  private defaultBrowserPublishPlatforms(): BrowserPublishPlatform[] {
+    return [
+      { id: "yuque", name: "语雀" },
+      { id: "xiaohongshu", name: "小红书" },
+      { id: "zhihu", name: "知乎" },
+      { id: "weibo", name: "微博" },
+      { id: "douyin", name: "抖音图文" }
+    ];
   }
 
   async restoreSettings(): Promise<void> {
@@ -871,6 +1110,7 @@ export class RedView extends ItemView {
     await this.restoreThemeSettings(settings.themeId);
     await this.restoreSelect(this.customFontSelect, settings.fontFamily, this.getFontOptions());
     await this.restoreSelect(this.customCoverSelect, settings.coverStyle, this.getCoverOptions());
+    await this.restoreSelect(this.customThemeSelect, settings.themeId, this.getThemeOptions());
   }
 
   async restoreTemplateSettings(value: string): Promise<void> { await this.restoreSelect(this.customTemplateSelect, value, this.getTemplateOptions()); }
@@ -933,6 +1173,10 @@ export class RedView extends ItemView {
       this.customCoverSelect.dataset.label = this.t("coverLabel");
       this.refreshSelectLabels(this.customCoverSelect, this.getCoverOptions());
     }
+    if (this.customThemeSelect) {
+      this.customThemeSelect.dataset.label = this.getLanguage() === "zh" ? "主题风格" : "Theme";
+      this.refreshSelectLabels(this.customThemeSelect, this.getThemeOptions());
+    }
     if (this.customFontSelect) {
       this.customFontSelect.dataset.label = this.t("fontLabel");
       this.refreshSelectLabels(this.customFontSelect, this.getFontOptions());
@@ -945,11 +1189,11 @@ export class RedView extends ItemView {
     this.containerEl.querySelector<HTMLButtonElement>(".red-overview-button")?.setText(this.t("overview"));
     this.containerEl.querySelector<HTMLButtonElement>(".red-export-button:not(.red-export-primary)")?.setText(this.t("downloadCurrent"));
     this.containerEl.querySelector<HTMLButtonElement>(".red-export-primary")?.setText(this.t("exportAll"));
+    this.containerEl.querySelector<HTMLButtonElement>(".red-browser-publish-button")?.setText(this.t("publishToBrowser"));
     this.containerEl.querySelector<HTMLElement>(".red-help-button")?.setAttribute("aria-label", this.t("guide"));
     const tooltip = this.containerEl.querySelector<HTMLElement>(".red-help-tooltip");
     if (tooltip) tooltip.setText(this.t("guideText"));
     this.containerEl.querySelector<HTMLElement>(".red-background-button")?.setAttribute("aria-label", this.t("background"));
-    if (this.lockButton) this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
     this.updateFooterToggleButtonState();
   }
 
@@ -1009,6 +1253,7 @@ export class RedView extends ItemView {
   }
 
   private translateThemeName(id: string, fallback: string): string {
+    if (this.getLanguage() === "zh" && ZH_THEME_LABELS[id]) return ZH_THEME_LABELS[id];
     if (this.getLanguage() === "en" && EN_THEME_LABELS[id]) return EN_THEME_LABELS[id];
     if (id === "default") return this.t("defaultTheme");
     return fallback;

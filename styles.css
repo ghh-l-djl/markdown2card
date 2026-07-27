@@ -9,6 +9,7 @@
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(82, 144, 220, 0.1);
+  position: relative;
 }
 .red-empty-state {
   display: flex;
@@ -174,12 +175,12 @@
 .red-toolbar {
   top: 0;
   border-radius: 8px;
-  border-bottom: 2px solid var(--background-modifier-border);
+  border-bottom: none;
 }
 .red-bottom-bar {
   bottom: 0;
   border-radius: 8px;
-  border-top: 2px solid var(--background-modifier-border);
+  border-top: none;
 }
 .red-controls-group {
   display: flex;
@@ -222,7 +223,6 @@
   border-color: var(--background-modifier-border) !important;
   box-shadow: none;
 }
-.red-controls-group .red-lock-button,
 .red-controls-group .red-help-button {
   width: 36px;
   padding: 0;
@@ -232,11 +232,13 @@
 .red-controls-group .red-like-button {
   flex: none;
 }
-.red-controls-group .red-export-button {
+.red-controls-group .red-export-button,
+.red-controls-group .red-browser-publish-button {
   background-color: var(--text-accent);
   color: var(--text-on-accent);
 }
-.red-controls-group .red-export-button:hover {
+.red-controls-group .red-export-button:hover,
+.red-controls-group .red-browser-publish-button:hover {
   color: var(--text-on-accent);
   background-color: var(--text-accent);
 }
@@ -244,6 +246,9 @@
   width: 36px;
   padding: 0;
   flex: none;
+}
+.red-hidden {
+  display: none !important;
 }
 
 /* A restrained gold accent for supporters with a remotely validated code. */
@@ -589,8 +594,8 @@
 }
 .red-help-tooltip {
   position: absolute;
-  left: 30px;
-  bottom: 80px;
+  left: 20px;
+  top: 58px;
   width: 480px;
   padding: 12px 16px;
   background: var(--background-primary);
@@ -2488,7 +2493,7 @@
 .red-font-size-btn { padding: 0 7px !important; }
 .red-font-size-input { width: 34px !important; }
 
-/* ② 翻页导航:从固定悬浮改为卡片下方的正常流,不再盖住卡片 */
+/* ② 翻页导航:页码在下方,左右按钮贴预览区两侧 */
 .red-nav-container {
   position: static !important;
   transform: none !important;
@@ -2498,6 +2503,24 @@
   background: transparent !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
+  pointer-events: none;
+}
+.red-nav-container .red-page-indicator {
+  pointer-events: auto;
+}
+.red-nav-container .red-nav-button {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  pointer-events: auto;
+}
+.red-nav-container .red-nav-prev {
+  left: 12px;
+  transform: translateY(-50%);
+}
+.red-nav-container .red-nav-next {
+  right: 12px;
+  transform: translateY(-50%);
 }
 
 /* ③ 正文图片布局与主动裁剪 */
@@ -2722,6 +2745,71 @@
 .red-footer-toggle-button.red-footer-hidden {
   color: var(--text-muted) !important;
   opacity: 0.55;
+}
+
+.red-browser-publish-modal .modal {
+  width: min(680px, 92vw);
+}
+
+.red-browser-platform-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.red-browser-platform-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  text-align: left;
+  cursor: pointer;
+}
+
+.red-browser-platform-card.is-selected {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+}
+
+.red-browser-platform-check {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.red-browser-platform-card.is-selected .red-browser-platform-check {
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+}
+
+.red-browser-platform-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.red-browser-platform-status {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .red-browser-platform-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ============================================================

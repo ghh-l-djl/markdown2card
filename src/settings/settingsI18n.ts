@@ -48,7 +48,7 @@ const ZH_SETTINGS_TEXT: Record<string, string> = {
   Validate: "验证",
   Clear: "清除",
   Donate: "打赏给开发者一个比心兔兔",
-  "Support ongoing development and theme maintenance.": "支持插件持续开发和主题维护。",
+  "Support ongoing development and unlock Xiaohongshu one-click publishing.": "支持插件持续开发，并解锁小红书一键发布能力。",
   "Custom theme service": "主题定制",
   "Contact the development team for a branded card theme.": "联系开发者定制品牌卡片主题。",
   Contact: "联系",

@@ -1,10 +1,39 @@
-import { App, Modal, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
+import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
 import type YanqiPlugin from "../main";
 import { resolveSavedPaidEntitlementStatus } from "../paidEntitlement";
 import { purchaseUrl, THEME_CUSTOMIZATION_URL } from "../support";
 import { checkPaidEntitlementManually } from "../paidEntitlementClient";
-import type { FontOption, ThemeStyles, YanqiTheme } from "../types";
+import type { BrowserPublishPlatform, FontOption, ThemeStyles, YanqiTheme } from "../types";
 import { settingsText, type SettingsLanguage } from "./settingsI18n";
+import { createBrowserPublishToken, normalizeBrowserPublishPlatformIds, normalizeBrowserPublishPlatforms } from "../browserPublishSettings";
+
+const BROWSER_PUBLISH_PLATFORMS = [
+  { id: "yuque", name: "语雀" },
+  { id: "xiaohongshu", name: "小红书" },
+  { id: "zhihu", name: "知乎" },
+  { id: "weibo", name: "微博" },
+  { id: "douyin", name: "抖音图文" },
+  { id: "toutiao", name: "头条号" },
+  { id: "bilibili", name: "哔哩哔哩" },
+  { id: "csdn", name: "CSDN" },
+  { id: "jianshu", name: "简书" },
+  { id: "smzdm", name: "什么值得买" },
+  { id: "juejin", name: "掘金" },
+  { id: "baijiahao", name: "百家号" },
+  { id: "douban", name: "豆瓣" },
+  { id: "sohu", name: "搜狐号" },
+  { id: "xueqiu", name: "雪球" },
+  { id: "woshipm", name: "人人都是产品经理" },
+  { id: "51cto", name: "51CTO" },
+  { id: "imooc", name: "慕课手记" },
+  { id: "oschina", name: "开源中国" },
+  { id: "netease", name: "网易号" },
+  { id: "cnblogs", name: "博客园" },
+  { id: "eastmoney", name: "东方财富" },
+  { id: "dayu", name: "大鱼号" },
+  { id: "x", name: "X (Twitter)" },
+  { id: "yidian", name: "一点号" }
+];
 
 const TECHNICAL_PLACEHOLDERS = {
   activationCode: "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX",
@@ -168,38 +197,23 @@ export class RedSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  getSettingDefinitions(): SettingDefinitionItem[] {
-    return [
-      this.createSearchableSection(
-        this.t("Community"),
-        [this.t("Activation code"), this.t("Donate"), this.t("Sponsor")],
-        (containerEl) => this.renderCommunitySettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("General"),
-        [this.t("Interface language"), this.t("Show time"), this.t("Show footer"), this.t("Fonts"), this.t("+ Add font")],
-        (containerEl) => this.renderBasicSettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("Export"),
-        [
-          this.t("Export path"),
-          this.t("Export format"),
-          this.t("Enable post-export actions"),
-          "AI provider",
-          "Gemini API key",
-          "Gemini API URL",
-          "Gemini model",
-          "AI prompt"
-        ],
-        (containerEl) => this.renderExportSettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("Themes"),
-        [this.t("Visible themes"), this.t("Custom themes"), this.t("+ Create theme")],
-        (containerEl) => this.renderThemeSettings(containerEl)
-      )
-    ];
+  getSettingDefinitions(): [] {
+    return [];
+  }
+
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.addClass("red-settings");
+    containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
+    new Setting(containerEl).setName(this.t("Community")).setHeading();
+    this.renderCommunitySettings(containerEl);
+    new Setting(containerEl).setName(this.t("General")).setHeading();
+    this.renderBasicSettings(containerEl);
+    new Setting(containerEl).setName(this.t("Export")).setHeading();
+    this.renderExportSettings(containerEl);
+    new Setting(containerEl).setName(this.t("Themes")).setHeading();
+    this.renderThemeSettings(containerEl);
   }
 
   private get language(): SettingsLanguage {
@@ -208,25 +222,6 @@ export class RedSettingTab extends PluginSettingTab {
 
   private t(english: string): string {
     return settingsText(this.language, english);
-  }
-
-  private createSearchableSection(
-    name: string,
-    aliases: string[],
-    render: (containerEl: HTMLElement) => void
-  ): SettingDefinitionItem {
-    return {
-      name,
-      aliases,
-      render: (setting) => {
-        const containerEl = setting.settingEl;
-        containerEl.empty();
-        containerEl.addClass("red-settings");
-        containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
-        new Setting(containerEl).setName(name).setHeading();
-        render(containerEl);
-      }
-    };
   }
 
   private renderBasicSettings(containerEl: HTMLElement): void {
@@ -240,7 +235,7 @@ export class RedSettingTab extends PluginSettingTab {
         .setValue(settings.uiLanguage || "en")
         .onChange(async (value) => {
           await this.plugin.settingsManager.updateSettings({ uiLanguage: value as "en" | "zh" });
-          this.update();
+          this.display();
         }));
     new Setting(containerEl).setName(this.t("Show time")).addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
     new Setting(containerEl).setName(this.t("Show footer")).addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
@@ -253,13 +248,13 @@ export class RedSettingTab extends PluginSettingTab {
           .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
             new CreateFontModal(this.app, async (updated) => {
               await this.plugin.settingsManager.updateFont(font.value, updated);
-              this.update();
+              this.display();
             }, this.language, font).open();
           }))
           .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
             new ConfirmModal(this.app, this.t("Delete font"), this.language === "zh" ? `删除字体“${font.label}”的配置？` : `Delete the "${font.label}" font configuration?`, async () => {
               await this.plugin.settingsManager.removeFont(font.value);
-              this.update();
+              this.display();
             }, this.language).open();
           }));
       }
@@ -267,7 +262,7 @@ export class RedSettingTab extends PluginSettingTab {
     new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Add font")).setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
-        this.update();
+        this.display();
       }, this.language).open();
     }));
   }
@@ -303,7 +298,7 @@ export class RedSettingTab extends PluginSettingTab {
         .setValue(settings.enablePostExportActions)
         .onChange((value) => {
           void this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
-          this.update();
+          this.display();
         }));
 
     if (settings.enablePostExportActions) {
@@ -319,7 +314,7 @@ export class RedSettingTab extends PluginSettingTab {
           .setValue(settings.enableAiSummary)
           .onChange((value) => {
             void this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
-            this.update();
+            this.display();
           }));
 
       if (settings.enableAiSummary) {
@@ -332,7 +327,7 @@ export class RedSettingTab extends PluginSettingTab {
             .setValue(settings.aiProvider || "gemini")
             .onChange(async (value) => {
               await this.plugin.settingsManager.updateSettings({ aiProvider: value as "gemini" | "agy" });
-              this.update();
+              this.display();
             }));
 
         if (settings.aiProvider === "agy") {
@@ -444,6 +439,116 @@ export class RedSettingTab extends PluginSettingTab {
             }));
       }
     }
+
+    new Setting(containerEl).setName(isZh ? "浏览器插件发布" : "Browser publishing").setHeading();
+    new Setting(containerEl)
+      .setName(isZh ? "启用浏览器插件发布" : "Enable browser publishing")
+      .setDesc(isZh ? "本地监听 127.0.0.1，供 Chrome 扩展连接。" : "Listens on 127.0.0.1 for the Chrome extension.")
+      .addToggle((toggle) => toggle
+        .setValue(settings.enableBrowserPublishing)
+        .onChange(async (value) => {
+          await this.plugin.settingsManager.updateSettings({
+            enableBrowserPublishing: value,
+            browserPublishToken: value && !settings.browserPublishToken ? createBrowserPublishToken() : settings.browserPublishToken
+          });
+          await this.plugin.ensureBrowserPublishBridge();
+          this.display();
+        }));
+
+    new Setting(containerEl)
+      .setName(isZh ? "连接端口" : "Bridge port")
+      .setDesc(isZh ? "默认 9527；修改后会重启本地 bridge。" : "Default 9527. Changing it restarts the local bridge.")
+      .addText((text) => text
+        .setPlaceholder("9527")
+        .setValue(String(settings.browserPublishPort || 9527))
+        .onChange(async (value) => {
+          const port = Number.parseInt(value, 10) || 9527;
+          await this.plugin.settingsManager.updateSettings({ browserPublishPort: port });
+          await this.plugin.ensureBrowserPublishBridge();
+        }));
+
+    const tokenSetting = new Setting(containerEl)
+      .setName(isZh ? "连接令牌" : "Bridge token")
+      .setDesc(isZh ? "复制到 Chrome 扩展设置中；首次启用时自动生成。" : "Paste this token into the Chrome extension settings.");
+    tokenSetting.addText((text) => {
+      text.inputEl.type = "password";
+      text.setValue(settings.browserPublishToken || "");
+      text.onChange(async (value) => {
+        await this.plugin.settingsManager.updateSettings({ browserPublishToken: value.trim() });
+        await this.plugin.ensureBrowserPublishBridge();
+      });
+      tokenSetting.addExtraButton((button) => button
+        .setIcon("eye")
+        .setTooltip(this.t("Show or hide activation code"))
+        .onClick(() => {
+          text.inputEl.type = text.inputEl.type === "password" ? "text" : "password";
+          button.setIcon(text.inputEl.type === "password" ? "eye" : "eye-off");
+        }));
+      tokenSetting.addExtraButton((button) => button
+        .setIcon("copy")
+        .setTooltip(isZh ? "复制" : "Copy")
+        .onClick(() => navigator.clipboard?.writeText(text.inputEl.value)));
+    });
+
+    new Setting(containerEl)
+      .setName(isZh ? "测试连接" : "Test connection")
+      .setDesc(isZh ? "验证 Obsidian、浏览器插件和令牌是否连通。" : "Checks Obsidian, the browser extension, and the token.")
+      .addButton((button) => button.setButtonText(isZh ? "测试" : "Test").onClick(async () => {
+        try {
+          const bridge = await this.plugin.ensureBrowserPublishBridge();
+          const result = bridge ? await bridge.health() : null;
+          new Notice(result ? (isZh ? "浏览器插件已连接。" : "Browser extension connected.") : (isZh ? "未启用浏览器发布。" : "Browser publishing is disabled."));
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      }));
+
+    new Setting(containerEl)
+      .setName(isZh ? "读取已选平台状态" : "Read selected platform status")
+      .setDesc(isZh ? "读取扩展缓存的平台状态；不实时检测所有平台登录。" : "Reads cached extension platform states.")
+      .addButton((button) => button.setButtonText(isZh ? "读取" : "Read").onClick(async () => {
+        try {
+          const bridge = await this.plugin.ensureBrowserPublishBridge();
+          if (!bridge) throw new Error(isZh ? "未启用浏览器发布。" : "Browser publishing is disabled.");
+          const platforms = await bridge.listSupportedPlatforms();
+          const snapshot = await bridge.getAuthSnapshot(normalizeBrowserPublishPlatformIds(settings.browserPublishDefaultPlatforms));
+          const snapshotMap = new Map((Array.isArray((snapshot as { platforms?: unknown[] }).platforms) ? (snapshot as { platforms: Record<string, unknown>[] }).platforms : []).map((item) => [String(item.id), item]));
+          const cached: BrowserPublishPlatform[] = platforms
+            .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+            .map((item) => {
+              const merged = { ...item, ...(snapshotMap.get(String(item.id)) || {}) };
+              return {
+                ...merged,
+                id: typeof merged.id === "string" ? merged.id : "",
+                name: typeof merged.name === "string" ? merged.name : String(merged.id || "")
+              } as BrowserPublishPlatform;
+            })
+            .filter((item) => item.id && item.name);
+          await this.plugin.settingsManager.updateSettings({
+            browserPublishCachedPlatforms: cached,
+            browserPublishLastCheckedAt: new Date().toISOString()
+          });
+          this.display();
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      }));
+
+    new Setting(containerEl).setName(isZh ? "默认发布平台" : "Default publish platforms").setHeading();
+    const selected = new Set(normalizeBrowserPublishPlatformIds(settings.browserPublishDefaultPlatforms));
+    const cachedById = new Map(normalizeBrowserPublishPlatforms(settings.browserPublishCachedPlatforms).map((platform) => [platform.id, platform]));
+    for (const platform of BROWSER_PUBLISH_PLATFORMS) {
+      const cached = cachedById.get(platform.id);
+      new Setting(containerEl)
+        .setName(platform.name)
+        .setDesc(cached?.isAuthenticated ? `${isZh ? "上次可用" : "Last available"}${cached.username ? ` · ${cached.username}` : ""}` : cached?.authKnown ? (cached.error || (isZh ? "需登录" : "Login required")) : (isZh ? "未检测" : "Unchecked"))
+        .addToggle((toggle) => toggle.setValue(selected.has(platform.id)).onChange(async (value) => {
+          const next = new Set(normalizeBrowserPublishPlatformIds(this.plugin.settingsManager.getSettings().browserPublishDefaultPlatforms));
+          if (value) next.add(platform.id);
+          else next.delete(platform.id);
+          await this.plugin.settingsManager.updateSettings({ browserPublishDefaultPlatforms: Array.from(next) });
+        }));
+    }
   }
 
   private renderThemeSettings(containerEl: HTMLElement): void {
@@ -454,7 +559,7 @@ export class RedSettingTab extends PluginSettingTab {
         .setDesc(theme.description || this.t(theme.isPreset ? "Built-in theme" : "Custom theme"))
         .addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
           await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
-          this.update();
+          this.display();
         }))
         .addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Preview")).onClick(() => new ThemePreviewModal(this.app, this.plugin, theme, this.language).open()));
     });
@@ -467,20 +572,20 @@ export class RedSettingTab extends PluginSettingTab {
         .addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
           new CreateThemeModal(this.app, this.plugin, async (updated) => {
             await this.plugin.settingsManager.updateTheme(theme.id, updated);
-            this.update();
+            this.display();
           }, this.language, theme).open();
         }))
         .addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
           new ConfirmModal(this.app, this.language === "zh" ? "删除主题" : "Delete theme", this.language === "zh" ? `删除主题“${theme.name}”？此操作无法撤销。` : `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
             await this.plugin.settingsManager.removeTheme(theme.id);
-            this.update();
+            this.display();
           }, this.language).open();
         }));
     });
     new Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Create theme")).setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
-        this.update();
+        this.display();
       }, this.language).open();
     }));
   }
@@ -531,7 +636,7 @@ export class RedSettingTab extends PluginSettingTab {
             ? currentSettings.activationLastCheckedAt
             : new Date().toISOString()
         });
-        this.update();
+        this.display();
       }))
       .addButton((button) => button.setButtonText(this.t("Clear")).onClick(async () => {
         await this.plugin.settingsManager.updateSettings({
@@ -539,11 +644,11 @@ export class RedSettingTab extends PluginSettingTab {
           activationValidationStatus: "unchecked",
           activationLastCheckedAt: ""
         });
-        this.update();
+        this.display();
       }));
     new Setting(section)
       .setName(this.t("Donate"))
-      .setDesc(this.t("Support ongoing development and theme maintenance."))
+      .setDesc(this.t("Support ongoing development and unlock Xiaohongshu one-click publishing."))
       .addButton((button) => button
         .setButtonText(this.language === "zh" ? "打赏" : "Donate")
         .setCta()

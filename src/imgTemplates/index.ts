@@ -360,12 +360,12 @@ export class ImgTemplateManager {
     this.registerTemplate(new WeiboTemplate(this.settingsManager, this.onSettingsUpdate));
     this.registerTemplate(new WechatTemplate(this.settingsManager, this.onSettingsUpdate));
     this.registerTemplate(new MagazineTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new NewspaperTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new QuoteTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new TerminalTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new GithubTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new MinimalCoverTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new SignatureTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new NewspaperTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new QuoteTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new TerminalTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new GithubTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new MinimalCoverTemplate(this.settingsManager, this.onSettingsUpdate));
+    // this.registerTemplate(new SignatureTemplate(this.settingsManager, this.onSettingsUpdate));
   }
 
   registerTemplate(template: ImgTemplate): void {
@@ -377,7 +377,7 @@ export class ImgTemplateManager {
   }
 
   setCurrentTemplate(id: string): void {
-    const template = this.templates.find((item) => item.id === id);
+    const template = this.templates.find((item) => item.id === id) || this.templates[0];
     if (template) this.currentTemplate = template;
   }
 

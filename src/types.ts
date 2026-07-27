@@ -105,6 +105,29 @@ export interface YanqiSettings {
   geminiModel: string;
   aiPromptTemplate: string;
   aiRewriteThreshold: number;
+  enableBrowserPublishing: boolean;
+  browserPublishPort: number;
+  browserPublishToken: string;
+  browserPublishDefaultPlatforms: string[];
+  browserPublishCachedPlatforms: BrowserPublishPlatform[];
+  browserPublishLastCheckedAt: string;
+}
+
+export interface BrowserPublishPlatform {
+  id: string;
+  name: string;
+  icon?: string;
+  homepage?: string;
+  supportsDraft?: boolean;
+  isAuthenticated?: boolean;
+  authKnown?: boolean;
+  username?: string;
+  checkedAt?: number;
+  lastSuccessAt?: number;
+  lastFailureAt?: number;
+  stale?: boolean;
+  error?: string;
+  capabilities?: string[];
 }
 
 export interface FontOption {

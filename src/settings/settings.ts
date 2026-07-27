@@ -102,7 +102,13 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
   aiPromptTemplate: DEFAULT_PROMPT_EN,
-  aiRewriteThreshold: 800
+  aiRewriteThreshold: 800,
+  enableBrowserPublishing: false,
+  browserPublishPort: 9527,
+  browserPublishToken: "",
+  browserPublishDefaultPlatforms: ["yuque", "xiaohongshu", "weibo", "douyin"],
+  browserPublishCachedPlatforms: [],
+  browserPublishLastCheckedAt: ""
 };
 
 export class SettingsManager extends EventEmitter {

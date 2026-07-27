@@ -6,23 +6,28 @@ import { RedSettingTab } from "./settings/SettingTab";
 import { SettingsManager } from "./settings/settings";
 import { ThemeManager } from "./themeManager";
 import { RedView, VIEW_TYPE_RED } from "./view";
+import { BrowserPublishBridge } from "./browserPublishBridge";
+import { createBrowserPublishToken } from "./browserPublishSettings";
 
 declare const MARKDOWN2CARD_CLAIM_URL: string;
 
 export default class YanqiPlugin extends Plugin {
   settingsManager: SettingsManager;
   themeManager: ThemeManager;
+  browserPublishBridge: BrowserPublishBridge | null = null;
+  private browserPublishBridgeKey = "";
 
   async onload(): Promise<void> {
     addIcon(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
+    await this.ensureBrowserPublishBridge();
     this.themeManager = new ThemeManager(this.app, this.settingsManager);
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
     RedConverter.initialize(this.app, this);
-    this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
+    this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager, this));
     this.addCommand({
       id: "open-mp-preview",
       name: "Open card preview",
@@ -48,6 +53,36 @@ export default class YanqiPlugin extends Plugin {
       });
       new Notice("Markdown2card activated successfully.");
     });
+  }
+
+  async onunload(): Promise<void> {
+    await this.browserPublishBridge?.stop();
+  }
+
+  async ensureBrowserPublishBridge(): Promise<BrowserPublishBridge | null> {
+    const settings = this.settingsManager.getSettings();
+    if (!settings.enableBrowserPublishing) {
+      await this.browserPublishBridge?.stop();
+      this.browserPublishBridge = null;
+      this.browserPublishBridgeKey = "";
+      return null;
+    }
+    if (!settings.browserPublishToken) {
+      await this.settingsManager.updateSettings({ browserPublishToken: createBrowserPublishToken() });
+    }
+    const nextSettings = this.settingsManager.getSettings();
+    const port = nextSettings.browserPublishPort || 9527;
+    const token = nextSettings.browserPublishToken;
+    const bridgeKey = `${port}:${token}`;
+    if (this.browserPublishBridge && this.browserPublishBridgeKey === bridgeKey) {
+      await this.browserPublishBridge.start();
+      return this.browserPublishBridge;
+    }
+    await this.browserPublishBridge?.stop();
+    this.browserPublishBridge = new BrowserPublishBridge(port, token);
+    this.browserPublishBridgeKey = bridgeKey;
+    await this.browserPublishBridge.start();
+    return this.browserPublishBridge;
   }
 
   async activateView(): Promise<void> {

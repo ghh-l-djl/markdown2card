@@ -1553,7 +1553,7 @@ var ZH_SETTINGS_TEXT = {
   Validate: "\u9A8C\u8BC1",
   Clear: "\u6E05\u9664",
   Donate: "\u6253\u8D4F\u7ED9\u5F00\u53D1\u8005\u4E00\u4E2A\u6BD4\u5FC3\u5154\u5154",
-  "Support ongoing development and theme maintenance.": "\u652F\u6301\u63D2\u4EF6\u6301\u7EED\u5F00\u53D1\u548C\u4E3B\u9898\u7EF4\u62A4\u3002",
+  "Support ongoing development and unlock Xiaohongshu one-click publishing.": "\u652F\u6301\u63D2\u4EF6\u6301\u7EED\u5F00\u53D1\uFF0C\u5E76\u89E3\u9501\u5C0F\u7EA2\u4E66\u4E00\u952E\u53D1\u5E03\u80FD\u529B\u3002",
   "Custom theme service": "\u4E3B\u9898\u5B9A\u5236",
   "Contact the development team for a branded card theme.": "\u8054\u7CFB\u5F00\u53D1\u8005\u5B9A\u5236\u54C1\u724C\u5361\u7247\u4E3B\u9898\u3002",
   Contact: "\u8054\u7CFB",
@@ -1567,7 +1567,46 @@ function settingsText(language, english) {
   return language === "zh" ? ZH_SETTINGS_TEXT[english] || english : english;
 }
 
+// src/browserPublishSettings.ts
+function normalizeBrowserPublishPlatformIds(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string" && item.trim() !== "") : [];
+}
+function normalizeBrowserPublishPlatforms(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "object" && item !== null && typeof item.id === "string" && typeof item.name === "string") : [];
+}
+function createBrowserPublishToken() {
+  var _a2, _b2;
+  return ((_b2 = (_a2 = globalThis.crypto) == null ? void 0 : _a2.randomUUID) == null ? void 0 : _b2.call(_a2)) || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 // src/settings/SettingTab.ts
+var BROWSER_PUBLISH_PLATFORMS = [
+  { id: "yuque", name: "\u8BED\u96C0" },
+  { id: "xiaohongshu", name: "\u5C0F\u7EA2\u4E66" },
+  { id: "zhihu", name: "\u77E5\u4E4E" },
+  { id: "weibo", name: "\u5FAE\u535A" },
+  { id: "douyin", name: "\u6296\u97F3\u56FE\u6587" },
+  { id: "toutiao", name: "\u5934\u6761\u53F7" },
+  { id: "bilibili", name: "\u54D4\u54E9\u54D4\u54E9" },
+  { id: "csdn", name: "CSDN" },
+  { id: "jianshu", name: "\u7B80\u4E66" },
+  { id: "smzdm", name: "\u4EC0\u4E48\u503C\u5F97\u4E70" },
+  { id: "juejin", name: "\u6398\u91D1" },
+  { id: "baijiahao", name: "\u767E\u5BB6\u53F7" },
+  { id: "douban", name: "\u8C46\u74E3" },
+  { id: "sohu", name: "\u641C\u72D0\u53F7" },
+  { id: "xueqiu", name: "\u96EA\u7403" },
+  { id: "woshipm", name: "\u4EBA\u4EBA\u90FD\u662F\u4EA7\u54C1\u7ECF\u7406" },
+  { id: "51cto", name: "51CTO" },
+  { id: "imooc", name: "\u6155\u8BFE\u624B\u8BB0" },
+  { id: "oschina", name: "\u5F00\u6E90\u4E2D\u56FD" },
+  { id: "netease", name: "\u7F51\u6613\u53F7" },
+  { id: "cnblogs", name: "\u535A\u5BA2\u56ED" },
+  { id: "eastmoney", name: "\u4E1C\u65B9\u8D22\u5BCC" },
+  { id: "dayu", name: "\u5927\u9C7C\u53F7" },
+  { id: "x", name: "X (Twitter)" },
+  { id: "yidian", name: "\u4E00\u70B9\u53F7" }
+];
 var TECHNICAL_PLACEHOLDERS = {
   activationCode: "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX",
   agyExecutable: "agy",
@@ -1730,37 +1769,21 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     this.plugin = plugin;
   }
   getSettingDefinitions() {
-    return [
-      this.createSearchableSection(
-        this.t("Community"),
-        [this.t("Activation code"), this.t("Donate"), this.t("Sponsor")],
-        (containerEl) => this.renderCommunitySettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("General"),
-        [this.t("Interface language"), this.t("Show time"), this.t("Show footer"), this.t("Fonts"), this.t("+ Add font")],
-        (containerEl) => this.renderBasicSettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("Export"),
-        [
-          this.t("Export path"),
-          this.t("Export format"),
-          this.t("Enable post-export actions"),
-          "AI provider",
-          "Gemini API key",
-          "Gemini API URL",
-          "Gemini model",
-          "AI prompt"
-        ],
-        (containerEl) => this.renderExportSettings(containerEl)
-      ),
-      this.createSearchableSection(
-        this.t("Themes"),
-        [this.t("Visible themes"), this.t("Custom themes"), this.t("+ Create theme")],
-        (containerEl) => this.renderThemeSettings(containerEl)
-      )
-    ];
+    return [];
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.addClass("red-settings");
+    containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
+    new import_obsidian3.Setting(containerEl).setName(this.t("Community")).setHeading();
+    this.renderCommunitySettings(containerEl);
+    new import_obsidian3.Setting(containerEl).setName(this.t("General")).setHeading();
+    this.renderBasicSettings(containerEl);
+    new import_obsidian3.Setting(containerEl).setName(this.t("Export")).setHeading();
+    this.renderExportSettings(containerEl);
+    new import_obsidian3.Setting(containerEl).setName(this.t("Themes")).setHeading();
+    this.renderThemeSettings(containerEl);
   }
   get language() {
     return this.plugin.settingsManager.getSettings().uiLanguage === "zh" ? "zh" : "en";
@@ -1768,25 +1791,11 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
   t(english) {
     return settingsText(this.language, english);
   }
-  createSearchableSection(name, aliases, render) {
-    return {
-      name,
-      aliases,
-      render: (setting) => {
-        const containerEl = setting.settingEl;
-        containerEl.empty();
-        containerEl.addClass("red-settings");
-        containerEl.toggleClass("red-paid-entitled", this.plugin.settingsManager.getSettings().activationValidationStatus === "valid");
-        new import_obsidian3.Setting(containerEl).setName(name).setHeading();
-        render(containerEl);
-      }
-    };
-  }
   renderBasicSettings(containerEl) {
     const settings = this.plugin.settingsManager.getSettings();
     new import_obsidian3.Setting(containerEl).setName(this.t("Interface language")).setDesc(this.t("Choose the language used by the plugin interface and settings.")).addDropdown((dropdown) => dropdown.addOption("en", "English").addOption("zh", "\u4E2D\u6587").setValue(settings.uiLanguage || "en").onChange(async (value) => {
       await this.plugin.settingsManager.updateSettings({ uiLanguage: value });
-      this.update();
+      this.display();
     }));
     new import_obsidian3.Setting(containerEl).setName(this.t("Show time")).addToggle((toggle) => toggle.setValue(settings.showTime !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showTime: value })));
     new import_obsidian3.Setting(containerEl).setName(this.t("Show footer")).addToggle((toggle) => toggle.setValue(settings.showFooter !== false).onChange((value) => this.plugin.settingsManager.updateSettings({ showFooter: value })));
@@ -1797,12 +1806,12 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
         setting.addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
           new CreateFontModal(this.app, async (updated) => {
             await this.plugin.settingsManager.updateFont(font.value, updated);
-            this.update();
+            this.display();
           }, this.language, font).open();
         })).addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
           new ConfirmModal(this.app, this.t("Delete font"), this.language === "zh" ? `\u5220\u9664\u5B57\u4F53\u201C${font.label}\u201D\u7684\u914D\u7F6E\uFF1F` : `Delete the "${font.label}" font configuration?`, async () => {
             await this.plugin.settingsManager.removeFont(font.value);
-            this.update();
+            this.display();
           }, this.language).open();
         }));
       }
@@ -1810,7 +1819,7 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Add font")).setCta().onClick(() => {
       new CreateFontModal(this.app, async (font) => {
         await this.plugin.settingsManager.addCustomFont(font);
-        this.update();
+        this.display();
       }, this.language).open();
     }));
   }
@@ -1823,7 +1832,7 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       isZh ? "\u5BFC\u51FA\u540E\u81EA\u52A8\u5728\u6E90\u6587\u4EF6\u540C\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A\u53D1\u5E03\u7248MD\u6587\u4EF6" : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
     ).addToggle((toggle) => toggle.setValue(settings.enablePostExportActions).onChange((value) => {
       void this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
-      this.update();
+      this.display();
     }));
     if (settings.enablePostExportActions) {
       new import_obsidian3.Setting(containerEl).setName(isZh ? "AI \u603B\u7ED3\u4E0E\u91CD\u5199\u8BBE\u7F6E" : "AI summary and rewrite settings").setHeading();
@@ -1831,12 +1840,12 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
         isZh ? "\u4F7F\u7528 Gemini API \u6216\u672C\u5730 agy \u547D\u4EE4\u81EA\u52A8\u91CD\u5199\u5BFC\u51FA\u6587\u4EF6\u7684\u6B63\u6587" : "Use the Gemini API or local agy command to rewrite the exported note body"
       ).addToggle((toggle) => toggle.setValue(settings.enableAiSummary).onChange((value) => {
         void this.plugin.settingsManager.updateSettings({ enableAiSummary: value });
-        this.update();
+        this.display();
       }));
       if (settings.enableAiSummary) {
         new import_obsidian3.Setting(containerEl).setName(isZh ? "AI \u8C03\u7528\u65B9\u5F0F" : "AI Provider").setDesc(isZh ? "\u9009\u62E9 Gemini API \u6216\u672C\u5730\u7EC8\u7AEF agy -p" : "Choose the Gemini API or local agy -p command").addDropdown((dropdown) => dropdown.addOption("gemini", "Gemini API").addOption("agy", isZh ? "\u672C\u5730 agy \u547D\u4EE4" : "Local agy command").setValue(settings.aiProvider || "gemini").onChange(async (value) => {
           await this.plugin.settingsManager.updateSettings({ aiProvider: value });
-          this.update();
+          this.display();
         }));
         if (settings.aiProvider === "agy") {
           new import_obsidian3.Setting(containerEl).setName(isZh ? "agy \u547D\u4EE4\u8DEF\u5F84" : "agy executable path").setDesc(isZh ? "agy \u53EF\u6267\u884C\u6587\u4EF6\u7684\u8DEF\u5F84\u6216\u547D\u4EE4\u540D\uFF1B\u63D2\u4EF6\u5C06\u4EE5\u201Cagy -p \u63D0\u793A\u8BCD\u201D\u65B9\u5F0F\u8C03\u7528" : "Executable path or command name; the plugin invokes it as agy -p prompt").addText((text) => text.setPlaceholder(TECHNICAL_PLACEHOLDERS.agyExecutable).setValue(settings.agyCommandPath || "agy").onChange((value) => {
@@ -1885,13 +1894,92 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
         }));
       }
     }
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u6D4F\u89C8\u5668\u63D2\u4EF6\u53D1\u5E03" : "Browser publishing").setHeading();
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u542F\u7528\u6D4F\u89C8\u5668\u63D2\u4EF6\u53D1\u5E03" : "Enable browser publishing").setDesc(isZh ? "\u672C\u5730\u76D1\u542C 127.0.0.1\uFF0C\u4F9B Chrome \u6269\u5C55\u8FDE\u63A5\u3002" : "Listens on 127.0.0.1 for the Chrome extension.").addToggle((toggle) => toggle.setValue(settings.enableBrowserPublishing).onChange(async (value) => {
+      await this.plugin.settingsManager.updateSettings({
+        enableBrowserPublishing: value,
+        browserPublishToken: value && !settings.browserPublishToken ? createBrowserPublishToken() : settings.browserPublishToken
+      });
+      await this.plugin.ensureBrowserPublishBridge();
+      this.display();
+    }));
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u8FDE\u63A5\u7AEF\u53E3" : "Bridge port").setDesc(isZh ? "\u9ED8\u8BA4 9527\uFF1B\u4FEE\u6539\u540E\u4F1A\u91CD\u542F\u672C\u5730 bridge\u3002" : "Default 9527. Changing it restarts the local bridge.").addText((text) => text.setPlaceholder("9527").setValue(String(settings.browserPublishPort || 9527)).onChange(async (value) => {
+      const port = Number.parseInt(value, 10) || 9527;
+      await this.plugin.settingsManager.updateSettings({ browserPublishPort: port });
+      await this.plugin.ensureBrowserPublishBridge();
+    }));
+    const tokenSetting = new import_obsidian3.Setting(containerEl).setName(isZh ? "\u8FDE\u63A5\u4EE4\u724C" : "Bridge token").setDesc(isZh ? "\u590D\u5236\u5230 Chrome \u6269\u5C55\u8BBE\u7F6E\u4E2D\uFF1B\u9996\u6B21\u542F\u7528\u65F6\u81EA\u52A8\u751F\u6210\u3002" : "Paste this token into the Chrome extension settings.");
+    tokenSetting.addText((text) => {
+      text.inputEl.type = "password";
+      text.setValue(settings.browserPublishToken || "");
+      text.onChange(async (value) => {
+        await this.plugin.settingsManager.updateSettings({ browserPublishToken: value.trim() });
+        await this.plugin.ensureBrowserPublishBridge();
+      });
+      tokenSetting.addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Show or hide activation code")).onClick(() => {
+        text.inputEl.type = text.inputEl.type === "password" ? "text" : "password";
+        button.setIcon(text.inputEl.type === "password" ? "eye" : "eye-off");
+      }));
+      tokenSetting.addExtraButton((button) => button.setIcon("copy").setTooltip(isZh ? "\u590D\u5236" : "Copy").onClick(() => {
+        var _a2;
+        return (_a2 = navigator.clipboard) == null ? void 0 : _a2.writeText(text.inputEl.value);
+      }));
+    });
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u6D4B\u8BD5\u8FDE\u63A5" : "Test connection").setDesc(isZh ? "\u9A8C\u8BC1 Obsidian\u3001\u6D4F\u89C8\u5668\u63D2\u4EF6\u548C\u4EE4\u724C\u662F\u5426\u8FDE\u901A\u3002" : "Checks Obsidian, the browser extension, and the token.").addButton((button) => button.setButtonText(isZh ? "\u6D4B\u8BD5" : "Test").onClick(async () => {
+      try {
+        const bridge = await this.plugin.ensureBrowserPublishBridge();
+        const result = bridge ? await bridge.health() : null;
+        new import_obsidian3.Notice(result ? isZh ? "\u6D4F\u89C8\u5668\u63D2\u4EF6\u5DF2\u8FDE\u63A5\u3002" : "Browser extension connected." : isZh ? "\u672A\u542F\u7528\u6D4F\u89C8\u5668\u53D1\u5E03\u3002" : "Browser publishing is disabled.");
+      } catch (error) {
+        new import_obsidian3.Notice(error instanceof Error ? error.message : String(error));
+      }
+    }));
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u8BFB\u53D6\u5DF2\u9009\u5E73\u53F0\u72B6\u6001" : "Read selected platform status").setDesc(isZh ? "\u8BFB\u53D6\u6269\u5C55\u7F13\u5B58\u7684\u5E73\u53F0\u72B6\u6001\uFF1B\u4E0D\u5B9E\u65F6\u68C0\u6D4B\u6240\u6709\u5E73\u53F0\u767B\u5F55\u3002" : "Reads cached extension platform states.").addButton((button) => button.setButtonText(isZh ? "\u8BFB\u53D6" : "Read").onClick(async () => {
+      try {
+        const bridge = await this.plugin.ensureBrowserPublishBridge();
+        if (!bridge)
+          throw new Error(isZh ? "\u672A\u542F\u7528\u6D4F\u89C8\u5668\u53D1\u5E03\u3002" : "Browser publishing is disabled.");
+        const platforms = await bridge.listSupportedPlatforms();
+        const snapshot = await bridge.getAuthSnapshot(normalizeBrowserPublishPlatformIds(settings.browserPublishDefaultPlatforms));
+        const snapshotMap = new Map((Array.isArray(snapshot.platforms) ? snapshot.platforms : []).map((item) => [String(item.id), item]));
+        const cached = platforms.filter((item) => typeof item === "object" && item !== null).map((item) => {
+          const merged = { ...item, ...snapshotMap.get(String(item.id)) || {} };
+          return {
+            ...merged,
+            id: typeof merged.id === "string" ? merged.id : "",
+            name: typeof merged.name === "string" ? merged.name : String(merged.id || "")
+          };
+        }).filter((item) => item.id && item.name);
+        await this.plugin.settingsManager.updateSettings({
+          browserPublishCachedPlatforms: cached,
+          browserPublishLastCheckedAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        this.display();
+      } catch (error) {
+        new import_obsidian3.Notice(error instanceof Error ? error.message : String(error));
+      }
+    }));
+    new import_obsidian3.Setting(containerEl).setName(isZh ? "\u9ED8\u8BA4\u53D1\u5E03\u5E73\u53F0" : "Default publish platforms").setHeading();
+    const selected = new Set(normalizeBrowserPublishPlatformIds(settings.browserPublishDefaultPlatforms));
+    const cachedById = new Map(normalizeBrowserPublishPlatforms(settings.browserPublishCachedPlatforms).map((platform) => [platform.id, platform]));
+    for (const platform of BROWSER_PUBLISH_PLATFORMS) {
+      const cached = cachedById.get(platform.id);
+      new import_obsidian3.Setting(containerEl).setName(platform.name).setDesc((cached == null ? void 0 : cached.isAuthenticated) ? `${isZh ? "\u4E0A\u6B21\u53EF\u7528" : "Last available"}${cached.username ? ` \xB7 ${cached.username}` : ""}` : (cached == null ? void 0 : cached.authKnown) ? cached.error || (isZh ? "\u9700\u767B\u5F55" : "Login required") : isZh ? "\u672A\u68C0\u6D4B" : "Unchecked").addToggle((toggle) => toggle.setValue(selected.has(platform.id)).onChange(async (value) => {
+        const next = new Set(normalizeBrowserPublishPlatformIds(this.plugin.settingsManager.getSettings().browserPublishDefaultPlatforms));
+        if (value)
+          next.add(platform.id);
+        else
+          next.delete(platform.id);
+        await this.plugin.settingsManager.updateSettings({ browserPublishDefaultPlatforms: Array.from(next) });
+      }));
+    }
   }
   renderThemeSettings(containerEl) {
     new import_obsidian3.Setting(containerEl).setName(this.t("Visible themes")).setHeading();
     this.plugin.settingsManager.getAllThemes().forEach((theme) => {
       new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || this.t(theme.isPreset ? "Built-in theme" : "Custom theme")).addToggle((toggle) => toggle.setValue(theme.isVisible !== false).onChange(async (value) => {
         await this.plugin.settingsManager.updateTheme(theme.id, { isVisible: value });
-        this.update();
+        this.display();
       })).addExtraButton((button) => button.setIcon("eye").setTooltip(this.t("Preview")).onClick(() => new ThemePreviewModal(this.app, this.plugin, theme, this.language).open()));
     });
     new import_obsidian3.Setting(containerEl).setName(this.t("Custom themes")).setHeading();
@@ -1899,19 +1987,19 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
       new import_obsidian3.Setting(containerEl).setName(theme.name).setDesc(theme.description || "").addExtraButton((button) => button.setIcon("pencil").setTooltip(this.t("Edit")).onClick(() => {
         new CreateThemeModal(this.app, this.plugin, async (updated) => {
           await this.plugin.settingsManager.updateTheme(theme.id, updated);
-          this.update();
+          this.display();
         }, this.language, theme).open();
       })).addExtraButton((button) => button.setIcon("trash").setTooltip(this.t("Delete")).onClick(() => {
         new ConfirmModal(this.app, this.language === "zh" ? "\u5220\u9664\u4E3B\u9898" : "Delete theme", this.language === "zh" ? `\u5220\u9664\u4E3B\u9898\u201C${theme.name}\u201D\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002` : `Delete the "${theme.name}" theme? This cannot be undone.`, async () => {
           await this.plugin.settingsManager.removeTheme(theme.id);
-          this.update();
+          this.display();
         }, this.language).open();
       }));
     });
     new import_obsidian3.Setting(containerEl).addButton((button) => button.setButtonText(this.t("+ Create theme")).setCta().onClick(() => {
       new CreateThemeModal(this.app, this.plugin, async (theme) => {
         await this.plugin.settingsManager.addCustomTheme(theme);
-        this.update();
+        this.display();
       }, this.language).open();
     }));
   }
@@ -1952,16 +2040,16 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
         ),
         activationLastCheckedAt: preserveLastSuccessfulCheck ? currentSettings.activationLastCheckedAt : (/* @__PURE__ */ new Date()).toISOString()
       });
-      this.update();
+      this.display();
     })).addButton((button) => button.setButtonText(this.t("Clear")).onClick(async () => {
       await this.plugin.settingsManager.updateSettings({
         activationCode: "",
         activationValidationStatus: "unchecked",
         activationLastCheckedAt: ""
       });
-      this.update();
+      this.display();
     }));
-    new import_obsidian3.Setting(section).setName(this.t("Donate")).setDesc(this.t("Support ongoing development and theme maintenance.")).addButton((button) => button.setButtonText(this.language === "zh" ? "\u6253\u8D4F" : "Donate").setCta().onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
+    new import_obsidian3.Setting(section).setName(this.t("Donate")).setDesc(this.t("Support ongoing development and unlock Xiaohongshu one-click publishing.")).addButton((button) => button.setButtonText(this.language === "zh" ? "\u6253\u8D4F" : "Donate").setCta().onClick(() => window.open(purchaseUrl(settings.uiLanguage || "en"), "_blank")));
     new import_obsidian3.Setting(section).setName(this.t("Custom theme service")).setDesc(this.t("Contact the development team for a branded card theme.")).addButton((button) => button.setButtonText(this.t("Contact")).onClick(() => window.open(THEME_CUSTOMIZATION_URL, "_blank")));
   }
   activationStatusDescription() {
@@ -2878,7 +2966,13 @@ var DEFAULT_SETTINGS = {
   geminiApiUrl: "https://generativelanguage.googleapis.com",
   geminiModel: "gemini-3.5-flash",
   aiPromptTemplate: DEFAULT_PROMPT_EN,
-  aiRewriteThreshold: 800
+  aiRewriteThreshold: 800,
+  enableBrowserPublishing: false,
+  browserPublishPort: 9527,
+  browserPublishToken: "",
+  browserPublishDefaultPlatforms: ["yuque", "xiaohongshu", "weibo", "douyin"],
+  browserPublishCachedPlatforms: [],
+  browserPublishLastCheckedAt: ""
 };
 var SettingsManager = class extends import_events.EventEmitter {
   constructor(plugin) {
@@ -3349,8 +3443,8 @@ var ThemeManager = class {
 };
 
 // src/view.ts
-var import_promises = require("fs/promises");
-var import_path = require("path");
+var import_promises2 = require("fs/promises");
+var import_path2 = require("path");
 var import_obsidian7 = require("obsidian");
 
 // src/assets/support-hero.jpg
@@ -5472,17 +5566,6 @@ var MagazineTemplate = class extends DefaultTemplate {
     applyRoot(element, "red-tpl-mag");
   }
 };
-var MinimalCoverTemplate = class extends DefaultTemplate {
-  constructor() {
-    super(...arguments);
-    this.id = "minimal-cover";
-    this.name = "\u6781\u7B80\u65E0\u5934";
-  }
-  render(element, settings) {
-    super.render(element);
-    applyRoot(element, "red-tpl-min");
-  }
-};
 var RedTemplateBase = class extends DefaultTemplate {
   constructor(settingsManager, onSettingsUpdate, id, name, rootClass) {
     super(settingsManager, onSettingsUpdate);
@@ -5602,71 +5685,6 @@ var WechatTemplate = class extends RedTemplateBase {
     footer.createSpan({ cls: "red-wechat-arrow", text: "\u203A" });
   }
 };
-var NewspaperTemplate = class extends RedTemplateBase {
-  constructor(sm, cb) {
-    super(sm, cb, "newspaper", "\u62A5\u7EB8\u62A5\u5934", "red-tpl-news");
-  }
-  buildHeader(header, settings) {
-    const bar = header.createDiv({ cls: "red-news-masthead" });
-    this.editableName(bar, settings, "red-news-name");
-    const meta = bar.createDiv({ cls: "red-news-meta" });
-    meta.createSpan({ text: settings.userId || "" });
-    if (settings.showTime)
-      meta.createSpan({ text: (/* @__PURE__ */ new Date()).toLocaleDateString(settings.timeFormat) });
-  }
-  buildFooter(footer, settings) {
-    footer.createSpan({ text: `\u2014\u2014 ${settings.userName || ""} \u2014\u2014` });
-  }
-};
-var QuoteTemplate = class extends RedTemplateBase {
-  constructor(sm, cb) {
-    super(sm, cb, "quote", "\u8BED\u5F55\u5361", "red-tpl-quote");
-  }
-  buildHeader(header) {
-    header.createDiv({ cls: "red-quote-mark", text: "\u275D" });
-  }
-  buildFooter(footer, settings) {
-    this.editableName(footer, settings, "red-quote-sign");
-  }
-};
-var TerminalTemplate = class extends RedTemplateBase {
-  constructor(sm, cb) {
-    super(sm, cb, "terminal", "\u7EC8\u7AEF\u7A97\u53E3", "red-tpl-term");
-  }
-  buildHeader(header, settings) {
-    const bar = header.createDiv({ cls: "red-term-bar" });
-    ["red", "yellow", "green"].forEach((c) => bar.createSpan({ cls: `red-code-dot red-code-dot-${c}` }));
-    this.editableName(bar, settings, "red-term-path");
-  }
-  buildFooter(footer) {
-    footer.createSpan({ text: "$ " });
-    footer.createSpan({ cls: "red-term-cursor", text: "\u2588" });
-  }
-};
-var GithubTemplate = class extends RedTemplateBase {
-  constructor(sm, cb) {
-    super(sm, cb, "github", "GitHub \u5361", "red-tpl-github");
-  }
-  buildHeader(header, settings) {
-    const top = header.createDiv({ cls: "red-gh-head" });
-    top.createSpan({ cls: "red-gh-oct", text: "GitHub" });
-    this.editableName(top, settings, "red-gh-repo");
-  }
-  buildFooter(footer) {
-    footer.createSpan({ text: "\u25CF Markdown" });
-    footer.createSpan({ text: "\u2605 Star" });
-  }
-};
-var SignatureTemplate = class extends RedTemplateBase {
-  constructor(sm, cb) {
-    super(sm, cb, "signature", "\u7EAF\u7F72\u540D", "red-tpl-sign");
-  }
-  buildHeader() {
-  }
-  buildFooter(footer, settings) {
-    this.editableName(footer, settings, "red-sign-name");
-  }
-};
 function applyRoot(element, rootClass) {
   const preview = element.querySelector(".red-image-preview");
   if (!preview)
@@ -5691,12 +5709,6 @@ var ImgTemplateManager = class {
     this.registerTemplate(new WeiboTemplate(this.settingsManager, this.onSettingsUpdate));
     this.registerTemplate(new WechatTemplate(this.settingsManager, this.onSettingsUpdate));
     this.registerTemplate(new MagazineTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new NewspaperTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new QuoteTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new TerminalTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new GithubTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new MinimalCoverTemplate(this.settingsManager, this.onSettingsUpdate));
-    this.registerTemplate(new SignatureTemplate(this.settingsManager, this.onSettingsUpdate));
   }
   registerTemplate(template) {
     this.templates.push(template);
@@ -5705,7 +5717,7 @@ var ImgTemplateManager = class {
     return this.templates.map((template) => ({ value: template.id, label: template.name }));
   }
   setCurrentTemplate(id) {
-    const template = this.templates.find((item) => item.id === id);
+    const template = this.templates.find((item) => item.id === id) || this.templates[0];
     if (template)
       this.currentTemplate = template;
   }
@@ -5921,6 +5933,121 @@ function resetPreviewScroll(previewEl) {
   wrapper.scrollTop = 0;
 }
 
+// src/browserPublishPackage.ts
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var import_url = require("url");
+var SUPPORTED_IMAGE_EXTENSIONS = /* @__PURE__ */ new Set([".png", ".jpg", ".jpeg", ".webp"]);
+var UNSUPPORTED_IMAGE_EXTENSIONS = /* @__PURE__ */ new Set([".svg", ".gif", ".heic", ".heif", ".bmp", ".tiff", ".tif", ".avif"]);
+var MAX_CARD_IMAGE_ASSETS = 18;
+var MIME_TYPES = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp"
+};
+function stripYamlFrontmatter(content) {
+  if (!content.startsWith("---"))
+    return content;
+  const match = content.match(/^---\s*\n[\s\S]*?\n---\s*\n?/);
+  return match ? content.slice(match[0].length) : content;
+}
+function validatePublishFrontmatter(frontmatter, body) {
+  const errors = [];
+  if (typeof frontmatter.title !== "string" || !frontmatter.title.trim())
+    errors.push("\u7F3A\u5C11 YAML title");
+  if (typeof frontmatter.assets !== "string" || !frontmatter.assets.trim())
+    errors.push("\u7F3A\u5C11 YAML assets");
+  if (!body.trim())
+    errors.push("\u6B63\u6587\u4E3A\u7A7A");
+  return errors;
+}
+async function buildCardImagePublishPackage(content, frontmatter) {
+  const body = stripYamlFrontmatter(content);
+  const errors = validatePublishFrontmatter(frontmatter, body);
+  if (errors.length)
+    throw new Error(errors.join("\n"));
+  const title = String(frontmatter.title);
+  const tags = normalizeTags(frontmatter.publish_social_tags);
+  const assetRoot = resolveFileUrl(String(frontmatter.assets));
+  const imagePaths = (await listPublishImages(assetRoot)).slice(0, MAX_CARD_IMAGE_ASSETS);
+  const assets = await Promise.all(imagePaths.map(async (path2, index) => {
+    const buffer = await (0, import_promises.readFile)(path2);
+    const ext = (0, import_path.extname)(path2).toLowerCase();
+    return {
+      id: `image-${index + 1}`,
+      filename: (0, import_path.basename)(path2),
+      mimeType: MIME_TYPES[ext] || "application/octet-stream",
+      size: buffer.byteLength,
+      base64: buffer.toString("base64"),
+      source: { kind: "markdown2card-export", originalSrc: path2 }
+    };
+  }));
+  const markdown = [
+    ...assets.map((asset) => `![${asset.filename}](asset://${asset.id})`),
+    body.trim()
+  ].filter(Boolean).join("\n\n");
+  return {
+    mode: "card-image",
+    title,
+    body,
+    tags,
+    markdown,
+    content: body,
+    cover: assets[0] ? `asset://${assets[0].id}` : "",
+    assets
+  };
+}
+async function buildArticlePublishPackage(content, frontmatter, fallbackTitle) {
+  const body = stripYamlFrontmatter(content);
+  const title = typeof frontmatter.title === "string" && frontmatter.title.trim() ? frontmatter.title : fallbackTitle;
+  if (!body.trim())
+    throw new Error("\u6B63\u6587\u4E3A\u7A7A");
+  return {
+    mode: "article",
+    title,
+    body,
+    tags: normalizeTags(frontmatter.publish_social_tags),
+    markdown: body,
+    content: body,
+    cover: "",
+    assets: []
+  };
+}
+async function listPublishImages(assetRoot) {
+  const outputPath = (0, import_path.join)(assetRoot, "output");
+  const hasOutput = await pathIsDirectory(outputPath);
+  const imageRoot = hasOutput ? outputPath : assetRoot;
+  const entries = await (0, import_promises.readdir)(imageRoot, { withFileTypes: true });
+  const unsupported = entries.filter((entry) => entry.isFile() && !entry.name.startsWith(".") && UNSUPPORTED_IMAGE_EXTENSIONS.has((0, import_path.extname)(entry.name).toLowerCase())).map((entry) => entry.name);
+  const supported = entries.filter((entry) => entry.isFile() && !entry.name.startsWith(".") && SUPPORTED_IMAGE_EXTENSIONS.has((0, import_path.extname)(entry.name).toLowerCase())).map((entry) => (0, import_path.join)(imageRoot, entry.name)).sort(naturalCompare);
+  if (unsupported.length)
+    throw new Error(`\u5305\u542B\u4E0D\u652F\u6301\u7684\u56FE\u7247\u683C\u5F0F\uFF1A${unsupported.join(", ")}`);
+  if (!supported.length)
+    throw new Error(`${hasOutput ? "output \u6587\u4EF6\u5939" : "assets \u6587\u4EF6\u5939"}\u6CA1\u6709\u53EF\u53D1\u5E03\u56FE\u7247`);
+  return supported;
+}
+function normalizeTags(value) {
+  const raw = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const seen = /* @__PURE__ */ new Set();
+  return raw.map((item) => String(item).trim().replace(/^#+/, "")).filter((item) => item && !seen.has(item) && seen.add(item));
+}
+function resolveFileUrl(value) {
+  if (value.startsWith("file://"))
+    return (0, import_url.fileURLToPath)(value);
+  return value;
+}
+async function pathIsDirectory(path2) {
+  try {
+    return (await (0, import_promises.stat)(path2)).isDirectory();
+  } catch (e) {
+    return false;
+  }
+}
+function naturalCompare(a, b) {
+  return (0, import_path.basename)(a).localeCompare((0, import_path.basename)(b), void 0, { numeric: true, sensitivity: "base" });
+}
+
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
 var UI_TEXT = {
@@ -5972,7 +6099,14 @@ var UI_TEXT = {
     yahei: "Microsoft YaHei",
     aiRewriting: "Calling AI to rewrite Xiaohongshu marketing copy...",
     aiRewriteSuccess: "AI marketing copy generated successfully!",
-    aiRewriteFailed: "AI rewriting failed. Exporting using original text."
+    aiRewriteFailed: "AI rewriting failed. Exporting using original text.",
+    publishToBrowser: "Publish",
+    browserPublishDesktopOnly: "Browser publishing is only available on desktop.",
+    browserPublishDisabled: "Enable browser publishing in settings first.",
+    browserPublishNoPlatforms: "Select at least one platform.",
+    browserPublishUpgrade: "The Chrome extension must be upgraded to support card-image publishing.",
+    browserPublishQueued: "Sent to browser extension.",
+    browserPublishReady: "Browser publish status updated."
   },
   zh: {
     templateLabel: "\u9AA8\u67B6\u6A21\u677F",
@@ -6022,7 +6156,14 @@ var UI_TEXT = {
     yahei: "\u96C5\u9ED1",
     aiRewriting: "\u6B63\u5728\u8C03\u7528 AI \u91CD\u5199\u5C0F\u7EA2\u4E66\u8425\u9500\u6587\u6848...",
     aiRewriteSuccess: "AI \u8425\u9500\u6587\u6848\u751F\u6210\u6210\u529F\uFF01",
-    aiRewriteFailed: "AI \u91CD\u5199\u5931\u8D25\uFF0C\u5C06\u4F7F\u7528\u6587\u7AE0\u539F\u6587\u4F5C\u4E3A\u6B63\u6587\u5BFC\u51FA\u3002"
+    aiRewriteFailed: "AI \u91CD\u5199\u5931\u8D25\uFF0C\u5C06\u4F7F\u7528\u6587\u7AE0\u539F\u6587\u4F5C\u4E3A\u6B63\u6587\u5BFC\u51FA\u3002",
+    publishToBrowser: "\u53D1\u5E03",
+    browserPublishDesktopOnly: "\u6D4F\u89C8\u5668\u63D2\u4EF6\u53D1\u5E03\u4EC5\u652F\u6301\u684C\u9762\u7AEF\u3002",
+    browserPublishDisabled: "\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u542F\u7528\u6D4F\u89C8\u5668\u63D2\u4EF6\u53D1\u5E03\u3002",
+    browserPublishNoPlatforms: "\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u53D1\u5E03\u5E73\u53F0\u3002",
+    browserPublishUpgrade: "Chrome \u6269\u5C55\u9700\u8981\u5347\u7EA7\u540E\u624D\u652F\u6301\u56FE\u6587\u5361\u7247\u5305\u53D1\u5E03\u3002",
+    browserPublishQueued: "\u5DF2\u53D1\u9001\u5230\u6D4F\u89C8\u5668\u63D2\u4EF6\u3002",
+    browserPublishReady: "\u6D4F\u89C8\u5668\u53D1\u5E03\u72B6\u6001\u5DF2\u66F4\u65B0\u3002"
   }
 };
 var TEMPLATE_LABEL_KEYS = {
@@ -6042,6 +6183,9 @@ var TEMPLATE_LABEL_KEYS = {
 var ACTIVATION_CODE_PLACEHOLDER = "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX";
 function isRecord(value) {
   return typeof value === "object" && value !== null;
+}
+function isBrowserPublishPendingStatus(status) {
+  return !status || ["pending", "queued", "queueing", "syncing", "running", "publishing", "processing"].includes(status);
 }
 function describeError(error) {
   if (error instanceof Error)
@@ -6069,7 +6213,7 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
     copy.createSpan({ cls: "red-support-eyebrow", text: isZh ? "INDEPENDENT MAKER \xB7 \u72EC\u7ACB\u5F00\u53D1\u8005" : "INDEPENDENT MAKER" });
     copy.createEl("h2", { text: isZh ? "\u8BA9\u597D\u5DE5\u5177\u6301\u7EED\u751F\u957F" : "Keep useful tools growing" });
     copy.createEl("p", {
-      text: isZh ? "\u6211\u662F Hazel\uFF0C\u4E00\u540D\u72EC\u7ACB\u5F00\u53D1\u8005\uFF0C\u6301\u7EED\u521B\u4F5C\u80FD\u8BA9\u601D\u8003\u3001\u5199\u4F5C\u548C\u53D1\u5E03\u66F4\u987A\u624B\u7684\u751F\u4EA7\u529B\u5DE5\u5177\u3002" : "I'm Hazel, an independent developer creating productivity tools for clearer thinking, writing, and publishing."
+      text: isZh ? "\u6211\u662F Hazel\uFF0C\u4E00\u540D\u72EC\u7ACB\u5F00\u53D1\u8005\uFF0C\u6301\u7EED\u521B\u4F5C\u80FD\u8BA9\u601D\u8003\u3001\u5199\u4F5C\u548C\u53D1\u5E03\u66F4\u987A\u624B\u7684\u751F\u4EA7\u529B\u5DE5\u5177\uFF1B\u4ED8\u8D39\u6350\u52A9\u53EF\u89E3\u9501\u5C0F\u7EA2\u4E66\u4E00\u952E\u53D1\u5E03\u80FD\u529B\u3002" : "I'm Hazel, an independent developer creating productivity tools for clearer thinking, writing, and publishing. Paid support unlocks Xiaohongshu one-click publishing."
     });
     const actions = this.contentEl.createDiv("red-support-actions");
     const githubButton = actions.createEl("button", { cls: "red-support-action red-support-github" });
@@ -6082,7 +6226,7 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
     (0, import_obsidian7.setIcon)(fundingIcon, "heart-handshake");
     fundingButton.createSpan({
       cls: "red-support-action-text",
-      text: isZh ? "\u8D5E\u52A9\u521B\u4F5C \xB7 \u4E86\u89E3\u652F\u6301\u65B9\u5F0F" : "Sponsor \xB7 Learn how to support"
+      text: isZh ? "\u8D5E\u52A9\u521B\u4F5C \xB7 \u89E3\u9501\u5C0F\u7EA2\u4E66\u4E00\u952E\u53D1\u5E03" : "Sponsor \xB7 Unlock Xiaohongshu publishing"
     });
     fundingButton.addEventListener("click", () => window.open(purchaseUrl(this.language), "_blank"));
     const contact = this.contentEl.createEl("details", { cls: "red-support-contact" });
@@ -6139,26 +6283,39 @@ var SupportReminderModal = class extends import_obsidian7.Modal {
   }
 };
 var EN_THEME_LABELS = {
-  default: "Default theme",
-  elegant: "Elegant dark",
-  cyber: "Cyberpunk",
-  yueling: "Warm brown",
-  starry: "Starry dream",
-  ocean: "Deep ocean",
-  warm: "Warm literary",
-  forest: "Forest morning",
-  metal: "Metal tech",
-  minimal: "Minimal theme",
-  sakura: "Sakura"
+  default: "Black + blue",
+  elegant: "Dark purple",
+  cyber: "White neon",
+  yueling: "Black + brown",
+  starry: "Dark violet",
+  ocean: "Deep blue",
+  warm: "Cream + brown",
+  forest: "Dark green",
+  metal: "Tech blue",
+  minimal: "White + gray",
+  sakura: "Dark pink"
+};
+var ZH_THEME_LABELS = {
+  default: "\u9ED1\u5E95\u84DD\u8272",
+  minimal: "\u767D\u5E95\u7070\u8272",
+  elegant: "\u6697\u8272\u7D2B\u8272",
+  cyber: "\u767D\u5E95\u9713\u8679",
+  warm: "\u7C73\u8272\u68D5\u8272",
+  forest: "\u6DF1\u7EFF\u6E05\u723D",
+  ocean: "\u6DF1\u84DD\u51B7\u8272",
+  sakura: "\u6697\u8272\u7C89\u8272",
+  starry: "\u6697\u8272\u7D2B\u7C89",
+  metal: "\u79D1\u6280\u84DD\u9ED1",
+  yueling: "\u9ED1\u5E95\u68D5\u8272"
 };
 var RedView = class extends import_obsidian7.ItemView {
-  constructor(leaf, themeManager, settingsManager) {
+  constructor(leaf, themeManager, settingsManager, plugin) {
     super(leaf);
     this.themeManager = themeManager;
     this.settingsManager = settingsManager;
+    this.plugin = plugin;
     this.currentFile = null;
     this.updateTimer = null;
-    this.isPreviewLocked = false;
     this.currentImageIndex = 0;
     this.backgroundManager = new BackgroundManager();
     this.syncInitialized = false;
@@ -6189,7 +6346,7 @@ var RedView = class extends import_obsidian7.ItemView {
   async initializeToolbar(container) {
     const toolbar = container.createDiv({ cls: "red-toolbar" });
     const controls = toolbar.createDiv({ cls: "red-controls-group" });
-    this.initializeLockButton(controls);
+    this.initializeHelpButton(controls);
     this.customTemplateSelect = this.createCustomSelect(controls, "red-template-select", this.getTemplateOptions());
     this.customTemplateSelect.id = "template-select";
     this.customTemplateSelect.dataset.label = this.t("templateLabel");
@@ -6205,6 +6362,15 @@ var RedView = class extends import_obsidian7.ItemView {
       await this.settingsManager.updateSettings({ coverStyle: value });
       await this.updatePreview();
     });
+    this.customThemeSelect = this.createCustomSelect(controls, "red-theme-select", this.getThemeOptions());
+    this.customThemeSelect.id = "theme-select";
+    this.customThemeSelect.dataset.label = this.getLanguage() === "zh" ? "\u4E3B\u9898\u98CE\u683C" : "Theme";
+    this.onSelectChange(this.customThemeSelect, async (value) => {
+      this.themeManager.setCurrentTheme(value);
+      await this.settingsManager.updateSettings({ themeId: value });
+      this.themeManager.applyTheme(this.previewEl);
+      await this.restoreThemeSettings(value);
+    });
     this.customFontSelect = this.createCustomSelect(controls, "red-font-select", this.getFontOptions());
     this.customFontSelect.id = "font-select";
     this.customFontSelect.dataset.label = this.t("fontLabel");
@@ -6214,15 +6380,7 @@ var RedView = class extends import_obsidian7.ItemView {
       this.themeManager.applyTheme(this.previewEl);
     });
     this.initializeFontSizeControls(controls);
-    this.initializeThemeStrip(toolbar);
     await this.restoreSettings();
-  }
-  initializeLockButton(parent) {
-    this.lockButton = parent.createEl("button", { cls: "red-lock-button", attr: { "aria-label": this.t("realtimeOff") } });
-    (0, import_obsidian7.setIcon)(this.lockButton, "lock");
-    this.lockButton.addEventListener("click", () => {
-      void this.togglePreviewLock();
-    });
   }
   initializeFontSizeControls(parent) {
     const group = parent.createDiv({ cls: "red-font-size-group" });
@@ -6286,9 +6444,9 @@ var RedView = class extends import_obsidian7.ItemView {
     const wrapper = container.createDiv({ cls: "red-preview-wrapper" });
     this.previewEl = wrapper.createDiv({ cls: "red-preview-container" });
     const nav = wrapper.createDiv({ cls: "red-nav-container" });
-    const prev = nav.createEl("button", { cls: "red-nav-button", text: "\u2190" });
+    const prev = nav.createEl("button", { cls: "red-nav-button red-nav-prev", text: "\u2190" });
     const indicator = nav.createSpan({ cls: "red-page-indicator", text: "1/1" });
-    const next = nav.createEl("button", { cls: "red-nav-button", text: "\u2192" });
+    const next = nav.createEl("button", { cls: "red-nav-button red-nav-next", text: "\u2192" });
     this.navigationButtons = { prev, next, indicator };
     prev.addEventListener("click", () => this.navigateImages("prev"));
     next.addEventListener("click", () => this.navigateImages("next"));
@@ -6296,7 +6454,6 @@ var RedView = class extends import_obsidian7.ItemView {
   initializeBottomBar(container) {
     const bottom = container.createDiv({ cls: "red-bottom-bar" });
     const controls = bottom.createDiv({ cls: "red-controls-group" });
-    this.initializeHelpButton(controls);
     this.initializeBackgroundButton(controls);
     this.initializeFooterToggleButton(controls);
     controls.createEl("button", { cls: "red-overview-button", text: this.t("overview") }).addEventListener("click", () => this.openOverviewModal());
@@ -6356,6 +6513,9 @@ var RedView = class extends import_obsidian7.ItemView {
         return;
       void this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
+    this.browserPublishButton = parent.createEl("button", { cls: "red-browser-publish-button", text: this.t("publishToBrowser") });
+    this.browserPublishButton.addEventListener("click", () => this.openBrowserPublishModal());
+    this.updateBrowserPublishButtonVisibility();
   }
   initializeEventListeners() {
     this.registerEvent(this.app.workspace.on("file-open", (file) => {
@@ -6375,7 +6535,16 @@ var RedView = class extends import_obsidian7.ItemView {
   }
   updatePaidUiState() {
     const container = this.containerEl.children[1];
-    container == null ? void 0 : container.classList.toggle("red-paid-entitled", this.settingsManager.getSettings().activationValidationStatus === "valid");
+    container == null ? void 0 : container.classList.toggle("red-paid-entitled", this.hasValidActivationCode());
+    this.updateBrowserPublishButtonVisibility();
+  }
+  hasValidActivationCode() {
+    return this.settingsManager.getSettings().activationValidationStatus === "valid";
+  }
+  updateBrowserPublishButtonVisibility() {
+    if (!this.browserPublishButton)
+      return;
+    this.browserPublishButton.toggleClass("red-hidden", !this.hasValidActivationCode());
   }
   initializeCopyButtonListener() {
     const handler = (event) => {
@@ -6560,26 +6729,21 @@ var RedView = class extends import_obsidian7.ItemView {
       return;
     }
     this.updateControlsState(true);
-    this.isPreviewLocked = false;
-    (0, import_obsidian7.setIcon)(this.lockButton, "unlock");
     await this.updatePreview();
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing" && typeof frontmatter.publish_task_id === "string") {
+      void this.reconcileBrowserPublishTask(file, frontmatter.publish_task_id, 0);
+    }
     resetPreviewScroll(this.previewEl);
   }
   onFileModify(file) {
-    if (file !== this.currentFile || this.isPreviewLocked)
+    if (file !== this.currentFile)
       return;
     if (this.updateTimer)
       window.clearTimeout(this.updateTimer);
     this.updateTimer = window.setTimeout(() => {
       void this.updatePreview();
     }, 500);
-  }
-  async togglePreviewLock() {
-    this.isPreviewLocked = !this.isPreviewLocked;
-    (0, import_obsidian7.setIcon)(this.lockButton, this.isPreviewLocked ? "lock" : "unlock");
-    this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
-    if (!this.isPreviewLocked)
-      await this.updatePreview();
   }
   updateNavigationState() {
     var _a2;
@@ -6818,9 +6982,7 @@ var RedView = class extends import_obsidian7.ItemView {
     });
   }
   updateControlsState(enabled) {
-    if (this.lockButton)
-      this.lockButton.disabled = !enabled;
-    [this.customTemplateSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
+    [this.customTemplateSelect, this.customThemeSelect, this.customFontSelect, this.customCoverSelect].forEach((container) => {
       const select = container == null ? void 0 : container.querySelector(".red-select");
       if (!select)
         return;
@@ -6836,6 +6998,197 @@ var RedView = class extends import_obsidian7.ItemView {
       this.copyButton.disabled = !enabled;
     this.containerEl.querySelectorAll(".red-export-button").forEach((button) => button.disabled = !enabled);
   }
+  openBrowserPublishModal() {
+    var _a2;
+    if (!this.currentFile) {
+      new import_obsidian7.Notice(this.t("markdownOnly"));
+      return;
+    }
+    if (import_obsidian7.Platform.isMobile) {
+      new import_obsidian7.Notice(this.t("browserPublishDesktopOnly"));
+      return;
+    }
+    const settings = this.settingsManager.getSettings();
+    const platforms = ((_a2 = settings.browserPublishCachedPlatforms) == null ? void 0 : _a2.length) ? settings.browserPublishCachedPlatforms : this.defaultBrowserPublishPlatforms();
+    const selected = new Set(settings.browserPublishDefaultPlatforms || []);
+    let mode = "card-image";
+    const modal = new import_obsidian7.Modal(this.app);
+    modal.modalEl.addClass("red-browser-publish-modal");
+    const isZh = this.getLanguage() === "zh";
+    modal.titleEl.setText(isZh ? "\u53D1\u5E03\u5230\u6D4F\u89C8\u5668\u63D2\u4EF6" : "Publish to browser extension");
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing" && typeof frontmatter.publish_task_id === "string") {
+      const taskId = frontmatter.publish_task_id;
+      new import_obsidian7.Setting(modal.contentEl).setName(isZh ? "\u5F53\u524D\u4EFB\u52A1\u6B63\u5728\u53D1\u5E03" : "Current task is publishing").setDesc(frontmatter.publish_task_id).addButton((button) => button.setButtonText(isZh ? "\u6253\u5F00\u4EFB\u52A1\u8BE6\u60C5" : "Open task").onClick(async () => {
+        try {
+          const bridge = await this.getBrowserPublishBridge();
+          await (bridge == null ? void 0 : bridge.openSyncTask(taskId));
+        } catch (error) {
+          new import_obsidian7.Notice(error instanceof Error ? error.message : String(error));
+        }
+      }));
+    }
+    new import_obsidian7.Setting(modal.contentEl).setName(isZh ? "\u53D1\u5E03\u6A21\u5F0F" : "Publish mode").addDropdown((dropdown) => dropdown.addOption("card-image", isZh ? "\u56FE\u6587\u5361\u7247\u5305" : "Card images").addOption("article", isZh ? "\u6587\u7AE0\u6A21\u5F0F" : "Article").setValue(mode).onChange((value) => {
+      mode = value;
+    }));
+    const platformGrid = modal.contentEl.createDiv({ cls: "red-browser-platform-grid" });
+    for (const platform of platforms) {
+      const card = platformGrid.createEl("button", { cls: "red-browser-platform-card" });
+      card.type = "button";
+      const checkbox = card.createSpan({ cls: "red-browser-platform-check" });
+      const text = card.createDiv({ cls: "red-browser-platform-text" });
+      text.createDiv({ cls: "red-browser-platform-name", text: platform.name || platform.id });
+      text.createDiv({ cls: "red-browser-platform-status", text: this.describeBrowserPlatform(platform) });
+      const syncState = () => {
+        const checked = selected.has(platform.id);
+        card.toggleClass("is-selected", checked);
+        checkbox.setText(checked ? "\u2713" : "");
+      };
+      syncState();
+      card.addEventListener("click", () => {
+        if (selected.has(platform.id))
+          selected.delete(platform.id);
+        else
+          selected.add(platform.id);
+        syncState();
+      });
+    }
+    new import_obsidian7.Setting(modal.contentEl).addButton((button) => button.setButtonText(isZh ? "\u53D6\u6D88" : "Cancel").onClick(() => modal.close())).addButton((button) => button.setButtonText(isZh ? "\u53D1\u9001\u5230\u6D4F\u89C8\u5668\u63D2\u4EF6" : "Send to browser extension").setCta().onClick(async () => {
+      button.setDisabled(true);
+      try {
+        await this.publishCurrentFileToBrowser(mode, Array.from(selected));
+        modal.close();
+      } catch (error) {
+        new import_obsidian7.Notice(error instanceof Error ? error.message : String(error), 8e3);
+      } finally {
+        button.setDisabled(false);
+      }
+    }));
+    modal.open();
+  }
+  async publishCurrentFileToBrowser(mode, platforms) {
+    if (!this.currentFile)
+      throw new Error("No active markdown file");
+    if (!platforms.length)
+      throw new Error(this.t("browserPublishNoPlatforms"));
+    const bridge = await this.getBrowserPublishBridge();
+    if (!bridge)
+      throw new Error(this.t("browserPublishDisabled"));
+    const health = await bridge.health();
+    const capabilities = isRecord(health.capabilities) ? health.capabilities : bridge.getStatus().capabilities;
+    if (mode === "card-image" && capabilities.cardImagePublishing !== true)
+      throw new Error(this.t("browserPublishUpgrade"));
+    const content = await this.app.vault.cachedRead(this.currentFile);
+    const frontmatter = this.getCurrentFrontmatter();
+    if (frontmatter.publish_status === "publishing")
+      throw new Error(this.getLanguage() === "zh" ? "\u5F53\u524D\u7B14\u8BB0\u6B63\u5728\u53D1\u5E03\u4E2D\u3002" : "This note is already publishing.");
+    const taskPackage = mode === "card-image" ? await buildCardImagePublishPackage(content, frontmatter) : await buildArticlePublishPackage(content, frontmatter, this.currentFile.basename);
+    await this.settingsManager.updateSettings({ browserPublishDefaultPlatforms: platforms });
+    const result = await bridge.enqueueSyncArticle({
+      platforms,
+      source: `markdown2card:${mode}`,
+      article: {
+        title: taskPackage.title,
+        markdown: taskPackage.markdown,
+        content: mode === "card-image" ? "" : taskPackage.content,
+        body: taskPackage.body,
+        cover: taskPackage.cover,
+        assets: taskPackage.assets,
+        publishMode: taskPackage.mode,
+        tags: taskPackage.tags
+      }
+    });
+    const syncId = typeof result.syncId === "string" ? result.syncId : "";
+    if (!syncId)
+      throw new Error("\u6D4F\u89C8\u5668\u63D2\u4EF6\u672A\u8FD4\u56DE\u4EFB\u52A1 ID");
+    await this.markBrowserPublishStarted(this.currentFile, syncId);
+    new import_obsidian7.Notice(this.t("browserPublishQueued"));
+    this.scheduleBrowserPublishReconcile(this.currentFile, syncId);
+  }
+  async getBrowserPublishBridge() {
+    var _a2, _b2;
+    return await ((_b2 = (_a2 = this.plugin) == null ? void 0 : _a2.ensureBrowserPublishBridge) == null ? void 0 : _b2.call(_a2)) || null;
+  }
+  scheduleBrowserPublishReconcile(file, syncId) {
+    window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, 0), 5e3);
+  }
+  async reconcileBrowserPublishTask(file, syncId, attempt) {
+    try {
+      const bridge = await this.getBrowserPublishBridge();
+      if (!bridge)
+        return;
+      const task = await bridge.getSyncTask(syncId);
+      const status = typeof task.status === "string" ? task.status : "";
+      if (isBrowserPublishPendingStatus(status)) {
+        if (attempt < 120)
+          window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, attempt + 1), 5e3);
+        return;
+      }
+      const { successes, failures } = this.extractBrowserPublishResults(task);
+      await this.markBrowserPublishFinished(file, successes, failures);
+      new import_obsidian7.Notice(this.t("browserPublishReady"));
+    } catch (error) {
+      console.warn("Browser publish reconciliation failed", error);
+    }
+  }
+  async markBrowserPublishStarted(file, syncId) {
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      const data = frontmatter;
+      data.publish_status = "publishing";
+      data.publish_task_id = syncId;
+    });
+  }
+  async markBrowserPublishFinished(file, successes, failures) {
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      const data = frontmatter;
+      const oldSuccesses = Array.isArray(data.published_platforms) ? data.published_platforms.filter((item) => typeof item === "string") : [];
+      const mergedSuccesses = Array.from(/* @__PURE__ */ new Set([...oldSuccesses, ...successes]));
+      const successSet = new Set(mergedSuccesses);
+      const oldFailures = Array.isArray(data.publish_failed_platforms) ? data.publish_failed_platforms.filter((item) => typeof item === "string") : [];
+      data.published_platforms = mergedSuccesses;
+      data.publish_failed_platforms = Array.from(/* @__PURE__ */ new Set([...oldFailures, ...failures])).filter((platform) => !successSet.has(platform));
+      data.publish_status = mergedSuccesses.length ? "published" : "ready";
+    });
+  }
+  extractBrowserPublishResults(task) {
+    const states = Array.isArray(task.platformStates) ? task.platformStates : Array.isArray(task.results) ? task.results : [];
+    const successes = [];
+    const failures = [];
+    for (const item of states) {
+      if (!isRecord(item))
+        continue;
+      const platform = String(item.platform || item.id || "");
+      if (!platform)
+        continue;
+      const status = String(item.status || "");
+      if (item.success === true || status === "success")
+        successes.push(platform);
+      if (item.success === false || status === "failed")
+        failures.push(platform);
+    }
+    return { successes, failures };
+  }
+  getCurrentFrontmatter() {
+    var _a2;
+    const rawFrontmatter = this.currentFile ? (_a2 = this.app.metadataCache.getFileCache(this.currentFile)) == null ? void 0 : _a2.frontmatter : {};
+    return isRecord(rawFrontmatter) ? rawFrontmatter : {};
+  }
+  describeBrowserPlatform(platform) {
+    if (platform.isAuthenticated)
+      return `${this.getLanguage() === "zh" ? "\u4E0A\u6B21\u53EF\u7528" : "Last available"}${platform.username ? ` \xB7 ${platform.username}` : ""}`;
+    if (platform.authKnown)
+      return platform.error || (this.getLanguage() === "zh" ? "\u9700\u767B\u5F55" : "Login required");
+    return this.getLanguage() === "zh" ? "\u672A\u68C0\u6D4B" : "Unchecked";
+  }
+  defaultBrowserPublishPlatforms() {
+    return [
+      { id: "yuque", name: "\u8BED\u96C0" },
+      { id: "xiaohongshu", name: "\u5C0F\u7EA2\u4E66" },
+      { id: "zhihu", name: "\u77E5\u4E4E" },
+      { id: "weibo", name: "\u5FAE\u535A" },
+      { id: "douyin", name: "\u6296\u97F3\u56FE\u6587" }
+    ];
+  }
   async restoreSettings() {
     const settings = this.settingsManager.getSettings();
     this.themeManager.setCurrentTheme(settings.themeId);
@@ -6848,6 +7201,7 @@ var RedView = class extends import_obsidian7.ItemView {
     await this.restoreThemeSettings(settings.themeId);
     await this.restoreSelect(this.customFontSelect, settings.fontFamily, this.getFontOptions());
     await this.restoreSelect(this.customCoverSelect, settings.coverStyle, this.getCoverOptions());
+    await this.restoreSelect(this.customThemeSelect, settings.themeId, this.getThemeOptions());
   }
   async restoreTemplateSettings(value) {
     await this.restoreSelect(this.customTemplateSelect, value, this.getTemplateOptions());
@@ -6906,7 +7260,7 @@ var RedView = class extends import_obsidian7.ItemView {
     });
   }
   refreshLanguageLabels() {
-    var _a2, _b2, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e, _f;
     if (this.customTemplateSelect) {
       this.customTemplateSelect.dataset.label = this.t("templateLabel");
       this.refreshSelectLabels(this.customTemplateSelect, this.getTemplateOptions());
@@ -6914,6 +7268,10 @@ var RedView = class extends import_obsidian7.ItemView {
     if (this.customCoverSelect) {
       this.customCoverSelect.dataset.label = this.t("coverLabel");
       this.refreshSelectLabels(this.customCoverSelect, this.getCoverOptions());
+    }
+    if (this.customThemeSelect) {
+      this.customThemeSelect.dataset.label = this.getLanguage() === "zh" ? "\u4E3B\u9898\u98CE\u683C" : "Theme";
+      this.refreshSelectLabels(this.customThemeSelect, this.getThemeOptions());
     }
     if (this.customFontSelect) {
       this.customFontSelect.dataset.label = this.t("fontLabel");
@@ -6928,13 +7286,12 @@ var RedView = class extends import_obsidian7.ItemView {
     (_a2 = this.containerEl.querySelector(".red-overview-button")) == null ? void 0 : _a2.setText(this.t("overview"));
     (_b2 = this.containerEl.querySelector(".red-export-button:not(.red-export-primary)")) == null ? void 0 : _b2.setText(this.t("downloadCurrent"));
     (_c = this.containerEl.querySelector(".red-export-primary")) == null ? void 0 : _c.setText(this.t("exportAll"));
-    (_d = this.containerEl.querySelector(".red-help-button")) == null ? void 0 : _d.setAttribute("aria-label", this.t("guide"));
+    (_d = this.containerEl.querySelector(".red-browser-publish-button")) == null ? void 0 : _d.setText(this.t("publishToBrowser"));
+    (_e = this.containerEl.querySelector(".red-help-button")) == null ? void 0 : _e.setAttribute("aria-label", this.t("guide"));
     const tooltip = this.containerEl.querySelector(".red-help-tooltip");
     if (tooltip)
       tooltip.setText(this.t("guideText"));
-    (_e = this.containerEl.querySelector(".red-background-button")) == null ? void 0 : _e.setAttribute("aria-label", this.t("background"));
-    if (this.lockButton)
-      this.lockButton.setAttribute("aria-label", this.isPreviewLocked ? this.t("realtimeOn") : this.t("realtimeOff"));
+    (_f = this.containerEl.querySelector(".red-background-button")) == null ? void 0 : _f.setAttribute("aria-label", this.t("background"));
     this.updateFooterToggleButtonState();
   }
   refreshSelectLabels(container, options) {
@@ -6986,6 +7343,8 @@ var RedView = class extends import_obsidian7.ItemView {
     return key ? this.t(key) : fallback;
   }
   translateThemeName(id, fallback) {
+    if (this.getLanguage() === "zh" && ZH_THEME_LABELS[id])
+      return ZH_THEME_LABELS[id];
     if (this.getLanguage() === "en" && EN_THEME_LABELS[id])
       return EN_THEME_LABELS[id];
     if (id === "default")
@@ -7132,28 +7491,28 @@ var RedView = class extends import_obsidian7.ItemView {
     const value = rawPath.trim() || "markdown2card-exports";
     const isAbsolute = this.isAbsoluteExportPath(value);
     return {
-      path: isAbsolute ? (0, import_path.normalize)(value) : (0, import_obsidian7.normalizePath)(value),
+      path: isAbsolute ? (0, import_path2.normalize)(value) : (0, import_obsidian7.normalizePath)(value),
       isAbsolute
     };
   }
   isAbsoluteExportPath(path2) {
-    return import_path.posix.isAbsolute(path2) || import_path.win32.isAbsolute(path2);
+    return import_path2.posix.isAbsolute(path2) || import_path2.win32.isAbsolute(path2);
   }
   joinExportPath(root, child) {
-    return root.isAbsolute ? (0, import_path.join)(root.path, child) : (0, import_obsidian7.normalizePath)(`${root.path}/${child}`);
+    return root.isAbsolute ? (0, import_path2.join)(root.path, child) : (0, import_obsidian7.normalizePath)(`${root.path}/${child}`);
   }
   async writeExportBlob(path2, blob, isAbsolute) {
     const arrayBuffer = await blob.arrayBuffer();
     if (isAbsolute) {
-      await (0, import_promises.mkdir)((0, import_path.dirname)(path2), { recursive: true });
-      await (0, import_promises.writeFile)(path2, Buffer.from(arrayBuffer));
+      await (0, import_promises2.mkdir)((0, import_path2.dirname)(path2), { recursive: true });
+      await (0, import_promises2.writeFile)(path2, Buffer.from(arrayBuffer));
       return;
     }
     await this.app.vault.adapter.writeBinary(path2, arrayBuffer);
   }
   async ensureExportFolder(path2, isAbsolute) {
     if (isAbsolute) {
-      await (0, import_promises.mkdir)(path2, { recursive: true });
+      await (0, import_promises2.mkdir)(path2, { recursive: true });
       return;
     }
     await this.ensureFolder(path2);
@@ -7320,18 +7679,260 @@ var RedView = class extends import_obsidian7.ItemView {
   }
 };
 
+// src/browserPublishBridge.ts
+var import_crypto = require("crypto");
+var import_http = __toESM(require("http"));
+var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+var BrowserPublishBridge = class {
+  constructor(port, token) {
+    this.port = port;
+    this.token = token;
+    this.server = null;
+    this.socket = null;
+    this.buffer = Buffer.alloc(0);
+    this.pending = /* @__PURE__ */ new Map();
+    this.status = { connected: false, authenticated: false, capabilities: {}, profileLabel: "", extensionVersion: "" };
+  }
+  async start() {
+    if (this.server)
+      return this.status;
+    this.server = import_http.default.createServer((req, res) => {
+      if (req.url === "/status") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(this.status));
+        return;
+      }
+      res.writeHead(404);
+      res.end("Not found");
+    });
+    this.server.on("upgrade", (req, socket) => this.handleUpgrade(req, socket));
+    await new Promise((resolve, reject) => {
+      var _a2, _b2;
+      (_a2 = this.server) == null ? void 0 : _a2.once("error", reject);
+      (_b2 = this.server) == null ? void 0 : _b2.listen({ host: "127.0.0.1", port: this.port }, () => {
+        var _a3;
+        (_a3 = this.server) == null ? void 0 : _a3.off("error", reject);
+        resolve();
+      });
+    });
+    return this.status;
+  }
+  async stop() {
+    var _a2;
+    for (const [, request] of this.pending) {
+      clearTimeout(request.timer);
+      request.reject(new Error("Bridge stopped"));
+    }
+    this.pending.clear();
+    (_a2 = this.socket) == null ? void 0 : _a2.destroy();
+    this.socket = null;
+    this.status = { connected: false, authenticated: false, capabilities: {}, profileLabel: "", extensionVersion: "" };
+    if (this.server)
+      await new Promise((resolve) => {
+        var _a3;
+        return (_a3 = this.server) == null ? void 0 : _a3.close(() => resolve());
+      });
+    this.server = null;
+  }
+  getStatus() {
+    return { ...this.status, capabilities: { ...this.status.capabilities } };
+  }
+  async request(method, params, timeoutMs = 1e4) {
+    await this.start();
+    if (!this.socket || !this.status.authenticated)
+      throw new Error("\u5C1A\u672A\u8FDE\u63A5\u5230\u6D4F\u89C8\u5668\u63D2\u4EF6");
+    const id = (0, import_crypto.randomUUID)();
+    const payload = { id, method, params };
+    if (this.token)
+      payload.token = this.token;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`\u6D4F\u89C8\u5668\u63D2\u4EF6\u54CD\u5E94\u8D85\u65F6\uFF1A${method}`));
+      }, timeoutMs);
+      this.pending.set(id, { resolve, reject, timer });
+      this.send(payload);
+    });
+  }
+  async health() {
+    return this.request("health", {}, 5e3);
+  }
+  async listSupportedPlatforms() {
+    return this.request("listSupportedPlatforms", {}, 6e4);
+  }
+  async getAuthSnapshot(platforms) {
+    return this.request("getAuthSnapshot", { platforms, maxAgeMs: 864e5 }, 1e4);
+  }
+  async enqueueSyncArticle(params) {
+    return this.request("enqueueSyncArticle", params, 1e4);
+  }
+  async getSyncTask(syncId) {
+    return this.request("getSyncTask", { syncId }, 5e3);
+  }
+  async openSyncTask(syncId) {
+    return this.request("openSyncTask", { syncId }, 5e3);
+  }
+  handleUpgrade(req, socket) {
+    var _a2;
+    const key = req.headers["sec-websocket-key"];
+    if (!key || Array.isArray(key)) {
+      socket.destroy();
+      return;
+    }
+    socket.write([
+      "HTTP/1.1 101 Switching Protocols",
+      "Upgrade: websocket",
+      "Connection: Upgrade",
+      `Sec-WebSocket-Accept: ${(0, import_crypto.createHash)("sha1").update(key + WS_GUID).digest("base64")}`,
+      "",
+      ""
+    ].join("\r\n"));
+    (_a2 = this.socket) == null ? void 0 : _a2.destroy();
+    this.socket = socket;
+    this.buffer = Buffer.alloc(0);
+    this.status = { ...this.status, connected: true, authenticated: false };
+    socket.on("data", (chunk) => this.handleData(chunk));
+    socket.on("close", () => this.handleClose());
+    socket.on("error", () => this.handleClose());
+  }
+  handleData(chunk) {
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+    const parsed = parseFrames(this.buffer);
+    this.buffer = parsed.remaining;
+    for (const message of parsed.messages)
+      this.handleMessage(message);
+  }
+  handleMessage(raw) {
+    var _a2;
+    let message;
+    try {
+      message = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (message.type === "extension_hello") {
+      if (this.token && message.token !== this.token) {
+        this.send({ type: "extension_hello_ack", ok: false, error: "token_mismatch" });
+        (_a2 = this.socket) == null ? void 0 : _a2.end();
+        return;
+      }
+      this.status = {
+        connected: true,
+        authenticated: true,
+        capabilities: isRecord2(message.capabilities) ? message.capabilities : {},
+        profileLabel: typeof message.profileLabel === "string" ? message.profileLabel : "",
+        extensionVersion: typeof message.version === "string" ? message.version : ""
+      };
+      this.send({ type: "extension_hello_ack", ok: true, connectionId: (0, import_crypto.randomUUID)(), mode: "multi-client", serverVersion: "markdown2card" });
+      return;
+    }
+    if (message.type === "heartbeat") {
+      this.send({ type: "heartbeat_ack", ts: message.ts });
+      return;
+    }
+    const id = typeof message.id === "string" ? message.id : "";
+    const request = this.pending.get(id);
+    if (!request)
+      return;
+    clearTimeout(request.timer);
+    this.pending.delete(id);
+    if (message.error) {
+      const error = isRecord2(message.error) ? message.error.message || message.error.error : message.error;
+      request.reject(new Error(String(error || "\u6D4F\u89C8\u5668\u63D2\u4EF6\u8BF7\u6C42\u5931\u8D25")));
+      return;
+    }
+    request.resolve(message.result);
+  }
+  handleClose() {
+    this.socket = null;
+    this.status = { ...this.status, connected: false, authenticated: false };
+    for (const [, request] of this.pending) {
+      clearTimeout(request.timer);
+      request.reject(new Error("\u6D4F\u89C8\u5668\u63D2\u4EF6\u5DF2\u65AD\u5F00"));
+    }
+    this.pending.clear();
+  }
+  send(value) {
+    if (!this.socket)
+      return;
+    this.socket.write(encodeFrame(JSON.stringify(value)));
+  }
+};
+function parseFrames(buffer) {
+  const messages = [];
+  let offset = 0;
+  while (offset + 2 <= buffer.length) {
+    const first = buffer[offset];
+    const second = buffer[offset + 1];
+    const opcode = first & 15;
+    const masked = (second & 128) === 128;
+    let length = second & 127;
+    let cursor = offset + 2;
+    if (length === 126) {
+      if (cursor + 2 > buffer.length)
+        break;
+      length = buffer.readUInt16BE(cursor);
+      cursor += 2;
+    } else if (length === 127) {
+      if (cursor + 8 > buffer.length)
+        break;
+      length = Number(buffer.readBigUInt64BE(cursor));
+      cursor += 8;
+    }
+    const mask = masked ? buffer.subarray(cursor, cursor + 4) : null;
+    if (masked)
+      cursor += 4;
+    if (cursor + length > buffer.length)
+      break;
+    const payload = Buffer.from(buffer.subarray(cursor, cursor + length));
+    if (mask)
+      for (let i = 0; i < payload.length; i++)
+        payload[i] ^= mask[i % 4];
+    if (opcode === 1)
+      messages.push(payload.toString("utf8"));
+    offset = cursor + length;
+  }
+  return { messages, remaining: buffer.subarray(offset) };
+}
+function encodeFrame(text) {
+  const payload = Buffer.from(text);
+  if (payload.length < 126)
+    return Buffer.concat([Buffer.from([129, payload.length]), payload]);
+  if (payload.length < 65536) {
+    const header2 = Buffer.alloc(4);
+    header2[0] = 129;
+    header2[1] = 126;
+    header2.writeUInt16BE(payload.length, 2);
+    return Buffer.concat([header2, payload]);
+  }
+  const header = Buffer.alloc(10);
+  header[0] = 129;
+  header[1] = 127;
+  header.writeBigUInt64BE(BigInt(payload.length), 2);
+  return Buffer.concat([header, payload]);
+}
+function isRecord2(value) {
+  return typeof value === "object" && value !== null;
+}
+
 // src/main.ts
 var YanqiPlugin = class extends import_obsidian8.Plugin {
+  constructor() {
+    super(...arguments);
+    this.browserPublishBridge = null;
+    this.browserPublishBridgeKey = "";
+  }
   async onload() {
     (0, import_obsidian8.addIcon)(MARKDOWN2CARD_ICON, MARKDOWN2CARD_ICON_SVG);
     this.settingsManager = new SettingsManager(this);
     await this.settingsManager.loadSettings();
+    await this.ensureBrowserPublishBridge();
     this.themeManager = new ThemeManager(this.app, this.settingsManager);
     this.themeManager.setCurrentTheme(this.settingsManager.getSettings().themeId);
     this.themeManager.setFont(this.settingsManager.getSettings().fontFamily);
     this.themeManager.setFontSize(this.settingsManager.getSettings().fontSize);
     RedConverter.initialize(this.app, this);
-    this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager));
+    this.registerView(VIEW_TYPE_RED, (leaf) => new RedView(leaf, this.themeManager, this.settingsManager, this));
     this.addCommand({
       id: "open-mp-preview",
       name: "Open card preview",
@@ -7355,6 +7956,36 @@ var YanqiPlugin = class extends import_obsidian8.Plugin {
       });
       new import_obsidian8.Notice("Markdown2card activated successfully.");
     });
+  }
+  async onunload() {
+    var _a2;
+    await ((_a2 = this.browserPublishBridge) == null ? void 0 : _a2.stop());
+  }
+  async ensureBrowserPublishBridge() {
+    var _a2, _b2;
+    const settings = this.settingsManager.getSettings();
+    if (!settings.enableBrowserPublishing) {
+      await ((_a2 = this.browserPublishBridge) == null ? void 0 : _a2.stop());
+      this.browserPublishBridge = null;
+      this.browserPublishBridgeKey = "";
+      return null;
+    }
+    if (!settings.browserPublishToken) {
+      await this.settingsManager.updateSettings({ browserPublishToken: createBrowserPublishToken() });
+    }
+    const nextSettings = this.settingsManager.getSettings();
+    const port = nextSettings.browserPublishPort || 9527;
+    const token = nextSettings.browserPublishToken;
+    const bridgeKey = `${port}:${token}`;
+    if (this.browserPublishBridge && this.browserPublishBridgeKey === bridgeKey) {
+      await this.browserPublishBridge.start();
+      return this.browserPublishBridge;
+    }
+    await ((_b2 = this.browserPublishBridge) == null ? void 0 : _b2.stop());
+    this.browserPublishBridge = new BrowserPublishBridge(port, token);
+    this.browserPublishBridgeKey = bridgeKey;
+    await this.browserPublishBridge.start();
+    return this.browserPublishBridge;
   }
   async activateView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_RED);
