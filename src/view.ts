@@ -28,6 +28,7 @@ import { FUNDING_URL, GITHUB_URL, purchaseUrl, SUPPORT_CONTACT_COPY } from "./su
 import type { BrowserPublishPlatform, ImageLayoutState } from "./types";
 import { type BrowserPublishMode, buildArticlePublishPackage, buildCardImagePublishPackage } from "./browserPublishPackage";
 import type { BrowserPublishBridge } from "./browserPublishBridge";
+import { extractBrowserPublishResults } from "./browserPublishResults";
 
 export const VIEW_TYPE_RED = "note-to-red";
 
@@ -1034,7 +1035,7 @@ export class RedView extends ItemView {
         if (attempt < 120) window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, attempt + 1), 5000);
         return;
       }
-      const { successes, failures } = this.extractBrowserPublishResults(task);
+      const { successes, failures } = extractBrowserPublishResults(task);
       await this.markBrowserPublishFinished(file, successes, failures);
       new Notice(this.t("browserPublishReady"));
     } catch (error) {
@@ -1059,23 +1060,8 @@ export class RedView extends ItemView {
       const oldFailures = Array.isArray(data.publish_failed_platforms) ? data.publish_failed_platforms.filter((item): item is string => typeof item === "string") : [];
       data.published_platforms = mergedSuccesses;
       data.publish_failed_platforms = Array.from(new Set([...oldFailures, ...failures])).filter((platform) => !successSet.has(platform));
-      data.publish_status = mergedSuccesses.length ? "published" : "ready";
+      data.publish_status = "published";
     });
-  }
-
-  private extractBrowserPublishResults(task: Record<string, unknown>): { successes: string[]; failures: string[] } {
-    const states = Array.isArray(task.platformStates) ? task.platformStates : Array.isArray(task.results) ? task.results : [];
-    const successes: string[] = [];
-    const failures: string[] = [];
-    for (const item of states) {
-      if (!isRecord(item)) continue;
-      const platform = String(item.platform || item.id || "");
-      if (!platform) continue;
-      const status = String(item.status || "");
-      if (item.success === true || status === "success") successes.push(platform);
-      if (item.success === false || status === "failed") failures.push(platform);
-    }
-    return { successes, failures };
   }
 
   private getCurrentFrontmatter(): Record<string, unknown> {

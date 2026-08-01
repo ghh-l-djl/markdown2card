@@ -6048,6 +6048,29 @@ function naturalCompare(a, b) {
   return (0, import_path.basename)(a).localeCompare((0, import_path.basename)(b), void 0, { numeric: true, sensitivity: "base" });
 }
 
+// src/browserPublishResults.ts
+function extractBrowserPublishResults(task) {
+  const states = Array.isArray(task.platformStates) ? task.platformStates : Array.isArray(task.results) ? task.results : Array.isArray(task.platforms) ? task.platforms : [];
+  const successes = [];
+  const failures = [];
+  for (const item of states) {
+    if (!isRecord(item))
+      continue;
+    const platform = String(item.platform || item.id || "");
+    if (!platform)
+      continue;
+    const status = String(item.status || "");
+    if (item.success === true || status === "success")
+      successes.push(platform);
+    if (item.success === false || status === "failed")
+      failures.push(platform);
+  }
+  return { successes, failures };
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null;
+}
+
 // src/view.ts
 var VIEW_TYPE_RED = "note-to-red";
 var UI_TEXT = {
@@ -6181,7 +6204,7 @@ var TEMPLATE_LABEL_KEYS = {
   signature: "signature"
 };
 var ACTIVATION_CODE_PLACEHOLDER = "M2C-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX";
-function isRecord(value) {
+function isRecord2(value) {
   return typeof value === "object" && value !== null;
 }
 function isBrowserPublishPendingStatus(status) {
@@ -7075,7 +7098,7 @@ var RedView = class extends import_obsidian7.ItemView {
     if (!bridge)
       throw new Error(this.t("browserPublishDisabled"));
     const health = await bridge.health();
-    const capabilities = isRecord(health.capabilities) ? health.capabilities : bridge.getStatus().capabilities;
+    const capabilities = isRecord2(health.capabilities) ? health.capabilities : bridge.getStatus().capabilities;
     if (mode === "card-image" && capabilities.cardImagePublishing !== true)
       throw new Error(this.t("browserPublishUpgrade"));
     const content = await this.app.vault.cachedRead(this.currentFile);
@@ -7124,7 +7147,7 @@ var RedView = class extends import_obsidian7.ItemView {
           window.setTimeout(() => void this.reconcileBrowserPublishTask(file, syncId, attempt + 1), 5e3);
         return;
       }
-      const { successes, failures } = this.extractBrowserPublishResults(task);
+      const { successes, failures } = extractBrowserPublishResults(task);
       await this.markBrowserPublishFinished(file, successes, failures);
       new import_obsidian7.Notice(this.t("browserPublishReady"));
     } catch (error) {
@@ -7147,31 +7170,13 @@ var RedView = class extends import_obsidian7.ItemView {
       const oldFailures = Array.isArray(data.publish_failed_platforms) ? data.publish_failed_platforms.filter((item) => typeof item === "string") : [];
       data.published_platforms = mergedSuccesses;
       data.publish_failed_platforms = Array.from(/* @__PURE__ */ new Set([...oldFailures, ...failures])).filter((platform) => !successSet.has(platform));
-      data.publish_status = mergedSuccesses.length ? "published" : "ready";
+      data.publish_status = "published";
     });
-  }
-  extractBrowserPublishResults(task) {
-    const states = Array.isArray(task.platformStates) ? task.platformStates : Array.isArray(task.results) ? task.results : [];
-    const successes = [];
-    const failures = [];
-    for (const item of states) {
-      if (!isRecord(item))
-        continue;
-      const platform = String(item.platform || item.id || "");
-      if (!platform)
-        continue;
-      const status = String(item.status || "");
-      if (item.success === true || status === "success")
-        successes.push(platform);
-      if (item.success === false || status === "failed")
-        failures.push(platform);
-    }
-    return { successes, failures };
   }
   getCurrentFrontmatter() {
     var _a2;
     const rawFrontmatter = this.currentFile ? (_a2 = this.app.metadataCache.getFileCache(this.currentFile)) == null ? void 0 : _a2.frontmatter : {};
-    return isRecord(rawFrontmatter) ? rawFrontmatter : {};
+    return isRecord2(rawFrontmatter) ? rawFrontmatter : {};
   }
   describeBrowserPlatform(platform) {
     if (platform.isAuthenticated)
@@ -7603,7 +7608,7 @@ var RedView = class extends import_obsidian7.ItemView {
   getPublishTitle(file) {
     var _a2;
     const rawFrontmatter = (_a2 = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a2.frontmatter;
-    const frontmatter = isRecord(rawFrontmatter) ? rawFrontmatter : {};
+    const frontmatter = isRecord2(rawFrontmatter) ? rawFrontmatter : {};
     const sourceTitle = typeof frontmatter.title === "string" ? frontmatter.title.trim() : "";
     const rawAlternativeTitles = frontmatter.alternative_titles;
     const alternativeTitles = (Array.isArray(rawAlternativeTitles) ? rawAlternativeTitles : [rawAlternativeTitles]).filter((value) => typeof value === "string").map((value) => value.trim()).filter(Boolean);
@@ -7819,7 +7824,7 @@ var BrowserPublishBridge = class {
       this.status = {
         connected: true,
         authenticated: true,
-        capabilities: isRecord2(message.capabilities) ? message.capabilities : {},
+        capabilities: isRecord3(message.capabilities) ? message.capabilities : {},
         profileLabel: typeof message.profileLabel === "string" ? message.profileLabel : "",
         extensionVersion: typeof message.version === "string" ? message.version : ""
       };
@@ -7837,7 +7842,7 @@ var BrowserPublishBridge = class {
     clearTimeout(request.timer);
     this.pending.delete(id);
     if (message.error) {
-      const error = isRecord2(message.error) ? message.error.message || message.error.error : message.error;
+      const error = isRecord3(message.error) ? message.error.message || message.error.error : message.error;
       request.reject(new Error(String(error || "\u6D4F\u89C8\u5668\u63D2\u4EF6\u8BF7\u6C42\u5931\u8D25")));
       return;
     }
@@ -7911,7 +7916,7 @@ function encodeFrame(text) {
   header.writeBigUInt64BE(BigInt(payload.length), 2);
   return Buffer.concat([header, payload]);
 }
-function isRecord2(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null;
 }
 
