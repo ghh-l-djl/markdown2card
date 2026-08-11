@@ -92,7 +92,8 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     browserPublishNoPlatforms: "Select at least one platform.",
     browserPublishUpgrade: "The Chrome extension must be upgraded to support card-image publishing.",
     browserPublishQueued: "Sent to browser extension.",
-    browserPublishReady: "Browser publish status updated."
+    browserPublishReady: "Browser publish status updated.",
+    browserPublishHint: "Export images and generate the publish-ready Markdown file first. Open that file, then publish it."
   },
   zh: {
     templateLabel: "骨架模板",
@@ -149,7 +150,8 @@ const UI_TEXT: Record<UiLanguage, Record<string, string>> = {
     browserPublishNoPlatforms: "至少选择一个发布平台。",
     browserPublishUpgrade: "Chrome 扩展需要升级后才支持图文卡片包发布。",
     browserPublishQueued: "已发送到浏览器插件。",
-    browserPublishReady: "浏览器发布状态已更新。"
+    browserPublishReady: "浏览器发布状态已更新。",
+    browserPublishHint: "规范的发布操作为先使用导出功能导出图片并生成发布版md文件,打开发布版文件后,使用发布功能发布"
   }
 };
 
@@ -525,6 +527,7 @@ export class RedView extends ItemView {
       void this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
     this.browserPublishButton = parent.createEl("button", { cls: "red-browser-publish-button", text: this.t("publishToBrowser") });
+    this.browserPublishButton.setAttribute("title", this.t("browserPublishHint"));
     this.browserPublishButton.addEventListener("click", () => this.openBrowserPublishModal());
     this.updateBrowserPublishButtonVisibility();
   }
@@ -1175,7 +1178,9 @@ export class RedView extends ItemView {
     this.containerEl.querySelector<HTMLButtonElement>(".red-overview-button")?.setText(this.t("overview"));
     this.containerEl.querySelector<HTMLButtonElement>(".red-export-button:not(.red-export-primary)")?.setText(this.t("downloadCurrent"));
     this.containerEl.querySelector<HTMLButtonElement>(".red-export-primary")?.setText(this.t("exportAll"));
-    this.containerEl.querySelector<HTMLButtonElement>(".red-browser-publish-button")?.setText(this.t("publishToBrowser"));
+    const publishButton = this.containerEl.querySelector<HTMLButtonElement>(".red-browser-publish-button");
+    publishButton?.setText(this.t("publishToBrowser"));
+    publishButton?.setAttribute("title", this.t("browserPublishHint"));
     this.containerEl.querySelector<HTMLElement>(".red-help-button")?.setAttribute("aria-label", this.t("guide"));
     const tooltip = this.containerEl.querySelector<HTMLElement>(".red-help-tooltip");
     if (tooltip) tooltip.setText(this.t("guideText"));
@@ -1439,7 +1444,7 @@ export class RedView extends ItemView {
     if (!this.currentFile) return;
     const sourceFile = this.currentFile;
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
-    const publishPath = this.getPublishPath(sourceFile);
+    const publish = this.getPublishPath(sourceFile);
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const settings = this.settingsManager.getSettings();
 
@@ -1462,13 +1467,17 @@ export class RedView extends ItemView {
     const publishTitle = this.getPublishTitle(sourceFile);
 
     const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags, publishTitle);
-    const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
-
-    if (existingPublishFile instanceof TFile) {
-      await this.app.vault.modify(existingPublishFile, publishContent);
+    if (publish.isAbsolute) {
+      await mkdir(nodeDirname(publish.path), { recursive: true });
+      await writeFile(publish.path, publishContent, "utf8");
     } else {
-      await this.ensureFolder(this.dirname(publishPath));
-      await this.app.vault.create(publishPath, publishContent);
+      const existingPublishFile = this.app.vault.getAbstractFileByPath(publish.path);
+      if (existingPublishFile instanceof TFile) {
+        await this.app.vault.modify(existingPublishFile, publishContent);
+      } else {
+        await this.ensureFolder(this.dirname(publish.path));
+        await this.app.vault.create(publish.path, publishContent);
+      }
     }
 
     await this.app.fileManager.processFrontMatter(sourceFile, (frontmatter) => {
@@ -1482,7 +1491,7 @@ export class RedView extends ItemView {
         : typeof derivedTo === "string"
           ? [derivedTo]
           : [];
-      if (!current.includes(publishPath)) current.push(publishPath);
+      if (!current.includes(publish.path)) current.push(publish.path);
       data.derived_to = current;
     });
   }
@@ -1569,9 +1578,18 @@ export class RedView extends ItemView {
     return match ? content.slice(match[0].length) : content;
   }
 
-  private getPublishPath(file: TFile): string {
+  private getPublishPath(file: TFile): { path: string; isAbsolute: boolean } {
+    const configuredPath = this.settingsManager.getSettings().publishPath.trim();
+    const filename = `${file.basename}_发布版.md`;
+    if (configuredPath) {
+      const isAbsolute = this.isAbsoluteExportPath(configuredPath);
+      return {
+        path: isAbsolute ? nodeJoin(nodeNormalize(configuredPath), filename) : normalizePath(`${configuredPath}/${filename}`),
+        isAbsolute
+      };
+    }
     const folder = this.dirname(file.path);
-    return normalizePath(folder ? `${folder}/${file.basename}_发布版.md` : `${file.basename}_发布版.md`);
+    return { path: normalizePath(folder ? `${folder}/${filename}` : filename), isAbsolute: false };
   }
 
   private dirname(path: string): string {

@@ -85,6 +85,7 @@ export const DEFAULT_SETTINGS: YanqiSettings = {
     position: { x: 0, y: 0 }
   },
   exportPath: "markdown2card-exports",
+  publishPath: "",
   exportFormat: "zip",
   exportCount: 0,
   lastSupportReminderExportCount: 0,

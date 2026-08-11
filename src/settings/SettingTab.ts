@@ -40,6 +40,7 @@ const TECHNICAL_PLACEHOLDERS = {
   agyExecutable: "agy",
   apiKey: "AIzaSy...",
   exportPath: "markdown2card-exports",
+  publishPath: "",
   model: "gemini-3.5-flash",
   noProxy: "localhost,127.0.0.1,::1",
   proxyUrl: "http://127.0.0.1:7890"
@@ -291,7 +292,7 @@ export class RedSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName(isZh ? "启用导出后置操作" : "Post-export actions")
       .setDesc(isZh 
-        ? "导出后自动在源文件同目录下生成一个发布版MD文件"
+        ? "导出后生成发布版 MD 文件，将源文件标记为素材并关联导出资源。"
         : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
       )
       .addToggle((toggle) => toggle
@@ -302,6 +303,14 @@ export class RedSettingTab extends PluginSettingTab {
         }));
 
     if (settings.enablePostExportActions) {
+      new Setting(containerEl)
+        .setName(isZh ? "发布版 MD 目录" : "Publish Markdown directory")
+        .setDesc(this.t("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system."))
+        .addText((text) => text
+          .setPlaceholder(isZh ? "留空：源文件同目录" : "Leave empty for the source file directory")
+          .setValue(settings.publishPath)
+          .onChange((value) => this.plugin.settingsManager.updateSettings({ publishPath: value.trim() })));
+
       new Setting(containerEl).setName(isZh ? "AI 总结与重写设置" : "AI summary and rewrite settings").setHeading();
 
       new Setting(containerEl)

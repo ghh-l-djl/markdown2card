@@ -87,6 +87,7 @@ export interface YanqiSettings {
   customFonts: FontOption[];
   backgroundSettings: BackgroundSettings;
   exportPath: string;
+  publishPath: string;
   exportFormat: "zip" | "png-folder";
   exportCount: number;
   lastSupportReminderExportCount: number;

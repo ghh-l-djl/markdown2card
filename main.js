@@ -1612,6 +1612,7 @@ var TECHNICAL_PLACEHOLDERS = {
   agyExecutable: "agy",
   apiKey: "AIzaSy...",
   exportPath: "markdown2card-exports",
+  publishPath: "",
   model: "gemini-3.5-flash",
   noProxy: "localhost,127.0.0.1,::1",
   proxyUrl: "http://127.0.0.1:7890"
@@ -1829,12 +1830,13 @@ var RedSettingTab = class extends import_obsidian3.PluginSettingTab {
     new import_obsidian3.Setting(containerEl).setName(this.t("Export format")).setDesc(this.t("Zip writes one archive. PNG folder writes each page image into a folder named after the current note.")).addDropdown((dropdown) => dropdown.addOption("zip", this.t("Zip archive")).addOption("png-folder", this.t("PNG folder")).setValue(settings.exportFormat).onChange((value) => this.plugin.settingsManager.updateSettings({ exportFormat: value })));
     const isZh = settings.uiLanguage === "zh";
     new import_obsidian3.Setting(containerEl).setName(isZh ? "\u542F\u7528\u5BFC\u51FA\u540E\u7F6E\u64CD\u4F5C" : "Post-export actions").setDesc(
-      isZh ? "\u5BFC\u51FA\u540E\u81EA\u52A8\u5728\u6E90\u6587\u4EF6\u540C\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A\u53D1\u5E03\u7248MD\u6587\u4EF6" : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
+      isZh ? "\u5BFC\u51FA\u540E\u751F\u6210\u53D1\u5E03\u7248 MD \u6587\u4EF6\uFF0C\u5C06\u6E90\u6587\u4EF6\u6807\u8BB0\u4E3A\u7D20\u6750\u5E76\u5173\u8054\u5BFC\u51FA\u8D44\u6E90\u3002" : "After export, mark the source note as source material, create a publish-ready note, and link the exported assets."
     ).addToggle((toggle) => toggle.setValue(settings.enablePostExportActions).onChange((value) => {
       void this.plugin.settingsManager.updateSettings({ enablePostExportActions: value });
       this.display();
     }));
     if (settings.enablePostExportActions) {
+      new import_obsidian3.Setting(containerEl).setName(isZh ? "\u53D1\u5E03\u7248 MD \u76EE\u5F55" : "Publish Markdown directory").setDesc(this.t("Relative paths are written inside the vault. Absolute paths such as /Users/name/Exports, C:\\Exports, or \\\\server\\share\\Exports are written to the file system.")).addText((text) => text.setPlaceholder(isZh ? "\u7559\u7A7A\uFF1A\u6E90\u6587\u4EF6\u540C\u76EE\u5F55" : "Leave empty for the source file directory").setValue(settings.publishPath).onChange((value) => this.plugin.settingsManager.updateSettings({ publishPath: value.trim() })));
       new import_obsidian3.Setting(containerEl).setName(isZh ? "AI \u603B\u7ED3\u4E0E\u91CD\u5199\u8BBE\u7F6E" : "AI summary and rewrite settings").setHeading();
       new import_obsidian3.Setting(containerEl).setName(isZh ? "\u542F\u7528 AI \u667A\u80FD\u91CD\u5199" : "Enable AI Rewrite").setDesc(
         isZh ? "\u4F7F\u7528 Gemini API \u6216\u672C\u5730 agy \u547D\u4EE4\u81EA\u52A8\u91CD\u5199\u5BFC\u51FA\u6587\u4EF6\u7684\u6B63\u6587" : "Use the Gemini API or local agy command to rewrite the exported note body"
@@ -2949,6 +2951,7 @@ var DEFAULT_SETTINGS = {
     position: { x: 0, y: 0 }
   },
   exportPath: "markdown2card-exports",
+  publishPath: "",
   exportFormat: "zip",
   exportCount: 0,
   lastSupportReminderExportCount: 0,
@@ -6129,7 +6132,8 @@ var UI_TEXT = {
     browserPublishNoPlatforms: "Select at least one platform.",
     browserPublishUpgrade: "The Chrome extension must be upgraded to support card-image publishing.",
     browserPublishQueued: "Sent to browser extension.",
-    browserPublishReady: "Browser publish status updated."
+    browserPublishReady: "Browser publish status updated.",
+    browserPublishHint: "Export images and generate the publish-ready Markdown file first. Open that file, then publish it."
   },
   zh: {
     templateLabel: "\u9AA8\u67B6\u6A21\u677F",
@@ -6186,7 +6190,8 @@ var UI_TEXT = {
     browserPublishNoPlatforms: "\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u53D1\u5E03\u5E73\u53F0\u3002",
     browserPublishUpgrade: "Chrome \u6269\u5C55\u9700\u8981\u5347\u7EA7\u540E\u624D\u652F\u6301\u56FE\u6587\u5361\u7247\u5305\u53D1\u5E03\u3002",
     browserPublishQueued: "\u5DF2\u53D1\u9001\u5230\u6D4F\u89C8\u5668\u63D2\u4EF6\u3002",
-    browserPublishReady: "\u6D4F\u89C8\u5668\u53D1\u5E03\u72B6\u6001\u5DF2\u66F4\u65B0\u3002"
+    browserPublishReady: "\u6D4F\u89C8\u5668\u53D1\u5E03\u72B6\u6001\u5DF2\u66F4\u65B0\u3002",
+    browserPublishHint: "\u89C4\u8303\u7684\u53D1\u5E03\u64CD\u4F5C\u4E3A\u5148\u4F7F\u7528\u5BFC\u51FA\u529F\u80FD\u5BFC\u51FA\u56FE\u7247\u5E76\u751F\u6210\u53D1\u5E03\u7248md\u6587\u4EF6,\u6253\u5F00\u53D1\u5E03\u7248\u6587\u4EF6\u540E,\u4F7F\u7528\u53D1\u5E03\u529F\u80FD\u53D1\u5E03"
   }
 };
 var TEMPLATE_LABEL_KEYS = {
@@ -6537,6 +6542,7 @@ var RedView = class extends import_obsidian7.ItemView {
       void this.withButtonState(this.copyButton, this.t("exporting"), this.t("exportAll"), () => this.exportToVault(true));
     });
     this.browserPublishButton = parent.createEl("button", { cls: "red-browser-publish-button", text: this.t("publishToBrowser") });
+    this.browserPublishButton.setAttribute("title", this.t("browserPublishHint"));
     this.browserPublishButton.addEventListener("click", () => this.openBrowserPublishModal());
     this.updateBrowserPublishButtonVisibility();
   }
@@ -7265,7 +7271,7 @@ var RedView = class extends import_obsidian7.ItemView {
     });
   }
   refreshLanguageLabels() {
-    var _a2, _b2, _c, _d, _e, _f;
+    var _a2, _b2, _c, _d, _e;
     if (this.customTemplateSelect) {
       this.customTemplateSelect.dataset.label = this.t("templateLabel");
       this.refreshSelectLabels(this.customTemplateSelect, this.getTemplateOptions());
@@ -7291,12 +7297,14 @@ var RedView = class extends import_obsidian7.ItemView {
     (_a2 = this.containerEl.querySelector(".red-overview-button")) == null ? void 0 : _a2.setText(this.t("overview"));
     (_b2 = this.containerEl.querySelector(".red-export-button:not(.red-export-primary)")) == null ? void 0 : _b2.setText(this.t("downloadCurrent"));
     (_c = this.containerEl.querySelector(".red-export-primary")) == null ? void 0 : _c.setText(this.t("exportAll"));
-    (_d = this.containerEl.querySelector(".red-browser-publish-button")) == null ? void 0 : _d.setText(this.t("publishToBrowser"));
-    (_e = this.containerEl.querySelector(".red-help-button")) == null ? void 0 : _e.setAttribute("aria-label", this.t("guide"));
+    const publishButton = this.containerEl.querySelector(".red-browser-publish-button");
+    publishButton == null ? void 0 : publishButton.setText(this.t("publishToBrowser"));
+    publishButton == null ? void 0 : publishButton.setAttribute("title", this.t("browserPublishHint"));
+    (_d = this.containerEl.querySelector(".red-help-button")) == null ? void 0 : _d.setAttribute("aria-label", this.t("guide"));
     const tooltip = this.containerEl.querySelector(".red-help-tooltip");
     if (tooltip)
       tooltip.setText(this.t("guideText"));
-    (_f = this.containerEl.querySelector(".red-background-button")) == null ? void 0 : _f.setAttribute("aria-label", this.t("background"));
+    (_e = this.containerEl.querySelector(".red-background-button")) == null ? void 0 : _e.setAttribute("aria-label", this.t("background"));
     this.updateFooterToggleButtonState();
   }
   refreshSelectLabels(container, options) {
@@ -7541,7 +7549,7 @@ var RedView = class extends import_obsidian7.ItemView {
       return;
     const sourceFile = this.currentFile;
     const sourceContent = await this.app.vault.cachedRead(sourceFile);
-    const publishPath = this.getPublishPath(sourceFile);
+    const publish = this.getPublishPath(sourceFile);
     const absoluteAssetPath = assetPathIsAbsolute ? assetPath : this.getAdapterFullPath(assetPath);
     const settings = this.settingsManager.getSettings();
     let body = removeMarkdownImages(this.stripFrontMatter(sourceContent));
@@ -7559,12 +7567,17 @@ var RedView = class extends import_obsidian7.ItemView {
     const { cleanText, tags } = this.extractAndRemoveTags(body);
     const publishTitle = this.getPublishTitle(sourceFile);
     const publishContent = this.buildPublishMarkdownWithBody(cleanText, sourceFile.path, absoluteAssetPath, tags, publishTitle);
-    const existingPublishFile = this.app.vault.getAbstractFileByPath(publishPath);
-    if (existingPublishFile instanceof import_obsidian7.TFile) {
-      await this.app.vault.modify(existingPublishFile, publishContent);
+    if (publish.isAbsolute) {
+      await (0, import_promises2.mkdir)((0, import_path2.dirname)(publish.path), { recursive: true });
+      await (0, import_promises2.writeFile)(publish.path, publishContent, "utf8");
     } else {
-      await this.ensureFolder(this.dirname(publishPath));
-      await this.app.vault.create(publishPath, publishContent);
+      const existingPublishFile = this.app.vault.getAbstractFileByPath(publish.path);
+      if (existingPublishFile instanceof import_obsidian7.TFile) {
+        await this.app.vault.modify(existingPublishFile, publishContent);
+      } else {
+        await this.ensureFolder(this.dirname(publish.path));
+        await this.app.vault.create(publish.path, publishContent);
+      }
     }
     await this.app.fileManager.processFrontMatter(sourceFile, (frontmatter) => {
       const data = frontmatter;
@@ -7573,8 +7586,8 @@ var RedView = class extends import_obsidian7.ItemView {
       }
       const derivedTo = data.derived_to;
       const current = Array.isArray(derivedTo) ? derivedTo.filter((value) => typeof value === "string") : typeof derivedTo === "string" ? [derivedTo] : [];
-      if (!current.includes(publishPath))
-        current.push(publishPath);
+      if (!current.includes(publish.path))
+        current.push(publish.path);
       data.derived_to = current;
     });
   }
@@ -7642,8 +7655,17 @@ var RedView = class extends import_obsidian7.ItemView {
     return match ? content.slice(match[0].length) : content;
   }
   getPublishPath(file) {
+    const configuredPath = this.settingsManager.getSettings().publishPath.trim();
+    const filename = `${file.basename}_\u53D1\u5E03\u7248.md`;
+    if (configuredPath) {
+      const isAbsolute = this.isAbsoluteExportPath(configuredPath);
+      return {
+        path: isAbsolute ? (0, import_path2.join)((0, import_path2.normalize)(configuredPath), filename) : (0, import_obsidian7.normalizePath)(`${configuredPath}/${filename}`),
+        isAbsolute
+      };
+    }
     const folder = this.dirname(file.path);
-    return (0, import_obsidian7.normalizePath)(folder ? `${folder}/${file.basename}_\u53D1\u5E03\u7248.md` : `${file.basename}_\u53D1\u5E03\u7248.md`);
+    return { path: (0, import_obsidian7.normalizePath)(folder ? `${folder}/${filename}` : filename), isAbsolute: false };
   }
   dirname(path2) {
     const index = path2.lastIndexOf("/");
